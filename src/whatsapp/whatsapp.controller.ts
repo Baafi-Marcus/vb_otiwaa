@@ -42,7 +42,7 @@ export class WhatsappController {
   @Post('webhook')
   @HttpCode(200)
   async handleIncomingMetaMessage(@Body() request: any, @Req() req: Request) {
-    const host = req.get('host');
+    const host = req.headers['x-forwarded-host'] as string || req.get('host');
     this.logger.log(`[Meta Webhook] Payload: ${JSON.stringify(request)}`);
 
     const value = request?.entry?.[0]?.changes?.[0].value;
@@ -62,7 +62,8 @@ export class WhatsappController {
   @HttpCode(200)
   @Header('Content-Type', 'text/xml')
   async handleIncomingTwilioMessage(@Body() body: any, @Req() req: Request) {
-    const host = req.get('host');
+    const host = req.headers['x-forwarded-host'] as string || req.get('host');
+    this.logger.log(`[Twilio Webhook] Received request from host: ${host}`);
     // Log to DB for debugging
     try {
       await this.prismaService.webhookLog.create({
