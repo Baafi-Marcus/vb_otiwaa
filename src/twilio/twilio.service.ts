@@ -21,6 +21,10 @@ export class TwilioService {
     }
 
     async sendMessage(to: string, body: string) {
+        if (!this.client) {
+            this.logger.error('Cannot send message: Twilio client not initialized.');
+            return null;
+        }
         try {
             this.logger.log(`Sending WhatsApp message to ${to}`);
             const response = await this.client.messages.create({
@@ -36,6 +40,10 @@ export class TwilioService {
     }
 
     async sendMediaMessage(to: string, mediaUrl: string, caption?: string) {
+        if (!this.client) {
+            this.logger.error('Cannot send media message: Twilio client not initialized.');
+            return null;
+        }
         try {
             this.logger.log(`Sending WhatsApp media message to ${to}: ${mediaUrl}`);
             const response = await this.client.messages.create({
@@ -52,6 +60,10 @@ export class TwilioService {
     }
 
     async sendTemplateMessage(to: string, contentSid: string, contentVariables: string) {
+        if (!this.client) {
+            this.logger.error('Cannot send template message: Twilio client not initialized.');
+            return null;
+        }
         try {
             this.logger.log(`Sending WhatsApp template message to ${to}: ${contentSid}`);
             const response = await this.client.messages.create({
@@ -68,18 +80,19 @@ export class TwilioService {
     }
 
     async markMessageAsRead(messageSid: string) {
+        if (!this.client) return null;
         try {
             this.logger.log(`Marking message ${messageSid} as read`);
             const response = await (this.client.messages(messageSid) as any).update({ status: 'read' });
             return response;
         } catch (error) {
-            this.logger.warn(`Failed to mark message as read (likely not supported on this number type): ${error.message}`);
-            // Don't throw here, as this is a non-critical feature
+            this.logger.warn(`Failed to mark message as read: ${error.message}`);
             return null;
         }
     }
 
     async sendFulfillmentButtons(to: string) {
+        if (!this.client) return null;
         try {
             this.logger.log(`Sending fulfillment buttons to ${to}`);
 

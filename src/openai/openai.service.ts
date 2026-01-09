@@ -32,6 +32,11 @@ export class OpenaiService {
     const keys = this.apiKeys;
     const key = keys[OpenaiService.currentKeyIndex];
 
+    if (!key || key.trim() === '') {
+      this.logger.error('OpenAI API Key is missing or empty! System will not be able to generate responses.');
+      return null;
+    }
+
     // Rotate index for next call
     OpenaiService.currentKeyIndex = (OpenaiService.currentKeyIndex + 1) % keys.length;
 
@@ -171,6 +176,10 @@ Keep it very short and use emojis.`;
         try {
           const model = process.env.OPENAI_MODEL || 'google/gemini-2.0-flash-exp:free';
           const client = this.getOpenAIClient();
+          if (!client) {
+            this.logger.error(`Attempt ${attempt + 1}/${keys.length}: Skipping due to null client.`);
+            continue;
+          }
           this.logger.log(`Attempt ${attempt + 1}/${keys.length}: Testing Key Index ${OpenaiService.currentKeyIndex} (Model: ${model})`);
 
           const tools: any[] = [
