@@ -60,6 +60,18 @@ export class WhatsappController {
   @HttpCode(200)
   @Header('Content-Type', 'text/xml')
   async handleIncomingTwilioMessage(@Body() body: any) {
+    // Log to DB for debugging
+    try {
+      await this.prismaService.webhookLog.create({
+        data: {
+          provider: 'TWILIO',
+          payload: body
+        }
+      });
+    } catch (e) {
+      this.logger.error('Failed to log webhook', e);
+    }
+
     this.logger.log(`[Twilio Webhook] Payload: ${JSON.stringify(body)}`);
 
     const sender = body.From?.replace('whatsapp:', '') || 'Unknown';
@@ -166,11 +178,21 @@ export class WhatsappController {
     if (aiResponse.includes('[SEND_MENU_IMAGE]')) {
       const merchant: any = await (this.prismaService.merchant as any).findUnique({ where: { id: contextId } });
       if (merchant?.menuImageUrl) {
+        // Fix potential double-prefixed URLs
+        let imageUrl = merchant.menuImageUrl;
+        if (imageUrl.includes('/api/whatsapp/twilio')) {
+          imageUrl = imageUrl.split('/api/whatsapp/twilio').pop();
+        }
+        if (!imageUrl.startsWith('http')) {
+          const serverUrl = process.env.SERVER_URL || '';
+          imageUrl = `${serverUrl.replace(/\/$/, '')}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+        }
+
         const cleanResponse = aiResponse.replace('[SEND_MENU_IMAGE]', '').trim();
         if (cleanResponse) {
           await this.whatsAppService.sendWhatsAppMessage(sender, cleanResponse);
         }
-        await this.whatsAppService.sendImageByUrl(sender, merchant.menuImageUrl, 'Here is our menu!');
+        await this.whatsAppService.sendImageByUrl(sender, imageUrl, 'Here is our menu!');
         return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
       }
     }
