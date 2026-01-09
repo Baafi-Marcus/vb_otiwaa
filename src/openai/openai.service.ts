@@ -324,7 +324,8 @@ Keep it very short and use emojis.`;
       throw lastError;
     } catch (error: any) {
       this.logger.error('Error generating AI response after trying all keys', error);
-      return 'Sorry, the AI is a bit busy right now. Please wait a moment or add a private API key to the .env file for instant responses! ⏳🤖';
+      // Return a special tag that the controller will use to trigger human handoff
+      return '[AI_FAILURE]';
     }
   }
 

@@ -180,11 +180,51 @@ export class WhatsappController {
 
     const aiResponse = await this.openaiService.generateAIResponse(sender, text, contextId);
 
+    // 0. Handle AI Failure (Quota/Key issues)
+    if (aiResponse === '[AI_FAILURE]') {
+      this.logger.error(`[AI_FAILURE] Detected for user ${sender}. Triggering human handoff.`);
+
+      // Notify Customer
+      const customerMessage = "I'm sorry, I'm having a little technical trouble. 🛠️ I've notified our human team to assist you personally. Someone will reach out shortly! 🤝";
+      await this.whatsAppService.sendWhatsAppMessage(sender, customerMessage);
+
+      // Auto-Pause Bot for this customer
+      await (this.prismaService.customer as any).update({
+        where: { phoneNumber: sender },
+        data: { botPaused: true }
+      }).catch(err => this.logger.warn(`Failed to pause bot for ${sender}: ${err.message}`));
+
+      // Notify Merchant
+      try {
+        const merchant: any = await (this.prismaService.merchant as any).findFirst({
+          where: {
+            OR: [
+              { id: contextId },
+              { whatsappPhoneNumberId: contextId },
+              { twilioPhoneNumber: contextId }
+            ]
+          }
+        });
+
+        if (merchant?.twilioPhoneNumber) {
+          const alertMessage = `⚠️ *AI ALERT*: I've encountered an API error while chatting with ${sender}. I've paused the AI and switched to MANUAL mode for this customer. Please check your dashboard!`;
+          // We send to the merchant's absolute number (sender is what we usually use for 'to')
+          // But here 'sender' is the customer. We want to send to the merchant.
+          // Note: Twilio Sandbox only allows verified numbers. For production, this works.
+          await this.whatsAppService.sendWhatsAppMessage(merchant.twilioPhoneNumber, alertMessage);
+        }
+      } catch (alertErr) {
+        this.logger.warn(`Failed to alert merchant about AI failure: ${alertErr.message}`);
+      }
+
+      return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
+    }
+
     // 1. Always remove the tag and send the clean message first
     const cleanResponse = aiResponse
-      .replace('[SEND_MENU_IMAGE]', '')
-      .replace('[ASK_FULFILLMENT]', '')
-      .replace('[HUMAN_REQUEST]', '')
+      .replace(/\[SEND_MENU_IMAGE\]/g, '')
+      .replace(/\[ASK_FULFILLMENT\]/g, '')
+      .replace(/\[HUMAN_REQUEST\]/g, '')
       .trim();
 
     if (aiResponse.includes('[SEND_MENU_IMAGE]')) {
