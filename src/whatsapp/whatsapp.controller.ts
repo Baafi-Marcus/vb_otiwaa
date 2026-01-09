@@ -101,11 +101,17 @@ export class WhatsappController {
     // Identify by recipient (the bot's number)
     const twilioNumber = recipient; // Renamed for clarity based on new logic
     const merchant: any = await (this.prismaService.merchant as any).findFirst({
-      where: { twilioPhoneNumber: twilioNumber },
+      where: {
+        OR: [
+          { twilioPhoneNumber: twilioNumber },
+          { twilioPhoneNumber: `+${twilioNumber.replace('+', '')}` }
+        ]
+      },
       include: {
         catalog: true,
         deliveryZones: true
-      }
+      },
+      orderBy: { createdAt: 'desc' },
     });
 
     if (!merchant) {
@@ -179,6 +185,7 @@ export class WhatsappController {
       .trim();
 
     if (aiResponse.includes('[SEND_MENU_IMAGE]')) {
+      this.logger.log(`[MENU_DEBUG] Tag detected. Looking for merchant with contextId: ${contextId}`);
       // Find merchant using robust logic (ID, Meta ID, or Twilio Number)
       const merchant: any = await (this.prismaService.merchant as any).findFirst({
         where: {
@@ -192,21 +199,32 @@ export class WhatsappController {
         orderBy: { createdAt: 'desc' },
       });
 
+      if (!merchant) {
+        this.logger.warn(`[MENU_DEBUG] Merchant NOT FOUND for contextId: ${contextId}`);
+      } else {
+        this.logger.log(`[MENU_DEBUG] Merchant Found: ${merchant.name} (${merchant.id}). menuImageUrl: ${merchant.menuImageUrl}`);
+      }
+
       if (merchant?.menuImageUrl) {
         let imageUrl = merchant.menuImageUrl;
         if (imageUrl.includes('/api/whatsapp/twilio')) {
           imageUrl = imageUrl.split('/api/whatsapp/twilio').pop();
         }
         if (!imageUrl.startsWith('http')) {
-          const serverUrl = process.env.SERVER_URL || '';
-          imageUrl = `${serverUrl.replace(/\/$/, '')}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+          const serverUrl = (process.env.SERVER_URL || '').replace(/\/$/, '');
+          const cleanPath = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
+          imageUrl = `${serverUrl}${cleanPath}`;
         }
+
+        this.logger.log(`[MENU_DEBUG] Final Image URL: ${imageUrl}`);
 
         if (cleanResponse) {
           await this.whatsAppService.sendWhatsAppMessage(sender, cleanResponse);
         }
         await this.whatsAppService.sendImageByUrl(sender, imageUrl, 'Here is our menu! 😊');
         return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
+      } else if (merchant) {
+        this.logger.warn(`[MENU_DEBUG] Merchant found but menuImageUrl is EMPTY/NULL`);
       }
     }
 
