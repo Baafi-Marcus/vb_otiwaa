@@ -62,15 +62,17 @@ export class WhatsappController {
   async handleIncomingTwilioMessage(@Body() body: any) {
     this.logger.log(`[Twilio Webhook] Payload: ${JSON.stringify(body)}`);
 
-    const sender = body.From?.replace('whatsapp:', '');
-    const recipient = body.To?.replace('whatsapp:', '');
+    const sender = body.From?.replace('whatsapp:', '') || 'Unknown';
+    const recipient = body.To?.replace('whatsapp:', '') || 'Unknown';
     const messageText = body.Body;
     const messageSid = body.MessageSid;
     const mediaUrl = body.MediaUrl0;
     const mediaType = body.MediaContentType0;
 
+    this.logger.log(`[Twilio Webhook] From: ${sender}, To: ${recipient}, Text: ${messageText}`);
+
     // Mark as read immediately for blue ticks
-    if (messageSid) {
+    if (messageSid && this.whatsAppService.markRead) {
       this.whatsAppService.markRead(messageSid).catch(err =>
         this.logger.warn(`Failed to mark SID ${messageSid} as read: ${err.message}`)
       );
@@ -79,7 +81,7 @@ export class WhatsappController {
     // Ignore status callbacks (sent, delivered, read) to avoid double processing
     if (body.SmsStatus && !body.Body && !mediaUrl) {
       this.logger.log(`[Twilio Webhook] Status Callback: ${body.SmsStatus} for ${body.MessageSid}`);
-      return { status: 'callback_ignored' };
+      return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
     }
 
     // For Twilio Sandbox, we use the recipient number (Twilio Number) to identify the merchant
@@ -108,18 +110,24 @@ export class WhatsappController {
     }
 
     if (!merchant) {
-      return 'No merchant available in system';
+      this.logger.error('No merchant available in system to handle request.');
+      return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
     }
 
     this.logger.log(`Processing message for merchant ID: ${merchant.id}`);
     const contextId = merchant.id;
 
     if (mediaUrl) {
-      if (mediaType.startsWith('image/')) {
+      if (mediaType?.startsWith('image/')) {
         return this.processMediaMessage(sender, 'image', mediaUrl, contextId, messageSid);
-      } else if (mediaType.startsWith('audio/')) {
+      } else if (mediaType?.startsWith('audio/')) {
         return this.processMediaMessage(sender, 'audio', mediaUrl, contextId, messageSid);
       }
+    }
+
+    // Process standard text messages
+    if (messageText) {
+      return this.processTextMessage(sender, messageText, contextId, messageSid);
     }
 
     return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
