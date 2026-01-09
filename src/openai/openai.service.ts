@@ -3,8 +3,6 @@ import { OpenAI } from 'openai';
 import { UserContextService } from 'src/user-context/user-context.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { OrderService } from 'src/order/order.service';
-import * as fs from 'fs';
-import * as path from 'path';
 
 @Injectable()
 export class OpenaiService {
@@ -76,7 +74,7 @@ export class OpenaiService {
       if (!merchant) {
         // Robust fallback for testing even without correct IDs
         this.logger.warn(`No merchant found for ID/Number: ${phoneNumberId}. Falling back to first available merchant.`);
-        merchant = await this.prisma.merchant.findFirst({ include: { catalog: true, deliveryZones: true } }) as any;
+        merchant = await (this.prisma.merchant as any).findFirst({ include: { catalog: true, deliveryZones: true } }) as any;
 
         if (!merchant) {
           this.logger.error(`CRITICAL: No merchants found in database at all.`);
@@ -190,7 +188,7 @@ Keep it very short and use emojis.`;
       // Try ALL available keys before giving up
       for (let attempt = 0; attempt < keys.length; attempt++) {
         try {
-          const model = process.env.OPENAI_MODEL || 'google/gemini-2.0-flash-exp:free';
+          const model = process.env.OPENAI_MODEL || 'gpt-4o';
           const client = this.getOpenAIClient();
           if (!client) {
             this.logger.error(`Attempt ${attempt + 1}/${keys.length}: Skipping due to null client.`);
@@ -345,7 +343,7 @@ Keep it very short and use emojis.`;
 
       for (let attempt = 0; attempt < keys.length; attempt++) {
         try {
-          const model = process.env.OPENAI_MODEL || 'google/gemini-2.0-flash-exp:free';
+          const model = process.env.OPENAI_MODEL || 'gpt-4o';
           const client = this.getOpenAIClient();
 
           const response = await client.chat.completions.create({
@@ -369,7 +367,7 @@ Keep it very short and use emojis.`;
   }
 
   async generateSandboxResponse(systemPrompt: string, userMessage: string): Promise<string> {
-    const model = process.env.OPENAI_MODEL || 'google/gemini-2.0-flash-exp:free';
+    const model = process.env.OPENAI_MODEL || 'gpt-4o';
     const client = this.getOpenAIClient();
 
     try {
@@ -390,7 +388,7 @@ Keep it very short and use emojis.`;
   }
 
   async analyzeMenuImage(imageUrl: string): Promise<any[]> {
-    const model = process.env.OPENAI_MODEL || 'google/gemini-2.0-flash-exp:free';
+    const model = process.env.OPENAI_MODEL || 'gpt-4o';
     const client = this.getOpenAIClient();
 
     try {
