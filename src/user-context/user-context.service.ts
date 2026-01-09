@@ -109,8 +109,20 @@ export class UserContextService {
       }
     }
 
-    // Fallback
     const history = this.memoryStorage.get(hashedUserID) || [];
     return history.map((item) => JSON.parse(item));
+  }
+
+  async clearContext(userID: string) {
+    const hashedUserID = this.hashPhoneNumber(userID);
+    if (this.redis) {
+      try {
+        await this.redis.del(hashedUserID);
+      } catch (error) {
+        this.logger.error('Error clearing context from Redis', error);
+      }
+    }
+    this.memoryStorage.delete(hashedUserID);
+    return 'Context Cleared!';
   }
 }

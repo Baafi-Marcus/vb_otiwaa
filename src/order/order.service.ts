@@ -1,9 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { WhatsappService } from '../whatsapp/whatsapp.service';
 
 @Injectable()
 export class OrderService {
-    constructor(private prisma: PrismaService) { }
+    constructor(
+        private prisma: PrismaService,
+        private whatsapp: WhatsappService
+    ) { }
 
     async createOrder(data: {
         merchantId: string;
@@ -80,13 +84,32 @@ export class OrderService {
     }
 
     async updateStatus(orderId: string, status: string) {
-        const order = await this.prisma.order.findUnique({ where: { id: orderId } });
+        const order: any = await this.prisma.order.findUnique({
+            where: { id: orderId },
+            include: { merchant: true }
+        });
         if (!order) throw new NotFoundException('Order not found');
 
-        return this.prisma.order.update({
+        const updatedOrder = await this.prisma.order.update({
             where: { id: orderId },
             data: { status },
         });
+
+        // Send WhatsApp notification to customer
+        let message = `Update on your order from *${order.merchant.name}*:\n\nYour order status is now: *${status}*`;
+
+        if (status === 'CONFIRMED') message += "\n\nWe are preparing your items! 👨‍🍳";
+        if (status === 'READY') message += "\n\nYour order is ready! 🛍️";
+        if (status === 'DELIVERED') message += "\n\nEnjoy your meal! Please rate us on WhatsApp soon! ❤️🍱";
+        if (status === 'CANCELLED') message += "\n\nWe're sorry, your order has been cancelled. Please contact us for details.";
+
+        try {
+            await this.whatsapp.sendWhatsAppMessage(order.customerPhone, message);
+        } catch (err) {
+            console.error(`Failed to send status update to ${order.customerPhone}: ${err.message}`);
+        }
+
+        return updatedOrder;
     }
 
     async getMerchantAnalytics(merchantId: string) {

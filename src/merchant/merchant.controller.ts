@@ -154,4 +154,13 @@ export class MerchantController {
     ) {
         return this.merchantService.deleteDeliveryZone(merchantId, zoneId);
     }
+
+    @Patch(':id/customers/:customerId/toggle-bot')
+    async toggleBot(
+        @Param('id') id: string,
+        @Param('customerId') customerId: string,
+        @Body() data: { paused: boolean }
+    ) {
+        return this.merchantService.toggleBot(id, customerId, data.paused);
+    }
 }

@@ -1091,7 +1091,7 @@ const OrderRow = ({ order, index, onStatusUpdate }: { order: any, index: number,
                             onClick={() => onStatusUpdate(order.id, 'CONFIRMED')}
                             className="bg-primary text-primary-foreground px-4 py-2 rounded-xl text-xs font-bold hover:opacity-90 transition-all shadow-lg shadow-primary/20"
                         >
-                            Confirm
+                            Confirm (Notify)
                         </button>
                     )}
                     {order.status === 'CONFIRMED' && (
@@ -1099,7 +1099,7 @@ const OrderRow = ({ order, index, onStatusUpdate }: { order: any, index: number,
                             onClick={() => onStatusUpdate(order.id, 'DELIVERED')}
                             className="bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-bold hover:opacity-90 transition-all shadow-lg shadow-emerald-500/20"
                         >
-                            Delivered
+                            Delivered (Notify)
                         </button>
                     )}
                     <button className="p-2 border border-border rounded-xl text-muted-foreground hover:bg-secondary transition-all">
@@ -1262,7 +1262,20 @@ const MarketingView: React.FC<{ merchantId: string | null }> = ({ merchantId }) 
                                         <td className="px-6 py-4 font-bold">{c.name || 'Unknown'} <span className="block text-xs font-normal text-muted-foreground">{c.phoneNumber}</span></td>
                                         <td className="px-6 py-4">{c._count?.orders || 0}</td>
                                         <td className="px-6 py-4 text-muted-foreground">{new Date(c.lastSeen).toLocaleDateString()}</td>
-                                        <td className="px-6 py-4 text-right"><button className="text-primary font-bold hover:underline">View History</button></td>
+                                        <td className="px-6 py-4 text-right flex justify-end gap-2">
+                                            <button
+                                                onClick={async () => {
+                                                    const newState = !c.botPaused;
+                                                    await axios.patch(`${API_BASE}/api/merchants/${merchantId}/customers/${c.id}/toggle-bot`, { paused: newState });
+                                                    setCustomers(customers.map(cust => cust.id === c.id ? { ...cust, botPaused: newState } : cust));
+                                                    toast.success(newState ? 'AI Paused (Manual Mode)' : 'AI Resumed');
+                                                }}
+                                                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${c.botPaused ? 'bg-amber-500 text-white' : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'}`}
+                                            >
+                                                {c.botPaused ? 'Resume AI' : 'Pause AI'}
+                                            </button>
+                                            <button className="text-primary font-bold hover:underline">View History</button>
+                                        </td>
                                     </tr>
                                 ))
                             )}

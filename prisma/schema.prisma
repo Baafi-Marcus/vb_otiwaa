@@ -87,6 +87,7 @@ model Customer {
   name        String?
   lastSeen    DateTime @default(now())
   merchantId  String
+  botPaused   Boolean  @default(false)
   merchant    Merchant @relation(fields: [merchantId], references: [id])
   orders      Order[]
 }

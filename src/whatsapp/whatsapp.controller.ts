@@ -98,31 +98,27 @@ export class WhatsappController {
 
     // For Twilio Sandbox, we use the recipient number (Twilio Number) to identify the merchant
     // Identify by recipient (the bot's number)
-    let merchant = await (this.prismaService.merchant as any).findFirst({
-      where: {
-        OR: [
-          { id: recipient },
-          { whatsappPhoneNumberId: recipient },
-          { twilioPhoneNumber: recipient },
-          { twilioPhoneNumber: `+${recipient.replace('+', '')}` }
-        ]
-      },
-      include: { catalog: true },
-      orderBy: { createdAt: 'desc' },
+    const twilioNumber = recipient; // Renamed for clarity based on new logic
+    const merchant: any = await (this.prismaService.merchant as any).findFirst({
+      where: { twilioPhoneNumber: twilioNumber },
+      include: {
+        catalog: true,
+        deliveryZones: true
+      }
     });
 
     if (!merchant) {
-      this.logger.warn(`No merchant found for Twilio recipient ${recipient}. Using first available merchant for testing.`);
-      merchant = await this.prismaService.merchant.findFirst();
-      if (merchant) {
-        this.logger.log(`Fallback: Using merchant ${merchant.name} (ID: ${merchant.id})`);
-      } else {
-        this.logger.error(`CRITICAL: No merchants found in database!`);
-      }
+      this.logger.warn(`No merchant found for number: ${twilioNumber}`);
+      return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
     }
 
-    if (!merchant) {
-      this.logger.error('No merchant available in system to handle request.');
+    // 3. Check if Bot is Paused for this Customer
+    const customer = await this.prismaService.customer.findUnique({
+      where: { phoneNumber: sender }
+    });
+
+    if (customer?.botPaused) {
+      this.logger.log(`[Handoff] Bot is PAUSED for ${sender}. Skipping AI response.`);
       return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
     }
 

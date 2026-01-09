@@ -371,4 +371,11 @@ export class MerchantService {
         });
         return { message: 'Delivery zone deleted' };
     }
+
+    async toggleBot(merchantId: string, customerId: string, paused: boolean) {
+        return this.prisma.customer.update({
+            where: { id: customerId, merchantId },
+            data: { botPaused: paused }
+        });
+    }
 }

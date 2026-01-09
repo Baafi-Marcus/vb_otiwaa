@@ -277,6 +277,9 @@ Keep it very short and use emojis.`;
                     deliveryFee: deliveryFee
                   });
 
+                  // Clear context after successful order placement to ensure a clean slate
+                  await this.context.clearContext(userID);
+
                   if (args.fulfillmentMode === 'DELIVERY') {
                     return `Perfect! I've placed your order. Your food is being prepared and will be on its way to ${args.deliveryAddress} shortly! 🚚🔥`;
                   }
