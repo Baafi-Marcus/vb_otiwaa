@@ -138,4 +138,17 @@ export class OrderService {
             revenueHistory: last7Days,
         };
     }
+
+    async bulkUpdateStatus(orderIds: string[], status: string) {
+        const results = [];
+        for (const id of orderIds) {
+            try {
+                const res = await this.updateStatus(id, status);
+                results.push({ id, status: 'success' });
+            } catch (err) {
+                results.push({ id, status: 'failed', error: err.message });
+            }
+        }
+        return results;
+    }
 }

@@ -14,4 +14,9 @@ export class OrderController {
     async getAnalytics(@Param('merchantId') merchantId: string) {
         return this.orderService.getMerchantAnalytics(merchantId);
     }
+
+    @Patch('bulk-status')
+    async bulkStatus(@Body() data: { ids: string[], status: string }) {
+        return this.orderService.bulkUpdateStatus(data.ids, data.status);
+    }
 }

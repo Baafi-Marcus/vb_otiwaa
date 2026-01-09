@@ -45,6 +45,7 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
     const [deliveryZones, setDeliveryZones] = useState<any[]>([]);
     const [isAddingZone, setIsAddingZone] = useState(false);
     const [newZone, setNewZone] = useState({ name: '', price: '' });
+    const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
 
     const [localPreview, setLocalPreview] = useState<string | null>(null);
 
@@ -126,6 +127,37 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
         } catch (err) {
             console.error('Failed to update order status');
             toast.error('Failed to update order status');
+        }
+    };
+
+    const handleBulkStatusUpdate = async (status: string) => {
+        if (selectedOrders.size === 0) return;
+        const ids = Array.from(selectedOrders);
+        setLoading(true);
+        try {
+            await axios.patch(`${API_BASE}/api/orders/bulk-status`, { ids, status });
+            toast.success(`Updated ${ids.length} orders to ${status.toLowerCase()}`);
+            setSelectedOrders(new Set());
+            fetchDashboardData();
+        } catch (err) {
+            toast.error('Bulk update failed');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const toggleOrderSelection = (id: string) => {
+        const next = new Set(selectedOrders);
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        setSelectedOrders(next);
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedOrders.size === orders.length) {
+            setSelectedOrders(new Set());
+        } else {
+            setSelectedOrders(new Set(orders.map(o => o.id)));
         }
     };
 
@@ -288,21 +320,82 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
                                         </div>
                                     </div>
 
-                                    {/* Orders List */}
-                                    <div className="space-y-4">
-                                        <div className="flex items-center gap-2 text-muted-foreground mb-4">
-                                            <Clock className="w-5 h-5" />
-                                            <span className="font-bold text-sm uppercase tracking-widest text-muted-foreground/60">Real-time Feed</span>
+                                    <div className="space-y-4 relative">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <div className="flex items-center gap-2 text-muted-foreground">
+                                                <Clock className="w-5 h-5" />
+                                                <span className="font-bold text-sm uppercase tracking-widest text-muted-foreground/60">Real-time Feed</span>
+                                            </div>
+                                            {orders.length > 0 && (
+                                                <div className="flex items-center gap-2 bg-secondary/20 px-3 py-1.5 rounded-xl border border-border">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedOrders.size === orders.length && orders.length > 0}
+                                                        onChange={toggleSelectAll}
+                                                        className="w-4 h-4 rounded text-primary accent-primary"
+                                                    />
+                                                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-tight">Select All</span>
+                                                </div>
+                                            )}
                                         </div>
                                         {orders.length === 0 ? (
                                             <div className="py-20 text-center text-muted-foreground italic bg-secondary/5 rounded-3xl border border-dashed border-border">
                                                 No incoming orders yet.
                                             </div>
                                         ) : (
-                                            orders.map((o, i) => (
-                                                <OrderRow key={o.id} order={o} index={i} onStatusUpdate={handleStatusUpdate} />
-                                            ))
+                                            <div className="space-y-3">
+                                                {orders.map((o, i) => (
+                                                    <OrderRow
+                                                        key={o.id}
+                                                        order={o}
+                                                        index={i}
+                                                        onStatusUpdate={handleStatusUpdate}
+                                                        isSelected={selectedOrders.has(o.id)}
+                                                        onSelect={toggleOrderSelection}
+                                                    />
+                                                ))}
+                                            </div>
                                         )}
+
+                                        {/* Floating Bulk Action Bar */}
+                                        <AnimatePresence>
+                                            {selectedOrders.size > 0 && (
+                                                <motion.div
+                                                    initial={{ y: 100, opacity: 0 }}
+                                                    animate={{ y: 0, opacity: 1 }}
+                                                    exit={{ y: 100, opacity: 0 }}
+                                                    className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 bg-black/80 backdrop-blur-xl border border-white/10 px-6 py-4 rounded-3xl shadow-2xl flex items-center gap-6 min-w-[400px]"
+                                                >
+                                                    <div className="flex items-center gap-3 pr-6 border-r border-white/10">
+                                                        <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-xs font-black text-white">
+                                                            {selectedOrders.size}
+                                                        </div>
+                                                        <span className="text-xs font-bold text-white uppercase tracking-widest">Selected</span>
+                                                    </div>
+
+                                                    <div className="flex items-center gap-3">
+                                                        <button
+                                                            onClick={() => handleBulkStatusUpdate('CONFIRMED')}
+                                                            className="bg-primary text-primary-foreground px-5 py-2.5 rounded-xl text-xs font-black uppercase hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
+                                                        >
+                                                            Confirm All (Notify)
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleBulkStatusUpdate('DELIVERED')}
+                                                            className="bg-emerald-500 text-white px-5 py-2.5 rounded-xl text-xs font-black uppercase hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
+                                                        >
+                                                            Deliver All (Notify)
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setSelectedOrders(new Set())}
+                                                            className="p-2.5 text-white/50 hover:text-white hover:bg-white/10 rounded-xl transition-all"
+                                                        >
+                                                            <X className="w-5 h-5" />
+                                                        </button>
+                                                    </div>
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
                                     </div>
                                 </motion.div>
                             )}
@@ -1030,7 +1123,7 @@ const StatItem = ({ label, value, change, accent }: any) => (
     </div>
 );
 
-const OrderRow = ({ order, index, onStatusUpdate }: { order: any, index: number, onStatusUpdate: (id: string, s: string) => void }) => {
+const OrderRow = ({ order, index, onStatusUpdate, isSelected, onSelect }: { order: any, index: number, onStatusUpdate: (id: string, s: string) => void, isSelected: boolean, onSelect: (id: string) => void }) => {
     const statusColors: any = {
         PENDING: 'bg-orange-500/10 text-orange-500',
         CONFIRMED: 'bg-blue-500/10 text-blue-500',
@@ -1046,6 +1139,12 @@ const OrderRow = ({ order, index, onStatusUpdate }: { order: any, index: number,
             className="bg-card border border-border p-6 rounded-2xl flex items-center justify-between group hover:border-primary/50 transition-all shadow-sm"
         >
             <div className="flex items-center gap-4">
+                <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => onSelect(order.id)}
+                    className="w-5 h-5 rounded-md border-border text-primary focus:ring-primary accent-primary cursor-pointer"
+                />
                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black ${statusColors[order.status] || 'bg-secondary text-muted-foreground'}`}>
                     {order.status[0]}
                 </div>

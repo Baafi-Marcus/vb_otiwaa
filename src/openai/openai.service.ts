@@ -281,9 +281,9 @@ Keep it very short and use emojis.`;
                   await this.context.clearContext(userID);
 
                   if (args.fulfillmentMode === 'DELIVERY') {
-                    return `Perfect! I've placed your order. Your food is being prepared and will be on its way to ${args.deliveryAddress} shortly! 🚚🔥`;
+                    return `You're all set, ${args.customerName}! ❤️ Your delicious order is being prepared with love and will be on its way to ${args.deliveryAddress} shortly! 🚚🔥 We'll notify you as soon as it's out for delivery.`;
                   }
-                  return `Perfect! I've placed your pickup order. You can come and collect it at our location once it is ready. 📝✅`;
+                  return `Perfect choice, ${args.customerName}! 📝✅ I've placed your pickup order. Our team is already working on it with care. You can come and collect your treats at our location once it is ready. See you soon! 😊`;
                 } else {
                   return "I tried to place your order but couldn't find those specific items in our catalog. Could you please specify exactly what you'd like? 🧐";
                 }
