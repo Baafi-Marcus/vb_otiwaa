@@ -207,12 +207,27 @@ export class WhatsappController {
 
       if (merchant?.menuImageUrl) {
         let imageUrl = merchant.menuImageUrl;
+
+        // Fix potential double-prefixed URLs from previous implementations
         if (imageUrl.includes('/api/whatsapp/twilio')) {
           imageUrl = imageUrl.split('/api/whatsapp/twilio').pop();
         }
+
         if (!imageUrl.startsWith('http')) {
-          const serverUrl = (process.env.SERVER_URL || '').replace(/\/$/, '');
-          const cleanPath = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
+          let serverUrl = (process.env.SERVER_URL || '').replace(/\/$/, '');
+          let cleanPath = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
+
+          // Debugging: Warn if SERVER_URL is missing or local
+          if (!serverUrl || serverUrl.includes('localhost')) {
+            this.logger.warn(`[MENU_DEBUG] SERVER_URL is missing or local (${serverUrl}). Twilio will fail to download this image.`);
+          }
+
+          // Fix potential double /api prefix (common if SERVER_URL includes it)
+          if (serverUrl.endsWith('/api') && cleanPath.startsWith('/api/')) {
+            this.logger.log(`[MENU_DEBUG] Fixing double /api prefix in URL`);
+            cleanPath = cleanPath.substring(4);
+          }
+
           imageUrl = `${serverUrl}${cleanPath}`;
         }
 
