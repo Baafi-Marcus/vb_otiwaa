@@ -1115,7 +1115,7 @@ const ProductCard = ({ product, onEdit, onDelete }: { product?: any, onEdit: () 
     <div className="bg-card border border-border rounded-2xl overflow-hidden group hover:shadow-xl transition-all border-b-4 border-b-primary/10">
         <div className="aspect-video bg-secondary/50 flex items-center justify-center relative overflow-hidden">
             {product?.imageUrl ? (
-                <img src={product.imageUrl?.startsWith('/') ? `${API_BASE}${product.imageUrl}` : `${API_BASE}${product.imageUrl}`} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                <img src={product.imageUrl.startsWith('/') ? `${API_BASE}${product.imageUrl}` : product.imageUrl} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
             ) : (
                 <Package className="w-12 h-12 text-muted-foreground/30" />
             )}
