@@ -41,7 +41,8 @@ export class WhatsappController {
 
   @Post('webhook')
   @HttpCode(200)
-  async handleIncomingMetaMessage(@Body() request: any) {
+  async handleIncomingMetaMessage(@Body() request: any, @Req() req: Request) {
+    const host = req.get('host');
     this.logger.log(`[Meta Webhook] Payload: ${JSON.stringify(request)}`);
 
     const value = request?.entry?.[0]?.changes?.[0].value;
@@ -54,13 +55,14 @@ export class WhatsappController {
     const sender = message.from;
     const messageID = message.id;
 
-    return this.processMessage(sender, message, phoneNumberId, messageID);
+    return this.processMessage(sender, message, phoneNumberId, messageID, host);
   }
 
   @Post('twilio')
   @HttpCode(200)
   @Header('Content-Type', 'text/xml')
-  async handleIncomingTwilioMessage(@Body() body: any) {
+  async handleIncomingTwilioMessage(@Body() body: any, @Req() req: Request) {
+    const host = req.get('host');
     // Log to DB for debugging
     try {
       await this.prismaService.webhookLog.create({
@@ -142,15 +144,15 @@ export class WhatsappController {
 
     // Process standard text messages
     if (messageText) {
-      return this.processTextMessage(sender, messageText, contextId, messageSid);
+      return this.processTextMessage(sender, messageText, contextId, messageSid, host);
     }
 
     return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
   }
 
-  private async processMessage(sender: string, message: any, contextId: string, messageID: string) {
+  private async processMessage(sender: string, message: any, contextId: string, messageID: string, host?: string) {
     if (message.type === 'text') {
-      return this.processTextMessage(sender, message.text.body, contextId, messageID);
+      return this.processTextMessage(sender, message.text.body, contextId, messageID, host);
     } else if (message.type === 'audio') {
       // For Meta, we'd need to fetch the URL first, then download
       // For now, let's keep it simple or implement if needed
@@ -160,7 +162,7 @@ export class WhatsappController {
     return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
   }
 
-  private async processTextMessage(sender: string, text: string, contextId: string, messageID: string) {
+  private async processTextMessage(sender: string, text: string, contextId: string, messageID: string, host?: string) {
     if (!text) return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
     const imageGenerationCommand = '/imagine';
     const lowerText = text.toLowerCase();
@@ -214,18 +216,25 @@ export class WhatsappController {
         }
 
         if (!imageUrl.startsWith('http')) {
-          let serverUrl = (process.env.SERVER_URL || '').replace(/\/$/, '');
+          let serverUrl = process.env.SERVER_URL || host || '';
+          serverUrl = serverUrl.replace(/\/$/, '');
+
           let cleanPath = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
 
           // Debugging: Warn if SERVER_URL is missing or local
           if (!serverUrl || serverUrl.includes('localhost')) {
-            this.logger.warn(`[MENU_DEBUG] SERVER_URL is missing or local (${serverUrl}). Twilio will fail to download this image.`);
+            this.logger.warn(`[MENU_DEBUG] SERVER_URL/host is missing or local (${serverUrl}). Twilio will fail to download this image.`);
           }
 
           // Fix potential double /api prefix (common if SERVER_URL includes it)
           if (serverUrl.endsWith('/api') && cleanPath.startsWith('/api/')) {
             this.logger.log(`[MENU_DEBUG] Fixing double /api prefix in URL`);
             cleanPath = cleanPath.substring(4);
+          }
+
+          // Force https if no protocol specified or if on Railway
+          if (serverUrl && !serverUrl.startsWith('http')) {
+            serverUrl = `https://${serverUrl}`;
           }
 
           imageUrl = `${serverUrl}${cleanPath}`;
