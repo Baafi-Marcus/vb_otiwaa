@@ -45,6 +45,7 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
     const [deliveryZones, setDeliveryZones] = useState<any[]>([]);
     const [isAddingZone, setIsAddingZone] = useState(false);
     const [newZone, setNewZone] = useState({ name: '', price: '' });
+    const [editingZone, setEditingZone] = useState<any>(null);
     const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
 
     const [localPreview, setLocalPreview] = useState<string | null>(null);
@@ -596,22 +597,31 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
                                                                         <p className="text-sm font-bold">{zone.name}</p>
                                                                         <p className="text-[10px] text-muted-foreground">GHS {zone.price}</p>
                                                                     </div>
-                                                                    <button
-                                                                        onClick={async () => {
-                                                                            if (!confirm(`Delete zone "${zone.name}"?`)) return;
-                                                                            await axios.delete(`${API_BASE}/api/merchants/${merchantId}/delivery-zones/${zone.id}`);
-                                                                            setDeliveryZones(deliveryZones.filter(z => z.id !== zone.id));
-                                                                            toast.success('Zone deleted');
-                                                                        }}
-                                                                        className="p-2 opacity-0 group-hover:opacity-100 text-destructive hover:bg-destructive/10 rounded-lg transition-all"
-                                                                    >
-                                                                        <X className="w-4 h-4" />
-                                                                    </button>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <button
+                                                                            onClick={() => setEditingZone(zone)}
+                                                                            className="opacity-0 group-hover:opacity-100 p-1 hover:text-primary transition-all"
+                                                                        >
+                                                                            <Sparkles className="w-4 h-4" />
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={async () => {
+                                                                                if (!confirm(`Delete zone "${zone.name}"?`)) return;
+                                                                                await axios.delete(`${API_BASE}/api/merchants/${merchantId}/delivery-zones/${zone.id}`);
+                                                                                setDeliveryZones(deliveryZones.filter(z => z.id !== zone.id));
+                                                                                toast.success('Zone deleted');
+                                                                            }}
+                                                                            className="p-2 opacity-0 group-hover:opacity-100 text-destructive hover:bg-destructive/10 rounded-lg transition-all"
+                                                                        >
+                                                                            <X className="w-4 h-4" />
+                                                                        </button>
+                                                                    </div>
                                                                 </div>
                                                             ))}
 
                                                             {isAddingZone && (
-                                                                <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="p-4 bg-primary/5 border border-primary/20 rounded-xl space-y-3">
+                                                                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="p-4 bg-primary/5 border border-primary/20 rounded-xl space-y-3">
+                                                                    <h4 className="text-[10px] font-bold uppercase tracking-widest text-primary">New Zone</h4>
                                                                     <input
                                                                         className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-xs outline-none"
                                                                         placeholder="Zone Name (e.g. East Legon)"
@@ -627,6 +637,12 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
                                                                     />
                                                                     <div className="flex gap-2">
                                                                         <button
+                                                                            onClick={() => setIsAddingZone(false)}
+                                                                            className="flex-1 bg-secondary text-foreground py-2 rounded-lg text-[10px] font-bold"
+                                                                        >
+                                                                            CANCEL
+                                                                        </button>
+                                                                        <button
                                                                             onClick={async () => {
                                                                                 if (!newZone.name || !newZone.price) return;
                                                                                 const resp = await axios.post(`${API_BASE}/api/merchants/${merchantId}/delivery-zones`, {
@@ -638,15 +654,52 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
                                                                                 setNewZone({ name: '', price: '' });
                                                                                 toast.success('Zone added');
                                                                             }}
-                                                                            className="flex-1 bg-primary text-white py-2 rounded-lg text-[10px] font-bold"
+                                                                            className="flex-1 bg-primary text-white py-2 rounded-lg text-[10px] font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
                                                                         >
-                                                                            SAVE
+                                                                            ADD ZONE
                                                                         </button>
+                                                                    </div>
+                                                                </motion.div>
+                                                            )}
+
+                                                            {editingZone && (
+                                                                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="p-4 bg-primary/5 border border-primary/20 rounded-xl space-y-3">
+                                                                    <h4 className="text-[10px] font-bold uppercase tracking-widest text-primary">Edit Zone</h4>
+                                                                    <input
+                                                                        className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-xs outline-none"
+                                                                        value={editingZone.name}
+                                                                        onChange={e => setEditingZone({ ...editingZone, name: e.target.value })}
+                                                                    />
+                                                                    <input
+                                                                        type="number"
+                                                                        className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-xs outline-none"
+                                                                        value={editingZone.price}
+                                                                        onChange={e => setEditingZone({ ...editingZone, price: e.target.value })}
+                                                                    />
+                                                                    <div className="flex gap-2">
                                                                         <button
-                                                                            onClick={() => setIsAddingZone(false)}
-                                                                            className="flex-1 bg-secondary py-2 rounded-lg text-[10px] font-bold"
+                                                                            onClick={() => setEditingZone(null)}
+                                                                            className="flex-1 bg-secondary text-foreground py-2 rounded-lg text-[10px] font-bold"
                                                                         >
                                                                             CANCEL
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={async () => {
+                                                                                try {
+                                                                                    await axios.patch(`${API_BASE}/api/merchants/${merchantId}/delivery-zones/${editingZone.id}`, {
+                                                                                        name: editingZone.name,
+                                                                                        price: parseFloat(editingZone.price)
+                                                                                    });
+                                                                                    setDeliveryZones(deliveryZones.map(z => z.id === editingZone.id ? editingZone : z));
+                                                                                    setEditingZone(null);
+                                                                                    toast.success('Zone updated');
+                                                                                } catch (err) {
+                                                                                    toast.error('Failed to update zone');
+                                                                                }
+                                                                            }}
+                                                                            className="flex-1 bg-primary text-white py-2 rounded-lg text-[10px] font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                                                                        >
+                                                                            SAVE CHANGES
                                                                         </button>
                                                                     </div>
                                                                 </motion.div>

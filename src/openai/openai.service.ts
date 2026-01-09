@@ -145,12 +145,12 @@ How can we help you today?
 
 1️⃣ View Menu
 2️⃣ Place an Order
-3️⃣ Order Status / Support"
+3️⃣ Check Order Status (Just ask "What's the status of my order?")"
 
 MENU DELIVERY:
 - If 'Menu Image Available' is YES and the user asks to "View Menu" or see what you have:
   1. You MUST include the tag [SEND_MENU_IMAGE] at the end of your response.
-  2. You MUST NOT list the items or prices in your text. Just say: "Sure! Here is our visual menu for you. Let me know what you'd like to order! 😊"
+  2. You MUST NOT list the items or prices in your text. Just say: "Sure! Let me send over our visual menu for you. Let me know what catches your eye! 😊"
 - If 'Menu Image Available' is NO:
   1. List the top items from the catalog clearly.
 
@@ -165,7 +165,8 @@ ORDER FLOW
    - Inform them of the specific delivery fee for their location: 
 ${deliveryZoneInfo || '(Base Fee: ' + (merchant.baseDeliveryFee || 0) + ' GHS)'}
 4. Once you have ALL info (Items, Fulfillment, Name, Location, Phone), call the 'place_order' tool.
-5. AFTER placing a DELIVERY order, tell the client: "Great! Your order is being prepared and will be on its way shortly! 🚚🔥"
+5. TRACKING: If the user asks about their order status, you can check it automatically by their phone number. Do NOT ask for an ID unless you can't find anything. Use the 'check_order_status' tool.
+6. AFTER placing a DELIVERY order, tell the client their Order ID (Display ID) and that it's being prepared.
 
 ${closedInstruction}
 
@@ -225,13 +226,24 @@ Keep it very short and use emojis.`;
                   required: ['items', 'fulfillmentMode', 'customerName']
                 }
               }
+            },
+            {
+              type: 'function',
+              function: {
+                name: 'check_order_status',
+                description: 'Check the status of the customer’s latest order automatically.',
+                parameters: {
+                  type: 'object',
+                  properties: {}
+                }
+              }
             }
           ];
 
           const response = await client.chat.completions.create({
             messages: [{ role: 'system', content: systemPrompt }, ...userContext],
             model: model,
-            max_tokens: 250,
+            max_tokens: 300,
             tools: tools,
             tool_choice: 'auto'
           });
@@ -244,7 +256,6 @@ Keep it very short and use emojis.`;
                 const args = JSON.parse(toolCall.function.arguments);
                 this.logger.log(`[Tool] Placing order for ${userID}: ${JSON.stringify(args)}`);
 
-                // Map item names to product IDs from catalog
                 const orderItems = args.items.map((item: any) => {
                   const product = merchant.catalog.find((p: any) =>
                     p.name.toLowerCase().includes(item.name.toLowerCase()) ||
@@ -254,7 +265,6 @@ Keep it very short and use emojis.`;
                 }).filter((i: any) => i !== null);
 
                 if (orderItems.length > 0) {
-                  // Find delivery fee from zones
                   let deliveryFee = Number(merchant.baseDeliveryFee);
                   if (args.fulfillmentMode === 'DELIVERY' && args.deliveryAddress) {
                     const zone = merchant.deliveryZones.find((z: any) =>
@@ -266,7 +276,7 @@ Keep it very short and use emojis.`;
                     deliveryFee = 0;
                   }
 
-                  await this.orderService.createOrder({
+                  const order = await (this.orderService as any).createOrder({
                     merchantId: merchant.id,
                     customerName: args.customerName,
                     customerPhone: userID,
@@ -276,15 +286,23 @@ Keep it very short and use emojis.`;
                     deliveryFee: deliveryFee
                   });
 
-                  // Clear context after successful order placement to ensure a clean slate
+                  const displayId = order.shortId || order.id.substring(0, 4);
                   await this.context.clearContext(userID);
 
                   if (args.fulfillmentMode === 'DELIVERY') {
-                    return `You're all set, ${args.customerName}! ❤️ Your delicious order is being prepared with love and will be on its way to ${args.deliveryAddress} shortly! 🚚🔥 We'll notify you as soon as it's out for delivery.`;
+                    return `You're all set, ${args.customerName}! ❤️ Your delicious order (${displayId}) is being prepared with love and will be on its way to ${args.deliveryAddress} shortly! 🚚🔥 We'll notify you as soon as it's out for delivery.`;
                   }
-                  return `Perfect choice, ${args.customerName}! 📝✅ I've placed your pickup order. Our team is already working on it with care. You can come and collect your treats at our location once it is ready. See you soon! 😊`;
+                  return `Perfect choice, ${args.customerName}! 📝✅ I've placed your pickup order (${displayId}). Our team is already working on it with care. You can come and collect your treats at our location once it is ready. See you soon! 😊`;
                 } else {
                   return "I tried to place your order but couldn't find those specific items in our catalog. Could you please specify exactly what you'd like? 🧐";
+                }
+              } else if (toolCall.function.name === 'check_order_status') {
+                const latestOrder = await (this.orderService as any).getLatestOrderStatus(userID);
+                if (latestOrder) {
+                  const displayId = latestOrder.shortId || latestOrder.id.substring(0, 4);
+                  return `I found your latest order (${displayId})! 🔍 Its current status is: *${latestOrder.status}*. It was placed on ${new Date(latestOrder.createdAt).toLocaleDateString()}. Let me know if you need anything else! 😊`;
+                } else {
+                  return "I couldn't find any recent orders for your number. Would you like to place one now? 😊";
                 }
               }
             }
@@ -292,7 +310,7 @@ Keep it very short and use emojis.`;
 
           const aiResponse = message.content;
           await this.context.saveToContext(aiResponse, 'assistant', userID);
-          return aiResponse;
+          return aiResponse || 'How can I help you today?';
         } catch (error: any) {
           lastError = error;
           if (error?.status === 429 || error?.message?.includes('Rate limit')) {
@@ -300,15 +318,12 @@ Keep it very short and use emojis.`;
             continue;
           }
           this.logger.error(`API Error with key ${OpenaiService.currentKeyIndex}: ${error.message}`);
-          continue; // Try next key even for other errors
+          continue;
         }
       }
       throw lastError;
-    } catch (error) {
-      this.logger.error(
-        'Error generating AI response after trying all keys',
-        error,
-      );
+    } catch (error: any) {
+      this.logger.error('Error generating AI response after trying all keys', error);
       return 'Sorry, the AI is a bit busy right now. Please wait a moment or add a private API key to the .env file for instant responses! ⏳🤖';
     }
   }

@@ -10,6 +10,10 @@ export class OrderService {
         private whatsapp: WhatsappService
     ) { }
 
+    private generateShortId() {
+        return '#' + Math.random().toString(36).substring(2, 6).toUpperCase();
+    }
+
     async createOrder(data: {
         merchantId: string;
         customerName: string;
@@ -50,8 +54,9 @@ export class OrderService {
             }
         });
 
-        return this.prisma.order.create({
+        return (this.prisma.order as any).create({
             data: {
+                shortId: this.generateShortId(),
                 merchantId: data.merchantId,
                 customerId: customer.id,
                 customerName: data.customerName,
@@ -97,7 +102,8 @@ export class OrderService {
         });
 
         // Send WhatsApp notification to customer
-        let message = `Update on your order from *${order.merchant.name}*:\n\nYour order status is now: *${status}*`;
+        const displayId = order.shortId || order.id.substring(0, 4);
+        let message = `Update on your order ${displayId} from *${order.merchant.name}*:\n\nYour order status is now: *${status}*`;
 
         if (status === 'CONFIRMED') message += "\n\nWe are preparing your items! 👨‍🍳";
         if (status === 'READY') message += "\n\nYour order is ready! 🛍️";
@@ -111,6 +117,14 @@ export class OrderService {
         }
 
         return updatedOrder;
+    }
+
+    async getLatestOrderStatus(customerPhone: string) {
+        return this.prisma.order.findFirst({
+            where: { customerPhone },
+            orderBy: { createdAt: 'desc' },
+            include: { items: { include: { product: true } } }
+        });
     }
 
     async getMerchantAnalytics(merchantId: string) {

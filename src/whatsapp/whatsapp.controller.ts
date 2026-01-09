@@ -171,11 +171,28 @@ export class WhatsappController {
 
     const aiResponse = await this.openaiService.generateAIResponse(sender, text, contextId);
 
-    // Check for Menu Image trigger
+    // 1. Always remove the tag and send the clean message first
+    const cleanResponse = aiResponse
+      .replace('[SEND_MENU_IMAGE]', '')
+      .replace('[ASK_FULFILLMENT]', '')
+      .replace('[HUMAN_REQUEST]', '')
+      .trim();
+
     if (aiResponse.includes('[SEND_MENU_IMAGE]')) {
-      const merchant: any = await (this.prismaService.merchant as any).findUnique({ where: { id: contextId } });
+      // Find merchant using robust logic (ID, Meta ID, or Twilio Number)
+      const merchant: any = await (this.prismaService.merchant as any).findFirst({
+        where: {
+          OR: [
+            { id: contextId },
+            { whatsappPhoneNumberId: contextId },
+            { twilioPhoneNumber: contextId },
+            { twilioPhoneNumber: `+${contextId.replace('+', '')}` }
+          ]
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
       if (merchant?.menuImageUrl) {
-        // Fix potential double-prefixed URLs
         let imageUrl = merchant.menuImageUrl;
         if (imageUrl.includes('/api/whatsapp/twilio')) {
           imageUrl = imageUrl.split('/api/whatsapp/twilio').pop();
@@ -185,18 +202,16 @@ export class WhatsappController {
           imageUrl = `${serverUrl.replace(/\/$/, '')}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
         }
 
-        const cleanResponse = aiResponse.replace('[SEND_MENU_IMAGE]', '').trim();
         if (cleanResponse) {
           await this.whatsAppService.sendWhatsAppMessage(sender, cleanResponse);
         }
-        await this.whatsAppService.sendImageByUrl(sender, imageUrl, 'Here is our menu!');
+        await this.whatsAppService.sendImageByUrl(sender, imageUrl, 'Here is our menu! 😊');
         return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
       }
     }
 
     // Check for Fulfillment trigger
     if (aiResponse.includes('[ASK_FULFILLMENT]')) {
-      const cleanResponse = aiResponse.replace('[ASK_FULFILLMENT]', '').trim();
       if (cleanResponse) {
         await this.whatsAppService.sendWhatsAppMessage(sender, cleanResponse);
         await this.context.saveToContext(cleanResponse, 'assistant', sender);
@@ -210,12 +225,13 @@ export class WhatsappController {
     // Check for Human Request trigger
     if (aiResponse.includes('[HUMAN_REQUEST]')) {
       this.logger.log(`[HANDOFF] User ${sender} requested to talk to a human.`);
-      const cleanResponse = aiResponse.replace('[HUMAN_REQUEST]', '').trim();
-      await this.whatsAppService.sendWhatsAppMessage(sender, cleanResponse);
+      if (cleanResponse) {
+        await this.whatsAppService.sendWhatsAppMessage(sender, cleanResponse);
+      }
       return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
     }
 
-    await this.whatsAppService.sendWhatsAppMessage(sender, aiResponse);
+    await this.whatsAppService.sendWhatsAppMessage(sender, cleanResponse || aiResponse);
     return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
   }
 
