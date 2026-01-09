@@ -115,6 +115,7 @@ Location: ${merchant.location || 'Not Specified'}
 Operating hours: ${merchant.operatingHours || 'Not Specified'}
 Payment methods: ${merchant.paymentMethods || 'Not Specified'}
 Delivery options: Base Delivery Fee: ${merchant.baseDeliveryFee || 0} GHS
+Menu Image Available: ${merchant.menuImageUrl ? 'YES' : 'NO'}
 
 WHAT YOU OFFER
 - Show the product or food menu
@@ -148,8 +149,11 @@ How can we help you today?
 3️⃣ Order Status / Support"
 
 MENU DELIVERY:
-- If the user asks for the menu or "View Menu", and the merchant has a menu image, you MUST Include the tag [SEND_MENU_IMAGE] at the end of your response. 
-- IMPORTANT: When sending the image tag, do NOT list all items and prices in your text response. Instead, say something like "Here is our visual menu for you to browse!" to keep the message clean.
+- If 'Menu Image Available' is YES and the user asks to "View Menu" or see what you have:
+  1. You MUST include the tag [SEND_MENU_IMAGE] at the end of your response.
+  2. You MUST NOT list the items or prices in your text. Just say: "Sure! Here is our visual menu for you. Let me know what you'd like to order! 😊"
+- If 'Menu Image Available' is NO:
+  1. List the top items from the catalog clearly.
 
 HUMAN HANDOFF
 - If the user explicitly asks to talk to a human, manager, or person, you MUST include the tag [HUMAN_REQUEST] at the end of your response.
