@@ -9,7 +9,12 @@ import * as ffmpeg from 'fluent-ffmpeg';
 @Injectable()
 export class AudioService {
   private readonly openai = new OpenAI({
-    apiKey: (process.env.OPENAI_API_KEYS || '').split(',')[0].trim() || process.env.OPENAI_API_KEY,
+    apiKey: (() => {
+      const rawKeys = process.env.OPENAI_API_KEYS || '';
+      const cleanedKeys = rawKeys.replace(/^"|"$/g, '');
+      const firstKey = cleanedKeys.split(',')[0].trim().replace(/^"|"$/g, '');
+      return firstKey || (process.env.OPENAI_API_KEY || '').replace(/^"|"$/g, '');
+    })(),
     baseURL: process.env.OPENAI_BASE_URL || 'https://openrouter.ai/api/v1',
   });
 
