@@ -9,8 +9,8 @@ import * as ffmpeg from 'fluent-ffmpeg';
 @Injectable()
 export class AudioService {
   private readonly openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-    baseURL: 'http://localhost:8000/v1/',
+    apiKey: (process.env.OPENAI_API_KEYS || '').split(',')[0].trim() || process.env.OPENAI_API_KEY,
+    baseURL: process.env.OPENAI_BASE_URL || 'https://openrouter.ai/api/v1',
   });
 
   private readonly logger = new Logger(AudioService.name);

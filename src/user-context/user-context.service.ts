@@ -8,7 +8,9 @@ export class UserContextService {
   private readonly salt = process.env.HASHING_SALT;
   private readonly contextExpirationTime = 10800; // Expiration Time In Seconds
 
-  constructor(private readonly redisProvider: RedisProvider) {}
+  private readonly memoryStorage = new Map<string, string[]>();
+
+  constructor(private readonly redisProvider: RedisProvider) { }
 
   private get redis() {
     return this.redisProvider.getClient();
@@ -28,20 +30,28 @@ export class UserContextService {
     contextType: 'user' | 'assistant',
     userID: string,
   ) {
-    try {
-      const value = JSON.stringify({
-        role: contextType,
-        content: context,
-      });
-      const hashedUserID = this.hashPhoneNumber(userID);
-      await this.redis.rPush(hashedUserID, value);
-      await this.redis.expire(hashedUserID, this.contextExpirationTime);
+    const value = JSON.stringify({
+      role: contextType,
+      content: context,
+    });
+    const hashedUserID = this.hashPhoneNumber(userID);
 
-      return 'Context Saved!';
-    } catch (error) {
-      this.logger.error('Error Saving Context', error);
-      return 'Error Saving Context';
+    if (this.redis) {
+      try {
+        await this.redis.rPush(hashedUserID, value);
+        await this.redis.expire(hashedUserID, this.contextExpirationTime);
+        return 'Context Saved!';
+      } catch (error) {
+        this.logger.error('Error Saving Context to Redis', error);
+      }
     }
+
+    // Fallback or Primary Memory Storage
+    if (!this.memoryStorage.has(hashedUserID)) {
+      this.memoryStorage.set(hashedUserID, []);
+    }
+    this.memoryStorage.get(hashedUserID).push(value);
+    return 'Context Saved (Memory)!';
   }
 
   async saveAndFetchContext(
@@ -49,44 +59,58 @@ export class UserContextService {
     contextType: 'user' | 'assistant',
     userID: string,
   ) {
-    try {
-      const value = JSON.stringify({
-        role: contextType,
-        content: context,
-      });
-      const hashedUserID = this.hashPhoneNumber(userID);
+    const value = JSON.stringify({
+      role: contextType,
+      content: context,
+    });
+    const hashedUserID = this.hashPhoneNumber(userID);
 
-      const results = await this.redis
-        .multi()
-        .rPush(hashedUserID, value) // Adding to user context
-        .lRange(hashedUserID, 0, -1) // Fetch user context
-        .expire(hashedUserID, this.contextExpirationTime)
-        .exec(); // We're executing both operations in a single round-trip
+    if (this.redis) {
+      try {
+        const results = await this.redis
+          .multi()
+          .rPush(hashedUserID, value) // Adding to user context
+          .lRange(hashedUserID, -10, -1) // Fetch ONLY the last 10 messages to save tokens
+          .expire(hashedUserID, this.contextExpirationTime)
+          .exec(); // We're executing both operations in a single round-trip
 
-      const lRangeResult = results[1];
-      if (Array.isArray(lRangeResult)) {
-        const conversationContext = lRangeResult as string[];
-        return conversationContext.map((item) => JSON.parse(item));
+        const lRangeResult = results[1];
+        if (Array.isArray(lRangeResult)) {
+          const conversationContext = lRangeResult as string[];
+          return conversationContext.map((item) => JSON.parse(item));
+        }
+      } catch (error) {
+        this.logger.error('Error Saving Context And Retrieving from Redis', error);
       }
-
-      return [];
-    } catch (error) {
-      this.logger.error('Error Saving Context And Retrieving', error);
-      return [];
     }
+
+    // Fallback or Primary Memory Storage
+    if (!this.memoryStorage.has(hashedUserID)) {
+      this.memoryStorage.set(hashedUserID, []);
+    }
+    const history = this.memoryStorage.get(hashedUserID);
+    history.push(value);
+
+    // Slice last 10 items
+    const relevantHistory = history.slice(-10);
+    return relevantHistory.map((item) => JSON.parse(item));
   }
 
   async getConversationHistory(userID: string) {
-    try {
-      const hashedUserID = this.hashPhoneNumber(userID);
-      const conversation = await this.redis.lRange(hashedUserID, 0, -1);
+    const hashedUserID = this.hashPhoneNumber(userID);
 
-      await this.redis.expire(hashedUserID, this.contextExpirationTime);
-
-      return conversation.map((item) => JSON.parse(item));
-    } catch (error) {
-      this.logger.error(error);
-      return [];
+    if (this.redis) {
+      try {
+        const conversation = await this.redis.lRange(hashedUserID, 0, -1);
+        await this.redis.expire(hashedUserID, this.contextExpirationTime);
+        return conversation.map((item) => JSON.parse(item));
+      } catch (error) {
+        this.logger.error('Error fetching history from Redis', error);
+      }
     }
+
+    // Fallback
+    const history = this.memoryStorage.get(hashedUserID) || [];
+    return history.map((item) => JSON.parse(item));
   }
 }

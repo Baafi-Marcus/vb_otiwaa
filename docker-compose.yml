@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  # 1. The NestJS Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./uploads:/app/uploads
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/whatsapp_bot?schema=public
+      - PORT=3000
+    env_file:
+      - .env
+    depends_on:
+      - db
+    networks:
+      - bot-network
+
+  # 3. Cloudflare Tunnel (Public Access)
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    restart: always
+    command: tunnel --url http://app:3000
+    networks:
+      - bot-network
+
+  # 2. Postgres Database (Shared)
+  db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=whatsapp_bot
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    networks:
+      - bot-network
+
+networks:
+  bot-network:
+    driver: bridge
+
+volumes:
+  db-data:

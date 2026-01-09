@@ -1,19 +1,26 @@
 import { Module } from '@nestjs/common';
 import { WhatsappController } from './whatsapp.controller';
 import { WhatsappService } from './whatsapp.service';
-import { OpenaiService } from 'src/openai/openai.service';
-import { UserContextService } from 'src/user-context/user-context.service';
-import { StabilityaiService } from 'src/stabilityai/stabilityai.service';
-import { AudioService } from 'src/audio/audio.service';
+import { PrismaModule } from 'src/prisma/prisma.module';
+import { TwilioModule } from '../twilio/twilio.module';
+import { HttpModule } from '@nestjs/axios';
+import { OpenaiModule } from 'src/openai/openai.module';
+import { UserContextModule } from 'src/user-context/user-context.module';
+import { AudioModule } from 'src/audio/audio.module';
+import { StabilityaiModule } from 'src/stabilityai/stabilityai.module';
 
 @Module({
-  controllers: [WhatsappController],
-  providers: [
-    OpenaiService,
-    WhatsappService,
-    UserContextService,
-    StabilityaiService,
-    AudioService,
+  imports: [
+    HttpModule,
+    PrismaModule,
+    TwilioModule,
+    OpenaiModule,
+    UserContextModule,
+    AudioModule,
+    StabilityaiModule,
   ],
+  controllers: [WhatsappController],
+  providers: [WhatsappService],
+  exports: [WhatsappService],
 })
-export class WhatsappModule {}
+export class WhatsappModule { }

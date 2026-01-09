@@ -1,0 +1,100 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+
+@Injectable()
+export class OrderService {
+    constructor(private prisma: PrismaService) { }
+
+    async createOrder(data: {
+        merchantId: string;
+        customerName: string;
+        customerPhone: string;
+        items: { productId: string; quantity: number; price: number }[];
+        fulfillmentMode: string;
+        location?: string;
+        deliveryFee: number;
+    }) {
+        const totalAmount = data.items.reduce((sum, item) => sum + (item.price * item.quantity), 0) + data.deliveryFee;
+
+        // Ensure customer exists or update lastSeen
+        const customer = await this.prisma.customer.upsert({
+            where: { phoneNumber: data.customerPhone },
+            update: { lastSeen: new Date(), merchantId: data.merchantId },
+            create: {
+                phoneNumber: data.customerPhone,
+                name: data.customerName,
+                merchantId: data.merchantId
+            }
+        });
+
+        return this.prisma.order.create({
+            data: {
+                merchantId: data.merchantId,
+                customerId: customer.id,
+                customerName: data.customerName,
+                customerPhone: data.customerPhone,
+                totalAmount: totalAmount,
+                deliveryFee: data.deliveryFee,
+                fulfillmentMode: data.fulfillmentMode,
+                location: data.location,
+                status: 'PENDING',
+                items: {
+                    create: data.items.map(item => ({
+                        productId: item.productId,
+                        quantity: item.quantity,
+                        price: item.price
+                    }))
+                }
+            },
+            include: { items: { include: { product: true } } }
+        });
+    }
+
+    async getMerchantOrders(merchantId: string) {
+        return this.prisma.order.findMany({
+            where: { merchantId },
+            include: {
+                items: { include: { product: true } },
+                customer: true
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+    }
+
+    async updateStatus(orderId: string, status: string) {
+        const order = await this.prisma.order.findUnique({ where: { id: orderId } });
+        if (!order) throw new NotFoundException('Order not found');
+
+        return this.prisma.order.update({
+            where: { id: orderId },
+            data: { status },
+        });
+    }
+
+    async getMerchantAnalytics(merchantId: string) {
+        const orders = await this.prisma.order.findMany({
+            where: { merchantId },
+            include: { items: true },
+        });
+
+        const totalRevenue = orders.reduce((sum, order) => sum + Number(order.totalAmount), 0);
+        const orderCount = orders.length;
+
+        // Last 7 days revenue for chart
+        const last7Days = Array.from({ length: 7 }, (_, i) => {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            const dateStr = d.toISOString().split('T')[0];
+            const dayRevenue = orders
+                .filter(o => o.createdAt.toISOString().split('T')[0] === dateStr)
+                .reduce((sum, o) => sum + Number(o.totalAmount), 0);
+            return { date: dateStr, revenue: dayRevenue };
+        }).reverse();
+
+        return {
+            totalRevenue,
+            orderCount,
+            revenueHistory: last7Days,
+        };
+    }
+}

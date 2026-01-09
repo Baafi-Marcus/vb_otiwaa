@@ -5,6 +5,6 @@ import { RedisProvider } from 'src/redis/redis.provider';
 @Global()
 @Module({
   providers: [UserContextService, RedisProvider],
-  exports: [RedisProvider],
+  exports: [UserContextService, RedisProvider],
 })
-export class UserContextModule {}
+export class UserContextModule { }

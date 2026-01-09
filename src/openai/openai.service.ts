@@ -1,63 +1,416 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OpenAI } from 'openai';
 import { UserContextService } from 'src/user-context/user-context.service';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { OrderService } from 'src/order/order.service';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
 export class OpenaiService {
-  constructor(private readonly context: UserContextService) {}
+  constructor(
+    private readonly context: UserContextService,
+    private readonly prisma: PrismaService,
+    private readonly orderService: OrderService,
+  ) { }
 
-  private readonly openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-  });
+  private get apiKeys() {
+    // Prioritize a single private key if provided
+    const singleKey = process.env.OPENAI_API_KEY;
+    if (singleKey && singleKey.trim() !== '') {
+      return [singleKey.trim().replace(/^"|"$/g, '')];
+    }
+
+    // Strip quotes if present in the environment variable
+    const rawKeys = process.env.OPENAI_API_KEYS || '';
+    const cleanedKeys = rawKeys.replace(/^"|"$/g, '');
+    return cleanedKeys.split(',').map(k => k.trim().replace(/^"|"$/g, ''));
+  }
+  private static currentKeyIndex = 0;
+
+  private getOpenAIClient() {
+    const keys = this.apiKeys;
+    const key = keys[OpenaiService.currentKeyIndex];
+
+    // Rotate index for next call
+    OpenaiService.currentKeyIndex = (OpenaiService.currentKeyIndex + 1) % keys.length;
+
+    return new OpenAI({
+      apiKey: key,
+      baseURL: process.env.OPENAI_BASE_URL || 'https://openrouter.ai/api/v1',
+    });
+  }
   private readonly logger = new Logger(OpenaiService.name);
 
-  async generateAIResponse(userID: string, userInput: string) {
+  async generateAIResponse(
+    userID: string,
+    userInput: string,
+    phoneNumberId: string,
+  ) {
+    this.logger.log(`[OpenAI] Generating response for user ${userID} (MerchantRef: ${phoneNumberId})`);
     try {
-      const systemPrompt = `You are Artistaa, a creative and friendly assistant communicating via WhatsApp.
-      Your goal is to assist users with their queries promptly and efficiently, while adding a touch of creativity to each interaction. Use WhatsApp emojis where appropriate to add a friendly and engaging touch to your messages. Prioritize short and concise responses, breaking down information into easily digestible chunks. Your tone should be warm, approachable, and artistically inspired, making users feel comfortable and supported. Here are some guidelines to follow:
-            
-      1. Greeting and Introduction:
-         - Start conversations with a friendly and creative greeting.
-         - Introduce yourself briefly if it's the first interaction.
-      
-      2. Use of Emojis:
-         - Integrate emojis naturally to enhance your messages.
-         - Use positive and creative emojis to create a friendly atmosphere.
-      
-      3. Concise Responses:
-         - Provide clear and concise answers.
-         - Use bullet points or numbered lists for clarity when necessary.
-      
-      4. Offering Assistance:
-         - Always ask if there's anything else the user needs help with.
-      
-      5. Closing Messages:
-         - End conversations on a positive note.
-         - Thank the user for reaching out.
-      
-      Remember to keep the interactions human-like, personable, and infused with creativity while maintaining a professional demeanor. Your primary objective is to assist the user effectively while making the conversation enjoyable.`;
+      let merchant: any;
+      try {
+        // Search by ID, Meta ID, or Twilio Number
+        merchant = await (this.prisma.merchant as any).findFirst({
+          where: {
+            OR: [
+              { id: phoneNumberId },
+              { whatsappPhoneNumberId: phoneNumberId },
+              { twilioPhoneNumber: phoneNumberId },
+              { twilioPhoneNumber: `+${phoneNumberId.replace('+', '')}` }
+            ]
+          },
+          include: { catalog: true },
+          orderBy: { createdAt: 'desc' },
+        });
+      } catch (dbError) {
+        this.logger.warn(`Database Error: ${dbError.message}. Using hardcoded fallback for testing.`);
+      }
 
+      if (!merchant) {
+        // Robust fallback for testing even without correct IDs
+        this.logger.warn(`No merchant found for ID/Number: ${phoneNumberId}. Falling back to first available merchant.`);
+        merchant = await this.prisma.merchant.findFirst({ include: { catalog: true } }) as any;
+
+        if (!merchant) {
+          this.logger.error(`CRITICAL: No merchants found in database at all.`);
+          return 'Sorry, this business is not registered with our platform.';
+        }
+      }
+
+      // 2. Build Industrial Context (Catalog - limited to top 20 items to save tokens)
+      const topProducts = merchant.catalog.slice(0, 20);
+      const catalogInfo = topProducts
+        .map((p) => `- ${p.name}: ${p.price} GHS (${p.description})`)
+        .join('\n');
+
+      this.logger.log(`[OpenAI] Sending ${topProducts.length} catalog items for context.`);
+
+      const isClosed = merchant.isClosed;
+      const closedInstruction = isClosed
+        ? "\n\nCRITICAL: The business is currently CLOSED. You MUST inform the user politely that we are closed for now, but they can still place an order for tomorrow or our next opening day. DO NOT promise immediate fulfillment."
+        : "";
+
+      const masterSystemPrompt = `
+✅ MASTER SYSTEM PROMPT (WHATSAPP ORDER BOT)
+
+You are a WhatsApp business order assistant for ${merchant.name}.
+
+Your role is to professionally assist customers who message the business on WhatsApp by helping them view products, place orders, and receive order confirmations. You must behave like a polite, efficient customer service agent, not a general-purpose AI or personal assistant.
+
+BUSINESS CONTEXT
+Business name: ${merchant.name}
+Business type: ${merchant.category}
+Location: ${merchant.location || 'Not Specified'}
+Operating hours: ${merchant.operatingHours || 'Not Specified'}
+Payment methods: ${merchant.paymentMethods || 'Not Specified'}
+Delivery options: Base Delivery Fee: ${merchant.baseDeliveryFee || 0} GHS
+
+WHAT YOU OFFER
+- Show the product or food menu with prices
+- Guide customers step-by-step to place an order
+- Ask only necessary questions (quantity, delivery address, contact)
+- Confirm orders clearly before checkout
+- Provide order summaries and total cost
+- Give business support related to orders, products, and delivery
+
+CONVERSATION RULES
+- Only respond to customer-initiated messages
+- Keep messages short, clear, and friendly
+- Use numbered options when presenting menus
+- Ask one question at a time
+- Confirm understanding before finalizing orders
+- Stay strictly within business and order-related topics
+
+NOT ALLOWED
+- Do NOT act as a general AI assistant
+- Do NOT answer unrelated questions (politics, personal advice, homework, etc.)
+- Do NOT engage in long free-form conversations
+- Do NOT generate promotional messages unless explicitly instructed
+
+DEFAULT GREETING
+When a customer says "Hi", "Hello", or starts a conversation, ALWAYS reply with:
+"Welcome to ${merchant.name} 👋
+How can we help you today?
+
+1️⃣ View Menu
+2️⃣ Place an Order
+3️⃣ Order Status / Support"
+
+HUMAN HANDOFF
+- If the user explicitly asks to talk to a human, manager, or person, you MUST include the tag [HUMAN_REQUEST] at the end of your response.
+
+ORDER FLOW
+1. Present menu or product list
+2. When the user is ready to order, you MUST include the tag [ASK_FULFILLMENT] at the end of your message to show them the "Pickup or Delivery" options.
+3. For DELIVERY: Ask for their location and inform them the delivery fee is ${merchant.baseDeliveryFee || 0} GHS.
+4. Once you have all info, call the 'place_order' tool.
+
+${closedInstruction}
+
+STOCK:
+${catalogInfo || 'None.'}
+
+Keep it very short and use emojis.`;
+
+      const systemPrompt = masterSystemPrompt;
+
+      // 3. Handle Conversational Context
       const userContext = await this.context.saveAndFetchContext(
         userInput,
         'user',
         userID,
       );
-      this.logger.log(userContext);
 
-      const response = await this.openai.chat.completions.create({
-        messages: [{ role: 'system', content: systemPrompt }, ...userContext],
-        model: process.env.OPENAI_MODEL || 'gpt-4o-2024-05-13',
+      let lastError;
+      const keys = this.apiKeys;
+
+      // Try ALL available keys before giving up
+      for (let attempt = 0; attempt < keys.length; attempt++) {
+        try {
+          const model = process.env.OPENAI_MODEL || 'google/gemini-2.0-flash-exp:free';
+          const client = this.getOpenAIClient();
+          this.logger.log(`Attempt ${attempt + 1}/${keys.length}: Testing Key Index ${OpenaiService.currentKeyIndex} (Model: ${model})`);
+
+          const tools: any[] = [
+            {
+              type: 'function',
+              function: {
+                name: 'place_order',
+                description: 'Record an official order in the system after getting items, fulfillment mode, and location (if delivery).',
+                parameters: {
+                  type: 'object',
+                  properties: {
+                    items: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          name: { type: 'string' },
+                          quantity: { type: 'number' }
+                        },
+                        required: ['name', 'quantity']
+                      }
+                    },
+                    fulfillmentMode: { type: 'string', enum: ['PICKUP', 'DELIVERY'] },
+                    location: { type: 'string' }
+                  },
+                  required: ['items', 'fulfillmentMode']
+                }
+              }
+            }
+          ];
+
+          const response = await client.chat.completions.create({
+            messages: [{ role: 'system', content: systemPrompt }, ...userContext],
+            model: model,
+            max_tokens: 250,
+            tools: tools,
+            tool_choice: 'auto'
+          });
+
+          const message = response.choices[0].message;
+
+          if (message.tool_calls && message.tool_calls.length > 0) {
+            for (const toolCall of message.tool_calls) {
+              if (toolCall.function.name === 'place_order') {
+                const args = JSON.parse(toolCall.function.arguments);
+                this.logger.log(`[Tool] Placing order for ${userID}: ${JSON.stringify(args)}`);
+
+                // Map item names to product IDs from catalog
+                const orderItems = args.items.map((item: any) => {
+                  const product = merchant.catalog.find((p: any) =>
+                    p.name.toLowerCase().includes(item.name.toLowerCase()) ||
+                    item.name.toLowerCase().includes(p.name.toLowerCase())
+                  );
+                  return product ? { productId: product.id, quantity: item.quantity, price: Number(product.price) } : null;
+                }).filter((i: any) => i !== null);
+
+                if (orderItems.length > 0) {
+                  await this.orderService.createOrder({
+                    merchantId: merchant.id,
+                    customerName: userID.substring(0, 10), // Placeholder
+                    customerPhone: userID,
+                    items: orderItems,
+                    fulfillmentMode: args.fulfillmentMode,
+                    location: args.location,
+                    deliveryFee: args.fulfillmentMode === 'DELIVERY' ? Number(merchant.baseDeliveryFee) : 0
+                  });
+                  return `Perfect! I've placed your ${args.fulfillmentMode.toLowerCase()} order. ${args.fulfillmentMode === 'DELIVERY' ? 'It will be sent to ' + args.location + '.' : 'You can pick it up at our location.'} 📝✅`;
+                } else {
+                  return "I tried to place your order but couldn't find those specific items in our catalog. Could you please specify exactly what you'd like? 🧐";
+                }
+              }
+            }
+          }
+
+          const aiResponse = message.content;
+          await this.context.saveToContext(aiResponse, 'assistant', userID);
+          return aiResponse;
+        } catch (error: any) {
+          lastError = error;
+          if (error?.status === 429 || error?.message?.includes('Rate limit')) {
+            this.logger.warn(`Key ${OpenaiService.currentKeyIndex} rate limited (429). Trying next...`);
+            continue;
+          }
+          this.logger.error(`API Error with key ${OpenaiService.currentKeyIndex}: ${error.message}`);
+          continue; // Try next key even for other errors
+        }
+      }
+      throw lastError;
+    } catch (error) {
+      this.logger.error(
+        'Error generating AI response after trying all keys',
+        error,
+      );
+      return 'Sorry, the AI is a bit busy right now. Please wait a moment or add a private API key to the .env file for instant responses! ⏳🤖';
+    }
+  }
+
+  async expandMerchantVision(name: string, category: string, vision: string): Promise<string> {
+    try {
+      this.logger.log(`Expanding vision for ${name} (${category})`);
+
+      const prompt = `You are a professional AI Personality Architect. 
+      Your task is to take a business name, a business category, and a "Vision" described by the owner, and expand it into a high-quality "System Prompt" for a WhatsApp Chatbot.
+
+      BUSINESS NAME: ${name}
+      CATEGORY: ${category}
+      OWNER'S VISION: ${vision}
+
+      RULES:
+      1. AI IDENTITY: "You are the smart WhatsApp assistant for [Business Name], a specialized [Category] business..."
+      2. TONE & STYLE: 
+         - Restaurants: Energetic, appetizing, focused on fast orders.
+         - Boutiques: Trendy, sophisticated, personal stylist vibe.
+         - Services: Professional, trust-building, organized.
+         - Logistics: Reliable, efficient, clear.
+      3. IMAGE CAPABILITY: 
+         - If ${category} is 'Restaurant' or 'Boutique', explicitly state: "You can send high-quality product images using the [SEND_MENU_IMAGE] tag."
+         - Otherwise, focus on text-based info.
+      4. EMOJIS: Use emojis that match the ${category} (e.g., 🍕👗💼🚚).
+      5. FULFILLMENT: Remind the AI to use the [ASK_FULFILLMENT] tag when a user is ready to order.
+
+      OUTPUT: Only provide the final system prompt text. No titles, no explanations. Start directly with "You are..."`;
+
+      const keys = this.apiKeys;
+      let lastError;
+
+      for (let attempt = 0; attempt < keys.length; attempt++) {
+        try {
+          const model = process.env.OPENAI_MODEL || 'google/gemini-2.0-flash-exp:free';
+          const client = this.getOpenAIClient();
+
+          const response = await client.chat.completions.create({
+            messages: [{ role: 'user', content: prompt }],
+            model: model,
+            max_tokens: 300,
+          });
+
+          return response.choices[0].message.content.trim();
+        } catch (error: any) {
+          lastError = error;
+          this.logger.warn(`Expansion attempt ${attempt + 1} failed. Trying next key...`);
+          continue;
+        }
+      }
+      throw lastError;
+    } catch (error) {
+      this.logger.error('Failed to expand merchant vision', error);
+      return `You are the AI assistant for ${name}. I am here to help you with our ${category} services.`;
+    }
+  }
+
+  async generateSandboxResponse(systemPrompt: string, userMessage: string): Promise<string> {
+    const model = process.env.OPENAI_MODEL || 'google/gemini-2.0-flash-exp:free';
+    const client = this.getOpenAIClient();
+
+    try {
+      const response = await client.chat.completions.create({
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userMessage }
+        ],
+        model: model,
+        max_tokens: 200,
       });
 
-      const aiResponse = response.choices[0].message.content;
+      return response.choices[0].message.content || 'No response from AI.';
+    } catch (error: any) {
+      this.logger.error(`Sandbox AI Error: ${error.message}`);
+      return `[Sandbox Error] ${error.message}`;
+    }
+  }
 
-      await this.context.saveToContext(aiResponse, 'assistant', userID);
+  async analyzeMenuImage(imageUrl: string): Promise<any[]> {
+    const model = process.env.OPENAI_MODEL || 'google/gemini-2.0-flash-exp:free';
+    const client = this.getOpenAIClient();
 
-      return aiResponse;
-    } catch (error) {
-      this.logger.error('Error generating AI response', error);
-      // Fail gracefully!!
-      return 'Sorry, I am unable to process your request at the moment.';
+    try {
+      this.logger.log(`[Vision] Analyzing menu image: ${imageUrl}`);
+
+      let finalImageUrl = imageUrl;
+
+      // Use DB-backed Base64 injection to bypass Cloudflare/Network issues
+      if (imageUrl.includes('/api/uploads/')) {
+        try {
+          const id = imageUrl.split('/api/uploads/').pop().split('/')[0];
+          this.logger.log(`[Vision] Attempting to fetch image from DB. ID: ${id}`);
+
+          const storedImage = await (this.prisma as any).storedImage.findUnique({ where: { id } });
+
+          if (storedImage) {
+            this.logger.log(`[Vision] Image found. Type: ${storedImage.mimeType}, Size: ${storedImage.data.length} bytes`);
+
+            // Ensure we have a Buffer, then convert to Base64
+            const buffer = Buffer.from(storedImage.data);
+            const base64Body = buffer.toString('base64');
+
+            // Ensure proper Data URI format
+            finalImageUrl = `data:${storedImage.mimeType};base64,${base64Body}`;
+
+            this.logger.log(`[Vision] Base64 generated. Prefix: ${finalImageUrl.substring(0, 50)}...`);
+          } else {
+            this.logger.warn(`[Vision] Image ID ${id} not found in database.`);
+          }
+        } catch (dbError) {
+          this.logger.warn(`Failed to read DB image: ${dbError.message}`);
+        }
+      }
+
+      const prompt = `Extract all food/product items from this menu image. 
+      Return ONLY a JSON array of objects. 
+      Each object must have: "name", "price" (number), and "description". 
+      If no price is found, use 0. 
+      Format: [{"name": "Item Name", "price": 10.5, "description": "Short description"}]`;
+
+      const response = await client.chat.completions.create({
+        model: model,
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: prompt },
+              {
+                type: "image_url",
+                image_url: {
+                  url: finalImageUrl,
+                },
+              },
+            ],
+          },
+        ],
+        max_tokens: 1000,
+      });
+
+      const content = response.choices[0].message.content || '[]';
+      // Clean up markdown code blocks if present
+      const jsonString = content.replace(/```json|```/g, '').trim();
+      return JSON.parse(jsonString);
+    } catch (error: any) {
+      this.logger.error(`Vision Error: ${error.message}`);
+      return [];
     }
   }
 }

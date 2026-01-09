@@ -1,0 +1,341 @@
+import { Injectable, Logger, ConflictException, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { OpenaiService } from '../openai/openai.service';
+import { StabilityaiService } from '../stabilityai/stabilityai.service';
+import { WhatsappService } from '../whatsapp/whatsapp.service';
+
+@Injectable()
+export class MerchantService {
+    private readonly logger = new Logger(MerchantService.name);
+
+    constructor(
+        private prisma: PrismaService,
+        private openai: OpenaiService,
+        private stability: StabilityaiService,
+        private whatsapp: WhatsappService,
+    ) { }
+
+    async saveImage(file: any): Promise<string> {
+        // Store image in DB
+        const image = await (this.prisma as any).storedImage.create({
+            data: {
+                data: file.buffer,
+                mimeType: file.mimetype,
+                filename: file.originalname,
+            }
+        });
+
+        // Construct URL pointing to the new DB-backed endpoint
+        const serverUrl = process.env.SERVER_URL || 'http://localhost:3000';
+        return `${serverUrl}/api/uploads/${image.id}/menu.jpg`;
+    }
+
+    async registerMerchant(data: {
+        name: string;
+        whatsappPhoneNumberId?: string;
+        twilioPhoneNumber?: string;
+        category: string;
+        clientVision: string;
+        location?: string;
+        operatingHours?: string;
+        paymentMethods?: string;
+        systemPrompt?: string;
+        menuImageUrl?: string;
+    }) {
+        this.logger.log(`Registering new ${data.category} merchant: ${data.name}`);
+
+        try {
+            // We now allow duplicate numbers for testing flexibility.
+            // Lookup logic will prioritize the most recently created merchant.
+
+            // Use provided prompt or expand from vision
+            const finalPrompt = data.systemPrompt || await this.openai.expandMerchantVision(
+                data.name,
+                data.category,
+                data.clientVision
+            );
+
+            const merchant = await (this.prisma.merchant as any).create({
+                data: {
+                    name: data.name,
+                    whatsappPhoneNumberId: data.whatsappPhoneNumberId,
+                    twilioPhoneNumber: data.twilioPhoneNumber,
+                    category: data.category,
+                    clientVision: data.clientVision,
+                    location: data.location,
+                    operatingHours: data.operatingHours,
+                    paymentMethods: data.paymentMethods,
+                    systemPrompt: finalPrompt,
+                    menuImageUrl: data.menuImageUrl,
+                },
+            });
+
+            return {
+                message: 'Merchant registered successfully',
+                merchantId: merchant.id,
+                systemPrompt: finalPrompt
+            };
+        } catch (error) {
+            if (error instanceof ConflictException) throw error;
+
+            this.logger.error(`Failed to register merchant: ${error.message}`);
+            throw new InternalServerErrorException('Error saving merchant to database');
+        }
+    }
+
+    async addProduct(merchantId: string, data: { name: string; description: string; price: number; imageUrl?: string }) {
+        const merchant = await this.prisma.merchant.findUnique({ where: { id: merchantId } });
+        if (!merchant) throw new NotFoundException('Merchant not found');
+
+        return this.prisma.product.create({
+            data: {
+                name: data.name,
+                description: data.description,
+                price: Number(data.price),
+                imageUrl: data.imageUrl,
+                merchantId: merchantId,
+            },
+        });
+    }
+
+    async bulkAddProducts(merchantId: string, products: any[]) {
+        try {
+            const merchant = await this.prisma.merchant.findUnique({ where: { id: merchantId } });
+            if (!merchant) throw new NotFoundException('Merchant not found');
+
+            this.logger.log(`[BulkImport] Starting bulk import for merchant ${merchantId}, ${products.length} products`);
+
+            const createdProducts = [];
+            for (const prod of products) {
+                // Check for existing product to avoid duplicates
+                const existing = await this.prisma.product.findFirst({
+                    where: {
+                        merchantId: merchantId,
+                        name: { equals: prod.name, mode: 'insensitive' } // Case-insensitive match is safer
+                    }
+                });
+
+                if (existing) {
+                    this.logger.log(`[BulkImport] Updating existing product: ${prod.name}`);
+                    const updated = await this.prisma.product.update({
+                        where: { id: existing.id },
+                        data: {
+                            description: prod.description,
+                            price: Number(prod.price)
+                        }
+                    });
+                    createdProducts.push(updated);
+                } else {
+                    this.logger.log(`[BulkImport] Creating NEW product: ${prod.name}`);
+                    const created = await this.prisma.product.create({
+                        data: {
+                            name: prod.name,
+                            description: prod.description,
+                            price: Number(prod.price),
+                            merchantId: merchantId,
+                        }
+                    });
+                    createdProducts.push(created);
+                }
+            }
+
+            this.logger.log(`[BulkImport] Successfully created ${createdProducts.length} products`);
+            return { count: createdProducts.length, products: createdProducts };
+        } catch (error) {
+            this.logger.error(`[BulkImport] Error: ${error.message}`, error.stack);
+            throw error;
+        }
+    }
+
+    async updateProduct(merchantId: string, productId: string, data: { name?: string; description?: string; price?: number; imageUrl?: string }) {
+        // Verify the product belongs to this merchant
+        const product = await this.prisma.product.findFirst({
+            where: { id: productId, merchantId: merchantId }
+        });
+        if (!product) throw new NotFoundException('Product not found');
+
+        return this.prisma.product.update({
+            where: { id: productId },
+            data: {
+                ...(data.name && { name: data.name }),
+                ...(data.description && { description: data.description }),
+                ...(data.price !== undefined && { price: Number(data.price) }),
+                ...(data.imageUrl && { imageUrl: data.imageUrl }),
+            }
+        });
+    }
+
+    async deleteProduct(merchantId: string, productId: string) {
+        // Verify the product belongs to this merchant
+        const product = await this.prisma.product.findFirst({
+            where: { id: productId, merchantId: merchantId }
+        });
+        if (!product) throw new NotFoundException('Product not found');
+
+        await this.prisma.product.delete({ where: { id: productId } });
+        return { message: 'Product deleted successfully' };
+    }
+
+    async generateProductImage(merchantId: string, productName: string, description: string) {
+        const merchant = await this.prisma.merchant.findUnique({ where: { id: merchantId } });
+        if (!merchant) throw new NotFoundException('Merchant not found');
+
+        const prompt = `Professional product photography of ${productName} for a ${merchant.category} business. ${description}. High resolution, clean background, soft lighting.`;
+        const result = await this.stability.textToImage(prompt);
+
+        if (Array.isArray(result) && result.length > 0) {
+            // StabilityAI service returns filenames. We need to serve them.
+            // For now we'll return the first filename.
+            return { imageUrl: `/generatedImages/${result[0]}` };
+        }
+        return { error: 'Failed to generate image' };
+    }
+
+    async getAllMerchants() {
+        return this.prisma.merchant.findMany({
+            include: {
+                catalog: true,  // Include full catalog products
+                _count: {
+                    select: { orders: true }
+                }
+            }
+        });
+    }
+
+    async expandVisionOnly(name: string, category: string, vision: string) {
+        return this.openai.expandMerchantVision(name, category, vision);
+    }
+
+    async getMerchantOrders(merchantId: string) {
+        return this.prisma.order.findMany({
+            where: { merchantId },
+            include: { items: { include: { product: true } } },
+            orderBy: { createdAt: 'desc' },
+        });
+    }
+
+    async simulateSandboxChat(merchantId: string, customPrompt: string, message: string) {
+        const merchant = await this.prisma.merchant.findUnique({
+            where: { id: merchantId },
+            include: { catalog: true }
+        });
+        if (!merchant) throw new NotFoundException('Merchant not found');
+
+        const catalogInfo = merchant.catalog
+            .map((p) => `- ${p.name}: ${p.price} GHS (${p.description})`)
+            .join('\n');
+
+        const systemPrompt = `${customPrompt || merchant.systemPrompt}
+        
+        STOCK:
+        ${catalogInfo || 'None.'}
+        Goal: Assist promptly. Use emojis. Keep it very short.`;
+
+        // We use a temporary model configuration for sandbox
+        const model = process.env.OPENAI_MODEL || 'google/gemini-2.0-flash-exp:free';
+        // We use an internal call to OpenAI directly here to avoid saving to context
+        const response = await this.openai.generateSandboxResponse(systemPrompt, message);
+        return { response };
+    }
+
+    async getMerchantCustomers(merchantId: string) {
+        return this.prisma.customer.findMany({
+            where: { merchantId },
+            include: { _count: { select: { orders: true } } },
+            orderBy: { lastSeen: 'desc' },
+        });
+    }
+
+    async sendMerchantBroadcast(merchantId: string, message: string, customerIds?: string[]) {
+        const merchant = await this.prisma.merchant.findUnique({ where: { id: merchantId } });
+        if (!merchant) throw new NotFoundException('Merchant not found');
+
+        const customers = await this.prisma.customer.findMany({
+            where: {
+                merchantId,
+                ...(customerIds && { id: { in: customerIds } })
+            }
+        });
+
+        const results = [];
+        for (const customer of customers) {
+            try {
+                await this.whatsapp.sendWhatsAppMessage(
+                    customer.phoneNumber,
+                    message,
+                );
+                results.push({ customerId: customer.id, status: 'success' });
+            } catch (err) {
+                this.logger.error(`Broadcast failed for ${customer.phoneNumber}: ${err.message}`);
+                results.push({ customerId: customer.id, status: 'failed', error: err.message });
+            }
+        }
+
+        return {
+            totalSent: results.filter(r => r.status === 'success').length,
+            totalFailed: results.filter(r => r.status === 'failed').length,
+            details: results
+        };
+    }
+    async getMerchantDashboardData(merchantId: string) {
+        const merchant = await this.prisma.merchant.findUnique({
+            where: { id: merchantId },
+            include: { catalog: true }
+        });
+        if (!merchant) throw new NotFoundException('Merchant not found');
+
+        const orders = await this.prisma.order.findMany({
+            where: { merchantId },
+            include: { items: { include: { product: true } } },
+            orderBy: { createdAt: 'desc' },
+            take: 20
+        });
+
+        // Simple analytics
+        const allOrders = await this.prisma.order.findMany({
+            where: { merchantId },
+            select: { totalAmount: true, createdAt: true }
+        });
+
+        const totalOrders = allOrders.length;
+        const totalRevenue = allOrders.reduce((sum, o) => sum + Number(o.totalAmount), 0);
+        const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+
+        // Calculate last 7 days revenue
+        const last7Days = Array.from({ length: 7 }, (_, i) => {
+            const date = new Date();
+            date.setDate(date.getDate() - (6 - i));
+            return date.toISOString().split('T')[0];
+        });
+
+        const revenueHistory = last7Days.map(date => {
+            const dayOrders = allOrders.filter(o =>
+                o.createdAt.toISOString().split('T')[0] === date
+            );
+            const revenue = dayOrders.reduce((sum, o) => sum + Number(o.totalAmount), 0);
+            return { date, revenue };
+        });
+
+        return {
+            merchant,
+            orders,
+            analytics: {
+                totalOrders,
+                totalRevenue,
+                avgOrderValue,
+                revenueHistory,
+                activeCustomers: await this.prisma.customer.count({ where: { merchantId } })
+            }
+        };
+    }
+
+    async updateMerchant(id: string, data: any) {
+        const merchant = await this.prisma.merchant.findUnique({ where: { id } });
+        if (!merchant) throw new NotFoundException('Merchant not found');
+
+        return (this.prisma.merchant as any).update({
+            where: { id },
+            data,
+        });
+    }
+}
