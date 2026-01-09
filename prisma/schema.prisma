@@ -23,9 +23,20 @@ model Merchant {
   operatingHours        String?
   paymentMethods        String?
   twilioPhoneNumber     String?
+  deliveryZones         DeliveryZone[]
   customers             Customer[]
   orders                Order[]
   catalog               Product[]
+}
+
+model DeliveryZone {
+  id         String   @id @default(uuid())
+  name       String
+  price      Decimal  @db.Decimal(10, 2)
+  merchantId String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  merchant   Merchant @relation(fields: [merchantId], references: [id])
 }
 
 model Product {

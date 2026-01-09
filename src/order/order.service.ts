@@ -14,6 +14,24 @@ export class OrderService {
         location?: string;
         deliveryFee: number;
     }) {
+        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+
+        // Check for duplicate order from same customer in last 5 minutes
+        const duplicate = await this.prisma.order.findFirst({
+            where: {
+                customerPhone: data.customerPhone,
+                merchantId: data.merchantId,
+                createdAt: { gte: fiveMinutesAgo },
+                fulfillmentMode: data.fulfillmentMode,
+                totalAmount: data.items.reduce((sum, item) => sum + (item.price * item.quantity), 0) + data.deliveryFee
+            }
+        });
+
+        if (duplicate) {
+            console.log(`[Order] Duplicate order detected for ${data.customerPhone}. Skipping.`);
+            return duplicate;
+        }
+
         const totalAmount = data.items.reduce((sum, item) => sum + (item.price * item.quantity), 0) + data.deliveryFee;
 
         // Ensure customer exists or update lastSeen

@@ -66,7 +66,7 @@ export class OpenaiService {
               { twilioPhoneNumber: `+${phoneNumberId.replace('+', '')}` }
             ]
           },
-          include: { catalog: true },
+          include: { catalog: true, deliveryZones: true },
           orderBy: { createdAt: 'desc' },
         });
       } catch (dbError) {
@@ -76,7 +76,7 @@ export class OpenaiService {
       if (!merchant) {
         // Robust fallback for testing even without correct IDs
         this.logger.warn(`No merchant found for ID/Number: ${phoneNumberId}. Falling back to first available merchant.`);
-        merchant = await this.prisma.merchant.findFirst({ include: { catalog: true } }) as any;
+        merchant = await this.prisma.merchant.findFirst({ include: { catalog: true, deliveryZones: true } }) as any;
 
         if (!merchant) {
           this.logger.error(`CRITICAL: No merchants found in database at all.`);
@@ -88,6 +88,10 @@ export class OpenaiService {
       const topProducts = merchant.catalog.slice(0, 20);
       const catalogInfo = topProducts
         .map((p) => `- ${p.name}: ${p.price} GHS (${p.description})`)
+        .join('\n');
+
+      const deliveryZoneInfo = (merchant.deliveryZones || [])
+        .map((z: any) => `- ${z.name}: ${z.price} GHS`)
         .join('\n');
 
       this.logger.log(`[OpenAI] Sending ${topProducts.length} catalog items for context.`);
@@ -113,11 +117,11 @@ Payment methods: ${merchant.paymentMethods || 'Not Specified'}
 Delivery options: Base Delivery Fee: ${merchant.baseDeliveryFee || 0} GHS
 
 WHAT YOU OFFER
-- Show the product or food menu with prices
+- Show the product or food menu
 - Guide customers step-by-step to place an order
-- Ask only necessary questions (quantity, delivery address, contact)
+- For DELIVERY: You MUST collect: Full Name, Precise Location (Address), and an Active Contact Number for the rider.
 - Confirm orders clearly before checkout
-- Provide order summaries and total cost
+- Provide order summaries and total cost (including specific delivery fees)
 - Give business support related to orders, products, and delivery
 
 CONVERSATION RULES
@@ -143,14 +147,21 @@ How can we help you today?
 2️⃣ Place an Order
 3️⃣ Order Status / Support"
 
+MENU DELIVERY:
+- If the user asks for the menu or "View Menu", and the merchant has a menu image, you MUST Include the tag [SEND_MENU_IMAGE] at the end of your response to send the visual menu.
+
 HUMAN HANDOFF
 - If the user explicitly asks to talk to a human, manager, or person, you MUST include the tag [HUMAN_REQUEST] at the end of your response.
 
 ORDER FLOW
 1. Present menu or product list
 2. When the user is ready to order, you MUST include the tag [ASK_FULFILLMENT] at the end of your message to show them the "Pickup or Delivery" options.
-3. For DELIVERY: Ask for their location and inform them the delivery fee is ${merchant.baseDeliveryFee || 0} GHS.
-4. Once you have all info, call the 'place_order' tool.
+3. For DELIVERY: 
+   - Ask for their Full Name, Location (Address), and Active Phone Number.
+   - Inform them of the specific delivery fee for their location: 
+${deliveryZoneInfo || '(Base Fee: ' + (merchant.baseDeliveryFee || 0) + ' GHS)'}
+4. Once you have ALL info (Items, Fulfillment, Name, Location, Phone), call the 'place_order' tool.
+5. AFTER placing a DELIVERY order, tell the client: "Great! Your order is being prepared and will be on its way shortly! 🚚🔥"
 
 ${closedInstruction}
 
@@ -191,6 +202,10 @@ Keep it very short and use emojis.`;
                 parameters: {
                   type: 'object',
                   properties: {
+                    fulfillmentMode: { type: 'string', enum: ['PICKUP', 'DELIVERY'] },
+                    customerName: { type: 'string', description: 'Real name given by customer' },
+                    deliveryAddress: { type: 'string', description: 'Precise address/location for delivery' },
+                    contactNumber: { type: 'string', description: 'Active phone number for the rider to call' },
                     items: {
                       type: 'array',
                       items: {
@@ -201,11 +216,9 @@ Keep it very short and use emojis.`;
                         },
                         required: ['name', 'quantity']
                       }
-                    },
-                    fulfillmentMode: { type: 'string', enum: ['PICKUP', 'DELIVERY'] },
-                    location: { type: 'string' }
+                    }
                   },
-                  required: ['items', 'fulfillmentMode']
+                  required: ['items', 'fulfillmentMode', 'customerName']
                 }
               }
             }
@@ -237,16 +250,32 @@ Keep it very short and use emojis.`;
                 }).filter((i: any) => i !== null);
 
                 if (orderItems.length > 0) {
+                  // Find delivery fee from zones
+                  let deliveryFee = Number(merchant.baseDeliveryFee);
+                  if (args.fulfillmentMode === 'DELIVERY' && args.deliveryAddress) {
+                    const zone = merchant.deliveryZones.find((z: any) =>
+                      args.deliveryAddress.toLowerCase().includes(z.name.toLowerCase()) ||
+                      z.name.toLowerCase().includes(args.deliveryAddress.toLowerCase())
+                    );
+                    if (zone) deliveryFee = Number(zone.price);
+                  } else if (args.fulfillmentMode === 'PICKUP') {
+                    deliveryFee = 0;
+                  }
+
                   await this.orderService.createOrder({
                     merchantId: merchant.id,
-                    customerName: userID.substring(0, 10), // Placeholder
+                    customerName: args.customerName,
                     customerPhone: userID,
                     items: orderItems,
                     fulfillmentMode: args.fulfillmentMode,
-                    location: args.location,
-                    deliveryFee: args.fulfillmentMode === 'DELIVERY' ? Number(merchant.baseDeliveryFee) : 0
+                    location: `${args.deliveryAddress || 'N/A'} (Contact: ${args.contactNumber || 'N/A'})`,
+                    deliveryFee: deliveryFee
                   });
-                  return `Perfect! I've placed your ${args.fulfillmentMode.toLowerCase()} order. ${args.fulfillmentMode === 'DELIVERY' ? 'It will be sent to ' + args.location + '.' : 'You can pick it up at our location.'} 📝✅`;
+
+                  if (args.fulfillmentMode === 'DELIVERY') {
+                    return `Perfect! I've placed your order. Your food is being prepared and will be on its way to ${args.deliveryAddress} shortly! 🚚🔥`;
+                  }
+                  return `Perfect! I've placed your pickup order. You can come and collect it at our location once it is ready. 📝✅`;
                 } else {
                   return "I tried to place your order but couldn't find those specific items in our catalog. Could you please specify exactly what you'd like? 🧐";
                 }
