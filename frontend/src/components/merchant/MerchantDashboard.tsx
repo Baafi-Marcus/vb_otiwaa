@@ -96,9 +96,14 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
             setOrders(resp.data.orders);
             setAnalytics(resp.data.analytics);
 
-            // Fetch delivery zones
-            const zonesResp = await axios.get(`${API_BASE}/api/merchants/${merchantId}/delivery-zones`);
-            setDeliveryZones(zonesResp.data);
+            // Fetch delivery zones (protected)
+            try {
+                const zonesResp = await axios.get(`${API_BASE}/api/merchants/${merchantId}/delivery-zones`);
+                setDeliveryZones(zonesResp.data);
+            } catch (zErr) {
+                console.warn('Delivery zones unavailable, likely pending migration', zErr);
+                setDeliveryZones([]); // Fallback to empty
+            }
         } catch (err) {
             console.error('Error fetching dashboard data', err);
             toast.error('Failed to sync dashboard data');
