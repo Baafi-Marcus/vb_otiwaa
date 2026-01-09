@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Header, HttpCode, Logger, Post, Req } from '@nestjs/common';
+import { Body, Controller, Get, Header, HttpCode, Logger, Post, Req, Inject, forwardRef } from '@nestjs/common';
 import { Request } from 'express';
 import { WhatsappService } from './whatsapp.service';
 import { AudioService } from 'src/audio/audio.service';
@@ -16,6 +16,7 @@ export class WhatsappController {
     private readonly whatsAppService: WhatsappService,
     private readonly stabilityaiService: StabilityaiService,
     private readonly audioService: AudioService,
+    @Inject(forwardRef(() => OpenaiService))
     private readonly openaiService: OpenaiService,
     private readonly prismaService: PrismaService,
     private readonly twilioService: TwilioService,
@@ -117,7 +118,7 @@ export class WhatsappController {
       where: { phoneNumber: sender }
     });
 
-    if (customer?.botPaused) {
+    if ((customer as any)?.botPaused) {
       this.logger.log(`[Handoff] Bot is PAUSED for ${sender}. Skipping AI response.`);
       return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
     }

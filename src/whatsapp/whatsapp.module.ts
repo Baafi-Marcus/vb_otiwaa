@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { WhatsappController } from './whatsapp.controller';
 import { WhatsappService } from './whatsapp.service';
 import { PrismaModule } from 'src/prisma/prisma.module';
@@ -14,7 +14,7 @@ import { StabilityaiModule } from 'src/stabilityai/stabilityai.module';
     HttpModule,
     PrismaModule,
     TwilioModule,
-    OpenaiModule,
+    forwardRef(() => OpenaiModule),
     UserContextModule,
     AudioModule,
     StabilityaiModule,

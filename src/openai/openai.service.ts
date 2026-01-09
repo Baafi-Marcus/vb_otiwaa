@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { OpenAI } from 'openai';
 import { UserContextService } from 'src/user-context/user-context.service';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -9,6 +9,7 @@ export class OpenaiService {
   constructor(
     private readonly context: UserContextService,
     private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => OrderService))
     private readonly orderService: OrderService,
   ) { }
 
