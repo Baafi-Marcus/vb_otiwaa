@@ -18,6 +18,24 @@ function App() {
   const handleMerchantLogin = (id: string) => {
     setSelectedMerchantId(id);
     setRole('merchant');
+    localStorage.setItem('vb_role', 'merchant');
+    localStorage.setItem('vb_merchantId', id);
+  };
+
+  // Restore session on load
+  useState(() => {
+    const savedRole = localStorage.getItem('vb_role') as UserRole;
+    const savedId = localStorage.getItem('vb_merchantId');
+    if (savedRole && savedRole !== 'guest') {
+      setRole(savedRole);
+      if (savedId) setSelectedMerchantId(savedId);
+    }
+  });
+
+  const handleLogout = () => {
+    setRole('guest');
+    localStorage.removeItem('vb_role');
+    localStorage.removeItem('vb_merchantId');
   };
 
   if (role === 'guest') {
@@ -107,10 +125,10 @@ function App() {
         </div>
 
         <button
-          onClick={() => setRole('guest')}
+          onClick={handleLogout}
           className="text-xs font-bold text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
         >
-          Switch Role <ArrowRight className="w-3 h-3" />
+          Logout <ArrowRight className="w-3 h-3" />
         </button>
       </header>
 

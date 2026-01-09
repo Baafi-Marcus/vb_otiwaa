@@ -25,9 +25,8 @@ export class MerchantService {
             }
         });
 
-        // Construct URL pointing to the new DB-backed endpoint
-        const serverUrl = process.env.SERVER_URL || 'http://localhost:3000';
-        return `${serverUrl}/api/uploads/${image.id}/menu.jpg`;
+        // Return relative path instead of absolute URL to prevent persistence issues
+        return `/api/uploads/${image.id}/menu.jpg`;
     }
 
     async registerMerchant(data: {
