@@ -338,4 +338,38 @@ export class MerchantService {
             data,
         });
     }
+
+    async getDeliveryZones(merchantId: string) {
+        return (this.prisma as any).deliveryZone.findMany({
+            where: { merchantId },
+            orderBy: { name: 'asc' }
+        });
+    }
+
+    async addDeliveryZone(merchantId: string, data: { name: string; price: number }) {
+        return (this.prisma as any).deliveryZone.create({
+            data: {
+                name: data.name,
+                price: Number(data.price),
+                merchantId
+            }
+        });
+    }
+
+    async updateDeliveryZone(merchantId: string, zoneId: string, data: { name?: string; price?: number }) {
+        return (this.prisma as any).deliveryZone.update({
+            where: { id: zoneId, merchantId },
+            data: {
+                ...(data.name && { name: data.name }),
+                ...(data.price !== undefined && { price: Number(data.price) })
+            }
+        });
+    }
+
+    async deleteDeliveryZone(merchantId: string, zoneId: string) {
+        await (this.prisma as any).deliveryZone.delete({
+            where: { id: zoneId, merchantId }
+        });
+        return { message: 'Delivery zone deleted' };
+    }
 }

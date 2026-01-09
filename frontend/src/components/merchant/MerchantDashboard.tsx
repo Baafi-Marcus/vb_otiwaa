@@ -42,6 +42,9 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
     const [draftProducts, setDraftProducts] = useState<any[]>([]);
     const [isReviewingMenu, setIsReviewingMenu] = useState(false);
     const [editingProduct, setEditingProduct] = useState<any>(null);
+    const [deliveryZones, setDeliveryZones] = useState<any[]>([]);
+    const [isAddingZone, setIsAddingZone] = useState(false);
+    const [newZone, setNewZone] = useState({ name: '', price: '' });
 
     const [localPreview, setLocalPreview] = useState<string | null>(null);
 
@@ -90,6 +93,10 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
             setMerchant(resp.data.merchant);
             setOrders(resp.data.orders);
             setAnalytics(resp.data.analytics);
+
+            // Fetch delivery zones
+            const zonesResp = await axios.get(`${API_BASE}/api/merchants/${merchantId}/delivery-zones`);
+            setDeliveryZones(zonesResp.data);
         } catch (err) {
             console.error('Error fetching dashboard data', err);
             toast.error('Failed to sync dashboard data');
@@ -475,6 +482,83 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
                                                             value={merchant?.baseDeliveryFee || 0}
                                                             onChange={(e) => merchant && setMerchant({ ...merchant, baseDeliveryFee: parseFloat(e.target.value) || 0 })}
                                                         />
+                                                    </div>
+
+                                                    {/* Custom Delivery Zones Section */}
+                                                    <div className="space-y-4 pt-4 border-t border-border">
+                                                        <div className="flex items-center justify-between">
+                                                            <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Custom Delivery Zones</label>
+                                                            <button
+                                                                onClick={() => setIsAddingZone(true)}
+                                                                className="text-[10px] font-black bg-primary/10 text-primary px-3 py-1 rounded-lg hover:bg-primary/20 transition-all"
+                                                            >
+                                                                + ADD ZONE
+                                                            </button>
+                                                        </div>
+
+                                                        <div className="space-y-2">
+                                                            {deliveryZones.map((zone) => (
+                                                                <div key={zone.id} className="flex items-center justify-between p-3 bg-secondary/10 rounded-xl border border-border group">
+                                                                    <div>
+                                                                        <p className="text-sm font-bold">{zone.name}</p>
+                                                                        <p className="text-[10px] text-muted-foreground">GHS {zone.price}</p>
+                                                                    </div>
+                                                                    <button
+                                                                        onClick={async () => {
+                                                                            if (!confirm(`Delete zone "${zone.name}"?`)) return;
+                                                                            await axios.delete(`${API_BASE}/api/merchants/${merchantId}/delivery-zones/${zone.id}`);
+                                                                            setDeliveryZones(deliveryZones.filter(z => z.id !== zone.id));
+                                                                            toast.success('Zone deleted');
+                                                                        }}
+                                                                        className="p-2 opacity-0 group-hover:opacity-100 text-destructive hover:bg-destructive/10 rounded-lg transition-all"
+                                                                    >
+                                                                        <X className="w-4 h-4" />
+                                                                    </button>
+                                                                </div>
+                                                            ))}
+
+                                                            {isAddingZone && (
+                                                                <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="p-4 bg-primary/5 border border-primary/20 rounded-xl space-y-3">
+                                                                    <input
+                                                                        className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-xs outline-none"
+                                                                        placeholder="Zone Name (e.g. East Legon)"
+                                                                        value={newZone.name}
+                                                                        onChange={e => setNewZone({ ...newZone, name: e.target.value })}
+                                                                    />
+                                                                    <input
+                                                                        type="number"
+                                                                        className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-xs outline-none"
+                                                                        placeholder="Price (GHS)"
+                                                                        value={newZone.price}
+                                                                        onChange={e => setNewZone({ ...newZone, price: e.target.value })}
+                                                                    />
+                                                                    <div className="flex gap-2">
+                                                                        <button
+                                                                            onClick={async () => {
+                                                                                if (!newZone.name || !newZone.price) return;
+                                                                                const resp = await axios.post(`${API_BASE}/api/merchants/${merchantId}/delivery-zones`, {
+                                                                                    name: newZone.name,
+                                                                                    price: parseFloat(newZone.price)
+                                                                                });
+                                                                                setDeliveryZones([...deliveryZones, resp.data]);
+                                                                                setIsAddingZone(false);
+                                                                                setNewZone({ name: '', price: '' });
+                                                                                toast.success('Zone added');
+                                                                            }}
+                                                                            className="flex-1 bg-primary text-white py-2 rounded-lg text-[10px] font-bold"
+                                                                        >
+                                                                            SAVE
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => setIsAddingZone(false)}
+                                                                            className="flex-1 bg-secondary py-2 rounded-lg text-[10px] font-bold"
+                                                                        >
+                                                                            CANCEL
+                                                                        </button>
+                                                                    </div>
+                                                                </motion.div>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
                                                 <button

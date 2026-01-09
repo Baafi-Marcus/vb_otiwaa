@@ -124,4 +124,34 @@ export class MerchantController {
     ) {
         return this.merchantService.updateMerchant(id, data);
     }
+
+    @Get(':id/delivery-zones')
+    async getDeliveryZones(@Param('id') id: string) {
+        return this.merchantService.getDeliveryZones(id);
+    }
+
+    @Post(':id/delivery-zones')
+    async addDeliveryZone(
+        @Param('id') id: string,
+        @Body() data: { name: string; price: number }
+    ) {
+        return this.merchantService.addDeliveryZone(id, data);
+    }
+
+    @Patch(':merchantId/delivery-zones/:zoneId')
+    async updateDeliveryZone(
+        @Param('merchantId') merchantId: string,
+        @Param('zoneId') zoneId: string,
+        @Body() data: { name?: string; price?: number }
+    ) {
+        return this.merchantService.updateDeliveryZone(merchantId, zoneId, data);
+    }
+
+    @Delete(':merchantId/delivery-zones/:zoneId')
+    async deleteDeliveryZone(
+        @Param('merchantId') merchantId: string,
+        @Param('zoneId') zoneId: string
+    ) {
+        return this.merchantService.deleteDeliveryZone(merchantId, zoneId);
+    }
 }
