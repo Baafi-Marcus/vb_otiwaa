@@ -13,7 +13,6 @@ import {
     Activity,
     ArrowRight,
     Search,
-    ClipboardList,
     MessageSquare,
     CheckCircle2,
     X,
