@@ -3,6 +3,12 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import { AppModule } from './app.module';
 import { SpaFallbackFilter } from './spa.filter';
+import * as crypto from 'crypto';
+
+// Polyfill for Node.js < 20 where crypto is not a global
+if (!global.crypto) {
+  (global as any).crypto = crypto;
+}
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
