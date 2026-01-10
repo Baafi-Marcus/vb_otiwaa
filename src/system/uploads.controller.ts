@@ -19,7 +19,8 @@ export class UploadsController {
             throw new NotFoundException('Image not found');
         }
 
-        this.logger.log(`[Uploads] Serving image ${id} (${image.mimeType}, ${image.data.length} bytes) to User-Agent: ${userAgent}`);
+        const signature = image.data.slice(0, 4).toString('hex');
+        this.logger.log(`[Uploads] Serving image ${id} (MIME: ${image.mimeType}, Size: ${image.data.length}, Hex: ${signature}) to User-Agent: ${userAgent}`);
 
         res.set({
             'Content-Type': image.mimeType,
@@ -29,6 +30,6 @@ export class UploadsController {
             'Cache-Control': 'public, max-age=3600',
         });
 
-        res.end(image.data);
+        res.send(image.data);
     }
 }
