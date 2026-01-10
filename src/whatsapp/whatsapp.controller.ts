@@ -96,7 +96,11 @@ export class WhatsappController {
 
     // Ignore status callbacks (sent, delivered, read) to avoid double processing
     if (body.SmsStatus && !body.Body && !mediaUrl) {
-      this.logger.log(`[Twilio Webhook] Status Callback: ${body.SmsStatus} for ${body.MessageSid}`);
+      if (body.SmsStatus === 'failed' || body.ErrorCode) {
+        this.logger.error(`[Twilio Status] FAILURE: ${body.SmsStatus} for ${body.MessageSid}. Error: ${body.ErrorCode} - ${body.ErrorMessage}`);
+      } else {
+        this.logger.log(`[Twilio Status] Update: ${body.SmsStatus} for ${body.MessageSid}`);
+      }
       return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
     }
 

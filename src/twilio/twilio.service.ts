@@ -46,12 +46,16 @@ export class TwilioService {
             return null;
         }
         try {
-            this.logger.log(`[Twilio Client: ${this.client.accountSid}] Sending WhatsApp media message to ${to}: ${mediaUrl}`);
+            const serverUrl = process.env.SERVER_URL || '';
+            const callbackUrl = serverUrl ? `${serverUrl.replace(/\/$/, '')}/api/whatsapp/twilio` : undefined;
+
+            this.logger.log(`[Twilio Client: ${this.client.accountSid}] Sending WhatsApp media message to ${to}: ${mediaUrl}. Callback: ${callbackUrl || 'None'}`);
             const response = await this.client.messages.create({
                 body: caption,
                 mediaUrl: [mediaUrl],
                 from: this.fromNumber,
                 to: to.startsWith('whatsapp:') ? to : `whatsapp:${to}`,
+                statusCallback: callbackUrl
             });
             this.logger.log(`[Twilio Service] Media Message Created. SID: ${response.sid}, Status: ${response.status}`);
             return response;
