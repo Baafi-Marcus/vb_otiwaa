@@ -19,17 +19,15 @@ export class UploadsController {
             throw new NotFoundException('Image not found');
         }
 
-        const signature = image.data.slice(0, 4).toString('hex');
+        const signature = image.data.slice(0, 4).toString('hex').toUpperCase();
         this.logger.log(`[Uploads] Serving image ${id} (MIME: ${image.mimeType}, Size: ${image.data.length}, Hex: ${signature}) to User-Agent: ${userAgent}`);
 
-        res.set({
-            'Content-Type': image.mimeType,
-            'Content-Length': image.data.length,
-            'Content-Disposition': `inline; filename="${image.filename}"`,
-            'Accept-Ranges': 'bytes',
-            'Cache-Control': 'public, max-age=3600',
-        });
+        // Simple headers - many media proxies prefer minimal headers
+        res.setHeader('Content-Type', image.mimeType);
+        res.setHeader('Content-Length', image.data.length);
+        res.setHeader('Accept-Ranges', 'bytes');
+        res.setHeader('Cache-Control', 'public, max-age=3600');
 
-        res.send(image.data);
+        res.end(image.data);
     }
 }
