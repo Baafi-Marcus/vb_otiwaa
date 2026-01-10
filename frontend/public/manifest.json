@@ -1,0 +1,28 @@
+{
+    "name": "VB.OTIWAA Chatbot Hub",
+    "short_name": "VB.OTIWAA",
+    "description": "AI-Powered WhatsApp Commerce Dashboard",
+    "theme_color": "#020202",
+    "background_color": "#020202",
+    "display": "standalone",
+    "orientation": "portrait",
+    "start_url": "/?source=pwa",
+    "scope": "/",
+    "icons": [
+        {
+            "src": "/logo-black.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        },
+        {
+            "src": "/logo-white.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        },
+        {
+            "src": "/logo-black.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        }
+    ]
+}

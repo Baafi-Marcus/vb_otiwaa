@@ -1,188 +1,335 @@
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import {
   ShieldCheck,
   Store,
-  ArrowRight
+  ArrowRight,
+  Lock,
+  User,
+  Loader2
 } from 'lucide-react';
+import axios from 'axios';
+import { Routes, Route, useNavigate, useParams } from 'react-router-dom';
 import { AdminDashboard } from './components/admin/AdminDashboard';
 import { MerchantDashboard } from './components/merchant/MerchantDashboard';
-import { Toaster } from 'react-hot-toast';
+import LandingPage from './components/LandingPage';
+import { Toaster, toast } from 'react-hot-toast';
 
 type UserRole = 'guest' | 'admin' | 'merchant';
 
+const API_BASE = import.meta.env.VITE_API_BASE || '';
+
+/* ----------------------------------------------------------------------------------
+   MAIN APP COMPONENT (Router Wrapper)
+   ---------------------------------------------------------------------------------- */
 function App() {
+  return (
+    <div className="h-screen flex flex-col overflow-hidden bg-background">
+      <Toaster position="top-right" />
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/trymeFF" element={<AuthPage desiredRole="admin" />} />
+        <Route path="/:merchantId" element={<MerchantRouteWrapper />} />
+      </Routes>
+    </div>
+  );
+}
+
+/* ----------------------------------------------------------------------------------
+   MERCHANT ROUTE WRAPPER (Extracts ID from URL)
+   ---------------------------------------------------------------------------------- */
+function MerchantRouteWrapper() {
+  const { merchantId } = useParams();
+  // Validate UUID format roughly to avoid capturing system routes if added later
+  // For now, any non-root path is treated as a potential merchant portal attempt
+  return <AuthPage desiredRole="merchant" forcedUsername={merchantId} />;
+}
+
+
+/* ----------------------------------------------------------------------------------
+   AUTH PAGE (Handles Login for both roles based on route)
+   ---------------------------------------------------------------------------------- */
+function AuthPage({ desiredRole, forcedUsername }: { desiredRole: UserRole, forcedUsername?: string }) {
+  const navigate = useNavigate();
   const [role, setRole] = useState<UserRole>('guest');
   const [selectedMerchantId, setSelectedMerchantId] = useState<string | null>(null);
 
-  const handleMerchantLogin = (id: string) => {
-    setSelectedMerchantId(id);
-    setRole('merchant');
-    localStorage.setItem('vb_role', 'merchant');
-    localStorage.setItem('vb_merchantId', id);
-  };
+  // Login State
+  const [username, setUsername] = useState(forcedUsername || '');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [setupUser, setSetupUser] = useState<any>(null);
 
-  // Restore session on load
-  useState(() => {
+  // Check for existing session
+  useEffect(() => {
     const savedRole = localStorage.getItem('vb_role') as UserRole;
     const savedId = localStorage.getItem('vb_merchantId');
-    if (savedRole && savedRole !== 'guest') {
-      setRole(savedRole);
-      if (savedId) setSelectedMerchantId(savedId);
+    const token = localStorage.getItem('vb_token');
+
+    // Auto-restore session if token exists AND matches the desired path/role
+    if (token && savedRole) {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+
+      if (desiredRole === 'admin' && savedRole === 'admin') {
+        setRole('admin');
+      } else if (desiredRole === 'merchant' && savedRole === 'merchant') {
+        // Verify if the logged-in merchant matches the URL parameters
+        if (forcedUsername && savedId === forcedUsername) {
+          setRole('merchant');
+          setSelectedMerchantId(savedId);
+        } else if (forcedUsername && savedId !== forcedUsername) {
+          // Trying to access a different merchant while logged in -> Logout technically
+          // Or we could redirect to the correct one, but for security let's require re-login
+        }
+      }
     }
-  });
+  }, [desiredRole, forcedUsername]);
+
+  // Update username if forced by URL (e.g. merchant ID) changes
+  useEffect(() => {
+    if (forcedUsername) setUsername(forcedUsername);
+  }, [forcedUsername]);
+
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    try {
+      const resp = await axios.post(`${API_BASE}/api/auth/login`, {
+        username,
+        password,
+        type: desiredRole
+      });
+
+      const { access_token, user } = resp.data;
+
+      if (user.setupRequired) {
+        setSetupUser({ ...user, type: desiredRole });
+        setIsLoading(false);
+        return;
+      }
+
+      // Successful Login
+      localStorage.setItem('vb_token', access_token);
+      localStorage.setItem('vb_role', desiredRole);
+      axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
+
+      if (desiredRole === 'merchant') {
+        localStorage.setItem('vb_merchantId', user.id);
+        setSelectedMerchantId(user.id);
+      }
+
+      setRole(desiredRole);
+      toast.success(`Welcome back, ${user.name}!`);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Login failed. Please check your credentials.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSetup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    try {
+      await axios.post(`${API_BASE}/api/auth/setup`, {
+        id: setupUser.id,
+        password,
+        type: setupUser.type
+      });
+      toast.success('Password set! Logging you in...');
+      setSetupUser(null);
+      // Auto-login after setup could be nicer, but relogin is safe
+      handleLogin(e);
+    } catch (err: any) {
+      toast.error('Setup failed.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleLogout = () => {
     setRole('guest');
     localStorage.removeItem('vb_role');
     localStorage.removeItem('vb_merchantId');
+    localStorage.removeItem('vb_token');
+    delete axios.defaults.headers.common['Authorization'];
+    console.log("Logged out");
+    // Optionally navigate to Landing or reload
+    // navigate('/'); 
   };
 
-  if (role === 'guest') {
+
+  /* --------------------------------------------------------------------------------
+     RENDER LOGIC
+     -------------------------------------------------------------------------------- */
+
+  // 1. If Logged In, Show Dashboard
+  if (role === 'admin') {
     return (
-      <div className="min-h-screen bg-[#020202] text-white flex flex-col font-sans relative overflow-hidden">
-        {/* Background Grid Pattern */}
-        <div className="absolute inset-0 z-0 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:14px_24px]" />
-
-        {/* Ambient background glow */}
-        <div className="fixed top-0 left-0 w-full h-full pointer-events-none opacity-30 z-0">
-          <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-primary rounded-full blur-[150px] animate-pulse" />
-          <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-purple-600 rounded-full blur-[150px] animate-pulse [animation-delay:2s]" />
+      <div className="h-full flex flex-col">
+        <Header role="admin" onLogout={handleLogout} />
+        <div className="flex-1 overflow-hidden">
+          <AdminDashboard onMerchantSelect={(id) => navigate(`/${id}`)} />
         </div>
-
-        <div className="flex-1 flex flex-col items-center justify-center p-6 relative z-10">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-            className="max-w-5xl w-full text-center space-y-16"
-          >
-            <div className="space-y-6">
-              <motion.div
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-                className="w-48 h-48 mx-auto"
-              >
-                <img src="/logo-white.png" alt="VB.OTIWAA Logo" className="w-full h-full object-contain" />
-              </motion.div>
-
-              <div className="space-y-2">
-                <h1 className="text-7xl lg:text-9xl font-black tracking-tighter leading-none bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60">
-                  VB.OTIWAA
-                </h1>
-                <p className="text-2xl lg:text-3xl text-white/90 font-medium tracking-wide font-mono">
-                  create.build.inspire.
-                </p>
-              </div>
-
-              <p className="text-base lg:text-lg text-muted-foreground/60 max-w-xl mx-auto leading-relaxed">
-                The enterprise-grade AI commerce platform for WhatsApp. <br />
-                Intelligent automation for modern merchants.
-              </p>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-6 lg:gap-12 max-w-4xl mx-auto">
-              {/* Admin Portal Card */}
-              <RoleCard
-                title="Admin Portal"
-                description="System administration and AI persona architecture."
-                icon={ShieldCheck}
-                onClick={() => setRole('admin')}
-                color="#3b82f6"
-              />
-              {/* Merchant Portal Card */}
-              <RoleCard
-                title="Merchant Hub"
-                description="Order management, analytics, and customer insights."
-                icon={Store}
-                onClick={() => setRole('merchant')}
-                color="#a855f7"
-              />
-            </div>
-          </motion.div>
-        </div>
-
-        {/* Footer */}
-        <footer className="w-full py-6 text-center text-xs font-medium text-muted-foreground/40 relative z-10 uppercase tracking-widest">
-          <p>&copy; {new Date().getFullYear()} VB.OTIWAA Inc. All rights reserved.</p>
-        </footer>
       </div>
     );
   }
 
+  if (role === 'merchant') {
+    return (
+      <div className="h-full flex flex-col">
+        <Header role="merchant" onLogout={handleLogout} />
+        <div className="flex-1 overflow-hidden">
+          <MerchantDashboard merchantId={selectedMerchantId} />
+        </div>
+      </div>
+    );
+  }
+
+  // 2. If Setup Required (First time password)
+  if (setupUser) {
+    return (
+      <div className="min-h-screen bg-[#020202] text-white flex flex-col items-center justify-center p-6 relative">
+        <BackgroundEffects />
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="w-full max-w-md bg-card/40 backdrop-blur-3xl border border-white/10 p-10 rounded-[2.5rem] shadow-2xl z-10"
+        >
+          <div className="text-center mb-10 space-y-4">
+            <div className="w-20 h-20 rounded-3xl bg-green-500/20 text-green-500 mx-auto flex items-center justify-center">
+              <Lock className="w-10 h-10" />
+            </div>
+            <h2 className="text-3xl font-black uppercase tracking-tight">Set Password</h2>
+            <p className="text-muted-foreground text-sm font-medium">Hello {setupUser.name}! Please set a secure password for your account.</p>
+          </div>
+
+          <form onSubmit={handleSetup} className="space-y-6">
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-2">New Password</label>
+              <div className="relative group">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-white transition-colors" />
+                <input
+                  type="password" required value={password} onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-sm font-medium focus:outline-none focus:border-white/20 focus:bg-white/10 transition-all"
+                />
+              </div>
+            </div>
+            <button type="submit" disabled={isLoading} className="w-full py-4 rounded-2xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-[0.98] bg-green-600 hover:bg-green-500 shadow-green-500/20 shadow-lg">
+              {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Complete Setup"}
+              {!isLoading && <ArrowRight className="w-4 h-4" />}
+            </button>
+          </form>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // 3. Login Screen
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-background">
-      <Toaster position="top-right" />
-      {/* Header / Global Nav */}
-      <header className="h-16 border-b border-border bg-card/80 backdrop-blur-xl flex items-center justify-between px-8 z-50">
-        <div className="flex items-center gap-4">
-          <img src="/logo-black.png" alt="Logo" className="w-10 h-10 object-contain" />
-          <span className="font-black text-xl tracking-tight text-foreground">VB.OTIWAA</span>
-          <span className={`text-[10px] font-bold px-3 py-1 rounded-full ${role === 'admin' ? 'bg-blue-500/10 text-blue-500' : 'bg-purple-500/10 text-purple-500'}`}>
-            {role.toUpperCase()}
-          </span>
+    <div className="min-h-screen bg-[#020202] text-white flex flex-col items-center justify-center p-6 relative overflow-hidden">
+      <BackgroundEffects />
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-md bg-card/40 backdrop-blur-3xl border border-white/10 p-10 rounded-[2.5rem] shadow-2xl relative z-10"
+      >
+        <div className="text-center mb-10 space-y-2">
+          <div className={`w-16 h-16 rounded-2xl mx-auto flex items-center justify-center mb-4 ${desiredRole === 'admin' ? 'bg-blue-500/20 text-blue-500' : 'bg-purple-500/20 text-purple-500'}`}>
+            {desiredRole === 'admin' ? <ShieldCheck className="w-8 h-8" /> : <Store className="w-8 h-8" />}
+          </div>
+          <h2 className="text-3xl font-black tracking-tight uppercase">
+            {desiredRole === 'merchant' ? 'MERCHANT LOGIN' : 'ADMIN PORTAL'}
+          </h2>
+          <p className="text-muted-foreground text-sm font-medium">Enter your credentials to continue</p>
         </div>
 
-        <button
-          onClick={handleLogout}
-          className="text-xs font-bold text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
-        >
-          Logout <ArrowRight className="w-3 h-3" />
-        </button>
-      </header>
+        <form onSubmit={handleLogin} className="space-y-6">
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-2">
+              {desiredRole === 'admin' ? 'Username' : 'Merchant ID'}
+            </label>
+            <div className="relative group">
+              <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-white transition-colors" />
+              <input
+                type="text" required value={username} onChange={(e) => setUsername(e.target.value)}
+                // Provide readOnly true if it's forcedUsername (merchant ID in url)
+                disabled={!!forcedUsername}
+                placeholder={desiredRole === 'admin' ? "Admin Username" : "Merchant Phone ID"}
+                className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-sm font-medium focus:outline-none focus:border-white/20 focus:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              />
+            </div>
+          </div>
 
-      <div className="flex-1 overflow-hidden">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={role}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="h-full"
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-2">Password</label>
+            <div className="relative group">
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-white transition-colors" />
+              <input
+                type="password" required value={password} onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-sm font-medium focus:outline-none focus:border-white/20 focus:bg-white/10 transition-all"
+              />
+            </div>
+          </div>
+
+          <button
+            type="submit" disabled={isLoading}
+            className={`w-full py-4 rounded-2xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-[0.98] ${desiredRole === 'admin'
+              ? 'bg-blue-600 hover:bg-blue-500 shadow-blue-500/20 shadow-lg'
+              : 'bg-purple-600 hover:bg-purple-500 shadow-purple-500/20 shadow-lg'
+              }`}
           >
-            {role === 'admin' ? (
-              <AdminDashboard onMerchantSelect={handleMerchantLogin} />
-            ) : (
-              <MerchantDashboard merchantId={selectedMerchantId} />
-            )}
-          </motion.div>
-        </AnimatePresence>
-      </div>
+            {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Sign In"}
+            {!isLoading && <ArrowRight className="w-4 h-4" />}
+          </button>
+        </form>
+
+        <div className="mt-8 text-center">
+          <a href="/" className="text-xs font-bold text-muted-foreground/60 hover:text-white transition-colors uppercase tracking-widest">Return Home</a>
+        </div>
+      </motion.div>
     </div>
   );
 }
 
-const RoleCard = ({ title, description, icon: Icon, onClick, color }: any) => (
-  <motion.button
-    whileHover={{ scale: 1.02, y: -5 }}
-    whileTap={{ scale: 0.98 }}
-    onClick={onClick}
-    className="relative group overflow-hidden p-8 rounded-[2rem] bg-white/5 border border-white/10 text-left hover:border-white/20 transition-all"
-  >
-    <div
-      className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-500"
-      style={{ background: `radial-gradient(circle at center, ${color}, transparent 70%)` }}
-    />
+// ----------------------------------------------------------------------------------
+// UTILS & COMPONENTS
+// ----------------------------------------------------------------------------------
 
-    <div className="relative z-10 space-y-6">
-      <div
-        className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg"
-        style={{ backgroundColor: `${color}20`, color: color }}
+function Header({ role, onLogout }: { role: string, onLogout: () => void }) {
+  return (
+    <header className="h-16 border-b border-border bg-card/80 backdrop-blur-xl flex items-center justify-between px-8 z-50">
+      <div className="flex items-center gap-4">
+        <img src="/logo-black.png" alt="Logo" className="w-10 h-10 object-contain" />
+        <span className="font-black text-xl tracking-tight text-foreground">VB.OTIWAA</span>
+        <span className={`text-[10px] font-bold px-3 py-1 rounded-full ${role === 'admin' ? 'bg-blue-500/10 text-blue-500' : 'bg-purple-500/10 text-purple-500'}`}>
+          {role.toUpperCase()}
+        </span>
+      </div>
+
+      <button
+        onClick={onLogout}
+        className="text-xs font-bold text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
       >
-        <Icon className="w-7 h-7" />
+        Logout <ArrowRight className="w-3 h-3" />
+      </button>
+    </header>
+  );
+}
+
+function BackgroundEffects() {
+  return (
+    <>
+      <div className="absolute inset-0 z-0 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:14px_24px]" />
+      <div className="fixed top-0 left-0 w-full h-full pointer-events-none opacity-30 z-0">
+        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-primary rounded-full blur-[150px] animate-pulse" />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-purple-600 rounded-full blur-[150px] animate-pulse [animation-delay:2s]" />
       </div>
-      <div className="space-y-2">
-        <h3 className="text-2xl font-bold text-white">{title}</h3>
-        <p className="text-muted-foreground font-medium leading-relaxed">
-          {description}
-        </p>
-      </div>
-      <div className="flex items-center gap-2 text-sm font-bold pt-4 group-hover:translate-x-2 transition-transform" style={{ color: color }}>
-        Enter Portal <ArrowRight className="w-4 h-4" />
-      </div>
-    </div>
-  </motion.button>
-);
+    </>
+  )
+}
 
 export default App;

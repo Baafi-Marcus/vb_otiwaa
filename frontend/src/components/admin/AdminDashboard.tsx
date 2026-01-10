@@ -21,7 +21,11 @@ import {
     // ImageIcon,
     Loader2,
     Smartphone,
-    RefreshCw
+    RefreshCw,
+    Trash2,
+    Copy,
+    PauseCircle,
+    PlayCircle
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
@@ -290,18 +294,27 @@ const MerchantRegistration = ({ onComplete }: any) => {
             setRegisteredId(newId);
             setSuccess(true);
 
+            // We do NOT call onComplete() here anymore, we wait for user action
+
             if (draftProducts.length > 0) {
+                // If reviewing menu, we will show the review modal
+                // deeper integration might be needed but let's keep it simple for now:
+                // The review modal will appear. On success/close of THAT, we might usually call onComplete.
+                // We should probably update ReviewWorkspaceModal to NOT call onComplete but let us return to "Success" view.
+                // But for simplicity, let's just trigger review if needed. 
                 setIsReviewingMenu(true);
             } else {
+                // Clear form data so if they click "Register Another" it's clean
                 setFormData({ name: '', phoneId: '', twilioPhoneNumber: '', category: 'Restaurant', vision: '', location: '', operatingHours: '', paymentMethods: '', menuImageUrl: '' });
                 setExpandedPrompt(null);
-                onComplete();
             }
 
-            setTimeout(() => setSuccess(false), 5000);
+            // Remove auto-hide
         } catch (err: any) {
             setError(err.response?.data?.message || 'Failed to register merchant. Check if DB is connected.');
+            setLoading(false); // Ensure loading is turned off on error
         } finally {
+            if (!success) setLoading(false); // Only turn off loading if not success (to prevent flickering before view switch? actually we can just turn it off)
             setLoading(false);
         }
     };
@@ -313,217 +326,266 @@ const MerchantRegistration = ({ onComplete }: any) => {
             className="max-w-2xl mx-auto"
         >
             <div className="bg-card border border-border rounded-2xl p-8 shadow-xl space-y-8 relative overflow-hidden">
-                <AnimatePresence>
-                    {success && (
-                        <motion.div
-                            initial={{ opacity: 0, y: -20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0 }}
-                            className="absolute inset-x-0 top-0 bg-emerald-500 text-white p-4 flex items-center justify-center gap-2 font-bold z-10"
-                        >
-                            <CheckCircle2 className="w-5 h-5" />
-                            Merchant Registered Successfully!
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-
-                <div className="space-y-2 pt-4">
-                    <h2 className="text-2xl font-bold text-foreground">Register New Merchant</h2>
-                    <p className="text-muted-foreground">Create a fresh profile for a business wanting a WhatsApp Chatbot.</p>
-                </div>
-
-                {error && (
-                    <div className="p-4 bg-destructive/10 text-destructive rounded-xl text-sm font-medium border border-destructive/20">
-                        {error}
-                    </div>
-                )}
-
-                <form onSubmit={handleSubmit} className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Business Name</label>
-                            <input
-                                type="text"
-                                required
-                                placeholder="e.g. Mama Mia's Pizza"
-                                className="w-full bg-secondary/30 border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all"
-                                value={formData.name}
-                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                disabled={loading}
-                            />
+                {success ? (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="text-center py-10 space-y-8"
+                    >
+                        <div className="w-20 h-20 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <CheckCircle2 className="w-10 h-10" />
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Business Category</label>
-                            <select
-                                className="w-full bg-secondary/30 border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all appearance-none cursor-pointer font-bold"
-                                value={formData.category}
-                                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                                disabled={loading}
-                            >
-                                <option value="Restaurant">🍴 Restaurant / Cafe</option>
-                                <option value="Boutique">👗 Boutique / Fashion</option>
-                                <option value="Professional Service">💼 Professional Service</option>
-                                <option value="Logistics">🚚 Logistics / Delivery</option>
-                                <option value="General">🏢 General Business</option>
-                            </select>
-                        </div>
-                    </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">WhatsApp Phone ID</label>
-                            <input
-                                type="text"
-                                placeholder="e.g. 991984..."
-                                className="w-full bg-secondary/30 border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all font-mono text-sm"
-                                value={formData.phoneId}
-                                onChange={(e) => setFormData({ ...formData, phoneId: e.target.value })}
-                                disabled={loading}
-                            />
+                            <h2 className="text-3xl font-black text-foreground">Registration Complete!</h2>
+                            <p className="text-muted-foreground">The merchant workspace is ready.</p>
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Twilio Sandbox Num</label>
-                            <input
-                                type="text"
-                                placeholder="+14155238886"
-                                className="w-full bg-secondary/30 border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all font-mono text-sm"
-                                value={formData.twilioPhoneNumber}
-                                onChange={(e) => setFormData({ ...formData, twilioPhoneNumber: e.target.value })}
-                                disabled={loading}
-                            />
-                        </div>
-                    </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Location</label>
-                            <input
-                                type="text"
-                                placeholder="e.g. Accra, Ghana"
-                                className="w-full bg-secondary/30 border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all text-sm"
-                                value={formData.location}
-                                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                                disabled={loading}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Operating Hours</label>
-                            <input
-                                type="text"
-                                placeholder="e.g. Mon-Sat 9am-9pm"
-                                className="w-full bg-secondary/30 border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all text-sm"
-                                value={formData.operatingHours}
-                                onChange={(e) => setFormData({ ...formData, operatingHours: e.target.value })}
-                                disabled={loading}
-                            />
-                        </div>
-                    </div>
-
-                    <div className="space-y-2">
-                        <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Payment Methods</label>
-                        <input
-                            type="text"
-                            placeholder="e.g. MTN MoMo, Cash on Delivery"
-                            className="w-full bg-secondary/30 border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all text-sm"
-                            value={formData.paymentMethods}
-                            onChange={(e) => setFormData({ ...formData, paymentMethods: e.target.value })}
-                            disabled={loading}
-                        />
-                    </div>
-
-                    <div className="space-y-2">
-                        <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Menu Image (Upload from Device)</label>
-                        <div className="relative group">
-                            <input
-                                type="file"
-                                accept="image/*"
-                                onChange={handleFileUpload}
-                                className="hidden"
-                                id="menu-upload"
-                                disabled={uploading || loading}
-                            />
-                            <label
-                                htmlFor="menu-upload"
-                                className={`flex items-center justify-center gap-3 w-full h-32 border-2 border-dashed rounded-2xl cursor-pointer transition-all
-                                    ${formData.menuImageUrl
-                                        ? 'border-emerald-500/30 bg-emerald-500/5'
-                                        : 'border-border bg-secondary/20 hover:border-primary/50'}`}
-                            >
-                                {uploading ? (
-                                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                                ) : formData.menuImageUrl ? (
-                                    <div className="flex flex-col items-center gap-1">
-                                        <CheckCircle2 className="w-8 h-8 text-emerald-500" />
-                                        <span className="text-xs font-bold text-emerald-500 uppercase tracking-widest">Image Uploaded</span>
-                                    </div>
-                                ) : (
-                                    <div className="flex flex-col items-center gap-1">
-                                        <Upload className="w-8 h-8 text-muted-foreground opacity-50 group-hover:scale-110 transition-transform" />
-                                        <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Pick Menu Image</span>
-                                    </div>
-                                )}
-                            </label>
-                            {formData.menuImageUrl && (
+                        <div className="max-w-md mx-auto bg-secondary/30 border border-border rounded-2xl p-6 space-y-4 text-left">
+                            <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Merchant Login Link</label>
+                            <div className="flex gap-2">
+                                <code className="flex-1 bg-black/20 border border-border rounded-xl px-4 py-3 font-mono text-sm text-blue-400 overflow-hidden text-ellipsis whitespace-nowrap">
+                                    {window.location.protocol}//{window.location.host}/{registeredId}
+                                </code>
                                 <button
-                                    type="button"
-                                    onClick={() => setFormData({ ...formData, menuImageUrl: '' })}
-                                    className="absolute top-2 right-2 p-1.5 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors"
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(`${window.location.protocol}//${window.location.host}/${registeredId}`);
+                                        toast.success('Link copied to clipboard');
+                                    }}
+                                    className="p-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl transition-colors shadow-lg shadow-blue-500/20"
+                                    title="Copy Link"
                                 >
-                                    <X className="w-3 h-3" />
+                                    <Copy className="w-5 h-5" />
                                 </button>
-                            )}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                                Share this link with the merchant. It will auto-fill their username.
+                            </p>
                         </div>
-                    </div>
 
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Business Vision & Personality</label>
+                        <div className="flex gap-4 justify-center pt-4">
                             <button
-                                type="button"
-                                onClick={handleMagicExpand}
-                                disabled={expanding || loading}
-                                className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 rounded-lg transition-colors text-xs font-bold"
+                                onClick={() => {
+                                    setSuccess(false);
+                                    setRegisteredId(null);
+                                    setFormData({ name: '', phoneId: '', twilioPhoneNumber: '', category: 'Restaurant', vision: '', location: '', operatingHours: '', paymentMethods: '', menuImageUrl: '' });
+                                    setExpandedPrompt(null);
+                                }}
+                                className="px-6 py-3 font-bold text-muted-foreground hover:text-foreground transition-colors"
                             >
-                                {expanding ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                                Magic Expand
+                                Register Another
+                            </button>
+                            <button
+                                onClick={() => onComplete()}
+                                className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg shadow-blue-500/30 transition-all flex items-center gap-2"
+                            >
+                                <LayoutDashboard className="w-5 h-5" />
+                                Go to Directory
                             </button>
                         </div>
-                        <textarea
-                            required
-                            rows={4}
-                            placeholder="Describe how the bot should behave and what the business offers..."
-                            className="w-full bg-secondary/30 border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all resize-none"
-                            value={formData.vision}
-                            onChange={(e) => setFormData({ ...formData, vision: e.target.value })}
-                            disabled={loading}
-                        />
-                    </div>
+                    </motion.div>
+                ) : (
+                    <>
+                        <div className="space-y-2 pt-4">
+                            <h2 className="text-2xl font-bold text-foreground">Register New Merchant</h2>
+                            <p className="text-muted-foreground">Create a fresh profile for a business wanting a WhatsApp Chatbot.</p>
+                        </div>
 
-                    {expandedPrompt && (
-                        <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            className="space-y-2"
-                        >
-                            <label className="text-sm font-semibold uppercase tracking-wider text-emerald-500 flex items-center gap-2">
-                                <CheckCircle2 className="w-4 h-4" />
-                                Generated System Personality
-                            </label>
-                            <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs font-mono text-emerald-800 dark:text-emerald-400 max-h-40 overflow-auto">
-                                {expandedPrompt}
+                        {error && (
+                            <div className="p-4 bg-destructive/10 text-destructive rounded-xl text-sm font-medium border border-destructive/20">
+                                {error}
                             </div>
-                        </motion.div>
-                    )}
+                        )}
 
-                    <button
-                        type="submit"
-                        disabled={loading || expanding || analyzingMenu}
-                        className="w-full py-4 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl font-bold text-lg shadow-lg shadow-blue-500/30 transition-all flex items-center justify-center gap-2"
-                    >
-                        {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Register Merchant'}
-                        {!loading && <ArrowRight className="w-5 h-5" />}
-                    </button>
-                </form>
+                        <form onSubmit={handleSubmit} className="space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Business Name</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        placeholder="e.g. Mama Mia's Pizza"
+                                        className="w-full bg-secondary/30 border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all"
+                                        value={formData.name}
+                                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                        disabled={loading}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Business Category</label>
+                                    <select
+                                        className="w-full bg-secondary/30 border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all appearance-none cursor-pointer font-bold"
+                                        value={formData.category}
+                                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                                        disabled={loading}
+                                    >
+                                        <option value="Restaurant">🍴 Restaurant / Cafe</option>
+                                        <option value="Boutique">👗 Boutique / Fashion</option>
+                                        <option value="Professional Service">💼 Professional Service</option>
+                                        <option value="Logistics">🚚 Logistics / Delivery</option>
+                                        <option value="General">🏢 General Business</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">WhatsApp Phone ID</label>
+                                    <input
+                                        type="text"
+                                        placeholder="e.g. 991984..."
+                                        className="w-full bg-secondary/30 border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all font-mono text-sm"
+                                        value={formData.phoneId}
+                                        onChange={(e) => setFormData({ ...formData, phoneId: e.target.value })}
+                                        disabled={loading}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Twilio Sandbox Num</label>
+                                    <input
+                                        type="text"
+                                        placeholder="+14155238886"
+                                        className="w-full bg-secondary/30 border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all font-mono text-sm"
+                                        value={formData.twilioPhoneNumber}
+                                        onChange={(e) => setFormData({ ...formData, twilioPhoneNumber: e.target.value })}
+                                        disabled={loading}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Location</label>
+                                    <input
+                                        type="text"
+                                        placeholder="e.g. Accra, Ghana"
+                                        className="w-full bg-secondary/30 border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all text-sm"
+                                        value={formData.location}
+                                        onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                                        disabled={loading}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Operating Hours</label>
+                                    <input
+                                        type="text"
+                                        placeholder="e.g. Mon-Sat 9am-9pm"
+                                        className="w-full bg-secondary/30 border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all text-sm"
+                                        value={formData.operatingHours}
+                                        onChange={(e) => setFormData({ ...formData, operatingHours: e.target.value })}
+                                        disabled={loading}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Payment Methods</label>
+                                <input
+                                    type="text"
+                                    placeholder="e.g. MTN MoMo, Cash on Delivery"
+                                    className="w-full bg-secondary/30 border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all text-sm"
+                                    value={formData.paymentMethods}
+                                    onChange={(e) => setFormData({ ...formData, paymentMethods: e.target.value })}
+                                    disabled={loading}
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Menu Image (Upload from Device)</label>
+                                <div className="relative group">
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={handleFileUpload}
+                                        className="hidden"
+                                        id="menu-upload"
+                                        disabled={uploading || loading}
+                                    />
+                                    <label
+                                        htmlFor="menu-upload"
+                                        className={`flex items-center justify-center gap-3 w-full h-32 border-2 border-dashed rounded-2xl cursor-pointer transition-all
+                                        ${formData.menuImageUrl
+                                                ? 'border-emerald-500/30 bg-emerald-500/5'
+                                                : 'border-border bg-secondary/20 hover:border-primary/50'}`}
+                                    >
+                                        {uploading ? (
+                                            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                                        ) : formData.menuImageUrl ? (
+                                            <div className="flex flex-col items-center gap-1">
+                                                <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+                                                <span className="text-xs font-bold text-emerald-500 uppercase tracking-widest">Image Uploaded</span>
+                                            </div>
+                                        ) : (
+                                            <div className="flex flex-col items-center gap-1">
+                                                <Upload className="w-8 h-8 text-muted-foreground opacity-50 group-hover:scale-110 transition-transform" />
+                                                <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Pick Menu Image</span>
+                                            </div>
+                                        )}
+                                    </label>
+                                    {formData.menuImageUrl && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setFormData({ ...formData, menuImageUrl: '' })}
+                                            className="absolute top-2 right-2 p-1.5 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors"
+                                        >
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Business Vision & Personality</label>
+                                    <button
+                                        type="button"
+                                        onClick={handleMagicExpand}
+                                        disabled={expanding || loading}
+                                        className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 rounded-lg transition-colors text-xs font-bold"
+                                    >
+                                        {expanding ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                                        Magic Expand
+                                    </button>
+                                </div>
+                                <textarea
+                                    required
+                                    rows={4}
+                                    placeholder="Describe how the bot should behave and what the business offers..."
+                                    className="w-full bg-secondary/30 border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all resize-none"
+                                    value={formData.vision}
+                                    onChange={(e) => setFormData({ ...formData, vision: e.target.value })}
+                                    disabled={loading}
+                                />
+                            </div>
+
+                            {expandedPrompt && (
+                                <motion.div
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: 'auto' }}
+                                    className="space-y-2"
+                                >
+                                    <label className="text-sm font-semibold uppercase tracking-wider text-emerald-500 flex items-center gap-2">
+                                        <CheckCircle2 className="w-4 h-4" />
+                                        Generated System Personality
+                                    </label>
+                                    <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs font-mono text-emerald-800 dark:text-emerald-400 max-h-40 overflow-auto">
+                                        {expandedPrompt}
+                                    </div>
+                                </motion.div>
+                            )}
+
+                            <button
+                                type="submit"
+                                disabled={loading || expanding || analyzingMenu}
+                                className="w-full py-4 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl font-bold text-lg shadow-lg shadow-blue-500/30 transition-all flex items-center justify-center gap-2"
+                            >
+                                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Register Merchant'}
+                                {!loading && <ArrowRight className="w-5 h-5" />}
+                            </button>
+                        </form>
+                    </>
+                )}
+
 
                 <AnimatePresence>
                     {isReviewingMenu && (
@@ -585,37 +647,13 @@ const MerchantDirectory = ({ merchants, onSelect, loading }: any) => {
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 <AnimatePresence>
                     {filtered.map((m: any, i: number) => (
-                        <motion.div
+                        <MerchantCard
                             key={m.id}
-                            layout
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.9 }}
-                            transition={{ delay: i * 0.05 }}
-                            className="bg-card border border-border rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow group relative overflow-hidden"
-                        >
-                            <div className="flex items-start justify-between">
-                                <div className="space-y-1">
-                                    <h3 className="font-bold text-lg text-foreground">{m.name}</h3>
-                                    <div className="flex items-center gap-2 text-xs font-semibold px-2 py-1 bg-secondary/50 rounded-lg text-muted-foreground w-fit">
-                                        <Smartphone className="w-3 h-3 text-blue-500" />
-                                        {m.whatsappPhoneNumberId || 'No ID'}
-                                    </div>
-                                    <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{m.clientVision}</p>
-                                </div>
-                                <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-lg">
-                                    <CheckCircle2 className="w-4 h-4" />
-                                </div>
-                            </div>
-
-                            <button
-                                onClick={() => onSelect(m.id)}
-                                className="mt-6 w-full py-2.5 bg-secondary hover:bg-primary hover:text-white rounded-xl text-sm font-bold transition-all transition-colors flex items-center justify-center gap-2"
-                            >
-                                <LayoutDashboard className="w-4 h-4" />
-                                Open Workspace
-                            </button>
-                        </motion.div>
+                            merchant={m}
+                            index={i}
+                            onSelect={onSelect}
+                            onRefresh={() => window.location.reload()} // Crude but effective for now
+                        />
                     ))}
                 </AnimatePresence>
             </div>
@@ -804,10 +842,10 @@ const ReviewWorkspaceModal = ({ merchantId, drafts, onClose, onSuccess }: any) =
                                     className="w-full bg-background border border-border rounded-xl px-4 py-2 text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none"
                                 />
                             </div>
-                            <div className="col-span-1 flex justify-center">
+                            <div className="col-span-1 flex justify-end">
                                 <button
                                     onClick={() => handleRemoveItem(idx)}
-                                    className="p-2 text-muted-foreground hover:text-red-500 transition-colors"
+                                    className="p-2 hover:bg-red-500/10 text-muted-foreground hover:text-red-500 rounded-xl transition-all"
                                 >
                                     <X className="w-5 h-5" />
                                 </button>
@@ -816,23 +854,117 @@ const ReviewWorkspaceModal = ({ merchantId, drafts, onClose, onSuccess }: any) =
                     ))}
                 </div>
 
-                <div className="flex gap-4 pt-6 border-t border-border">
+                <div className="border-t border-border pt-6 flex justify-end gap-3">
                     <button
                         onClick={onClose}
-                        className="flex-1 py-4 px-8 bg-secondary hover:bg-secondary/80 rounded-2xl font-bold transition-all"
+                        className="px-6 py-3 font-bold text-muted-foreground hover:text-foreground transition-colors"
                     >
-                        Skip for Now
+                        Cancel
                     </button>
                     <button
                         onClick={handleSaveAll}
-                        disabled={loading || items.length === 0}
-                        className="flex-[2] py-4 px-8 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black shadow-xl shadow-blue-500/20 flex items-center justify-center gap-3 disabled:opacity-50 transition-all hover:scale-[1.02]"
+                        disabled={loading}
+                        className="px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold shadow-lg shadow-blue-500/30 transition-all flex items-center gap-2"
                     >
-                        {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <CheckCircle2 className="w-6 h-6" />}
-                        Confirm & Save to Catalog
+                        {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle2 className="w-5 h-5" />}
+                        Approve & Import
                     </button>
                 </div>
             </motion.div>
         </motion.div>
     );
 };
+
+const MerchantCard = ({ merchant, index, onSelect, onRefresh }: any) => {
+    const [actionLoading, setActionLoading] = useState(false);
+
+    const handleToggleStatus = async () => {
+        setActionLoading(true);
+        try {
+            await axios.patch(`${API_BASE}/api/merchants/${merchant.id}/toggle-status`, {
+                isPaused: !merchant.isClosed
+            });
+            toast.success(`Merchant ${merchant.isClosed ? 'Resumed' : 'Suspended'}`);
+            onRefresh();
+        } catch (err) {
+            toast.error('Failed to update status');
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!confirm('Are you sure you want to delete this merchant? This action cannot be undone.')) return;
+        setActionLoading(true);
+        try {
+            await axios.delete(`${API_BASE}/api/merchants/${merchant.id}/delete`);
+            toast.success('Merchant deleted');
+            onRefresh();
+        } catch (err) {
+            toast.error('Failed to delete merchant');
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    return (
+        <motion.div
+            layout
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            transition={{ delay: index * 0.05 }}
+            className={`bg-card border ${merchant.isClosed ? 'border-red-500/30' : 'border-border'} rounded-2xl p-6 shadow-sm hover:shadow-md transition-all group relative overflow-hidden`}
+        >
+            {merchant.isClosed && (
+                <div className="absolute inset-0 bg-background/60 backdrop-blur-sm z-10 flex items-center justify-center pointer-events-none">
+                    <div className="bg-red-500/10 text-red-500 px-4 py-2 rounded-xl font-bold flex items-center gap-2 border border-red-500/20">
+                        <PauseCircle className="w-4 h-4" /> Suspended
+                    </div>
+                </div>
+            )}
+
+            <div className="flex items-start justify-between relative z-20">
+                <div className="space-y-1">
+                    <h3 className="font-bold text-lg text-foreground">{merchant.name}</h3>
+                    <div className="flex items-center gap-2 text-xs font-semibold px-2 py-1 bg-secondary/50 rounded-lg text-muted-foreground w-fit">
+                        <Smartphone className="w-3 h-3 text-blue-500" />
+                        {merchant.whatsappPhoneNumberId || 'No ID'}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{merchant.clientVision}</p>
+                </div>
+                <div className={`p-2 rounded-lg ${merchant.isClosed ? 'bg-red-500/10 text-red-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
+                    {merchant.isClosed ? <PauseCircle className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
+                </div>
+            </div>
+
+            <div className="mt-6 flex items-center gap-2 relative z-20">
+                <button
+                    onClick={() => onSelect(merchant.id)}
+                    className="flex-1 py-2.5 bg-secondary hover:bg-primary hover:text-white rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2"
+                >
+                    <LayoutDashboard className="w-4 h-4" />
+                    Open
+                </button>
+
+                <button
+                    onClick={handleToggleStatus}
+                    disabled={actionLoading}
+                    className={`p-2.5 rounded-xl transition-colors ${merchant.isClosed ? 'bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20' : 'bg-amber-500/10 text-amber-500 hover:bg-amber-500/20'}`}
+                    title={merchant.isClosed ? "Resume Business" : "Suspend Business"}
+                >
+                    {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (merchant.isClosed ? <PlayCircle className="w-4 h-4" /> : <PauseCircle className="w-4 h-4" />)}
+                </button>
+
+                <button
+                    onClick={handleDelete}
+                    disabled={actionLoading}
+                    className="p-2.5 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-xl transition-colors"
+                    title="Delete Merchant"
+                >
+                    {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                </button>
+            </div>
+        </motion.div>
+    );
+}

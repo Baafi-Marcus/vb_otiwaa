@@ -10,6 +10,7 @@ import { MerchantModule } from './merchant/merchant.module';
 
 import { SystemModule } from './system/system.module';
 import { OrderModule } from './order/order.module';
+import { AuthModule } from './auth/auth.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 
@@ -33,6 +34,7 @@ import { join } from 'path';
     MerchantModule,
     SystemModule,
     OrderModule,
+    AuthModule,
   ],
 })
 export class AppModule { }

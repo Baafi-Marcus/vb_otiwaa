@@ -6,7 +6,11 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { UseGuards } from '@nestjs/common';
+
 @Controller('merchants')
+@UseGuards(JwtAuthGuard)
 export class MerchantController {
     constructor(
         private readonly merchantService: MerchantService,
@@ -162,5 +166,18 @@ export class MerchantController {
         @Body() data: { paused: boolean }
     ) {
         return this.merchantService.toggleBot(id, customerId, data.paused);
+    }
+
+    @Delete(':id/delete')
+    async deleteMerchant(@Param('id') id: string) {
+        return this.merchantService.deleteMerchant(id);
+    }
+
+    @Patch(':id/toggle-status')
+    async toggleStatus(
+        @Param('id') id: string,
+        @Body() data: { isPaused: boolean }
+    ) {
+        return this.merchantService.toggleMerchantStatus(id, data.isPaused);
     }
 }

@@ -13,10 +13,9 @@ import {
     Users,
     Upload,
     X,
-    CheckCircle2
+    CheckCircle2,
+    Printer
 } from 'lucide-react';
-
-import axios from 'axios';
 import {
     AreaChart,
     Area,
@@ -26,7 +25,12 @@ import {
     Tooltip,
     ResponsiveContainer
 } from 'recharts';
+
+import axios from 'axios';
+
 import { toast } from 'react-hot-toast';
+import { DashboardStats } from './DashboardStats';
+import { ReceiptView } from './ReceiptView';
 
 const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3000' : '';
 
@@ -47,6 +51,7 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
     const [newZone, setNewZone] = useState({ name: '', price: '' });
     const [editingZone, setEditingZone] = useState<any>(null);
     const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
+    const [receiptOrder, setReceiptOrder] = useState<any>(null);
 
     const [localPreview, setLocalPreview] = useState<string | null>(null);
 
@@ -87,9 +92,9 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
         }
     };
 
-    const fetchDashboardData = async () => {
+    const fetchDashboardData = async (silent = false) => {
         if (!merchantId || uploading || isReviewingMenu) return;
-        setLoading(true);
+        if (!silent) setLoading(true);
         try {
             const resp = await axios.get(`${API_BASE}/api/merchants/${merchantId}/dashboard`);
             setMerchant(resp.data.merchant);
@@ -106,21 +111,22 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
             }
         } catch (err) {
             console.error('Error fetching dashboard data', err);
-            toast.error('Failed to sync dashboard data');
+            if (!silent) toast.error('Failed to sync dashboard data');
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     };
 
     React.useEffect(() => {
-        fetchDashboardData();
+        fetchDashboardData(false); // Initial load is NOT silent
 
-        // Auto-refresh orders every 15 seconds (only if not busy)
+        // Auto-refresh orders every 30 seconds (silent refresh)
+        // Increased to 30s to be less aggressive, but made it silent to avoid flashing
         const interval = setInterval(() => {
             if (!uploading && !isReviewingMenu) {
-                fetchDashboardData();
+                fetchDashboardData(true); // Background refreshes ARE silent
             }
-        }, 15000);
+        }, 30000);
 
         return () => clearInterval(interval);
     }, [merchantId, uploading, isReviewingMenu]);
@@ -243,12 +249,31 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
                             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
                                 <div className="space-y-1">
                                     <h1 className="text-4xl font-black tracking-tight text-foreground">
-                                        {activeTab === 'orders' ? 'Incoming Orders' : 'Smart Catalog'}
+                                        {activeTab === 'orders' ? 'Dashboard' :
+                                            activeTab === 'catalog' ? 'Smart Catalog' :
+                                                activeTab === 'sandbox' ? 'AI Sandbox' : 'Marketing CRM'}
                                     </h1>
                                     <p className="text-muted-foreground font-medium text-lg">
                                         {merchant?.name ? `Managing ${merchant.name}` : 'Automated business at your fingertips.'}
                                     </p>
                                 </div>
+
+                                {activeTab === 'orders' && (
+                                    <div className="flex items-center gap-3">
+                                        <button
+                                            onClick={() => fetchDashboardData()}
+                                            disabled={loading}
+                                            className="p-3 bg-secondary/50 hover:bg-secondary text-foreground rounded-xl transition-all active:scale-95"
+                                        >
+                                            <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+                                        </button>
+                                        <div className="px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 rounded-xl text-sm font-bold flex items-center gap-2">
+                                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                            Live System
+                                        </div>
+                                    </div>
+                                )}
+
                                 {activeTab === 'catalog' && (
                                     <button
                                         onClick={() => setIsAddingProduct(true)}
@@ -259,6 +284,10 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
                                     </button>
                                 )}
                             </div>
+
+                            {activeTab === 'orders' && (
+                                <DashboardStats orders={orders} analytics={analytics} />
+                            )}
 
                             {activeTab === 'orders' && (
                                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
@@ -358,6 +387,7 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
                                                         onStatusUpdate={handleStatusUpdate}
                                                         isSelected={selectedOrders.has(o.id)}
                                                         onSelect={toggleOrderSelection}
+                                                        onPrint={() => setReceiptOrder(o)}
                                                     />
                                                 ))}
                                             </div>
@@ -404,358 +434,365 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
                                         </AnimatePresence>
                                     </div>
                                 </motion.div>
-                            )}
+                            )
+                            }
 
-                            {activeTab === 'catalog' && (
-                                <motion.div
-                                    initial={{ opacity: 0, scale: 0.98 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-                                >
-                                    {merchant?.catalog?.length > 0 ? (
-                                        merchant.catalog.map((p: any) => (
-                                            <ProductCard
-                                                key={p.id}
-                                                product={p}
-                                                onEdit={() => setEditingProduct(p)}
-                                                onDelete={async () => {
-                                                    if (!confirm(`Delete "${p.name}"?`)) return;
-                                                    try {
-                                                        await axios.delete(`${API_BASE}/api/merchants/${merchantId}/products/${p.id}`);
-                                                        toast.success('Product deleted!');
-                                                        fetchDashboardData();
-                                                    } catch (err) {
-                                                        toast.error('Failed to delete product');
-                                                    }
-                                                }}
-                                            />
-                                        ))
-                                    ) : (
-                                        <div className="col-span-full py-20 text-center space-y-4 bg-secondary/10 rounded-3xl border-2 border-dashed border-border">
-                                            <Package className="w-12 h-12 mx-auto text-muted-foreground/30" />
-                                            <div className="space-y-1">
-                                                <p className="font-bold text-foreground">Your catalog is empty</p>
-                                                <p className="text-sm text-muted-foreground">Add products to start accepting WhatsApp orders.</p>
+                            {
+                                activeTab === 'catalog' && (
+                                    <motion.div
+                                        initial={{ opacity: 0, scale: 0.98 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                                    >
+                                        {merchant?.catalog?.length > 0 ? (
+                                            merchant.catalog.map((p: any) => (
+                                                <ProductCard
+                                                    key={p.id}
+                                                    product={p}
+                                                    onEdit={() => setEditingProduct(p)}
+                                                    onDelete={async () => {
+                                                        if (!confirm(`Delete "${p.name}"?`)) return;
+                                                        try {
+                                                            await axios.delete(`${API_BASE}/api/merchants/${merchantId}/products/${p.id}`);
+                                                            toast.success('Product deleted!');
+                                                            fetchDashboardData();
+                                                        } catch (err) {
+                                                            toast.error('Failed to delete product');
+                                                        }
+                                                    }}
+                                                />
+                                            ))
+                                        ) : (
+                                            <div className="col-span-full py-20 text-center space-y-4 bg-secondary/10 rounded-3xl border-2 border-dashed border-border">
+                                                <Package className="w-12 h-12 mx-auto text-muted-foreground/30" />
+                                                <div className="space-y-1">
+                                                    <p className="font-bold text-foreground">Your catalog is empty</p>
+                                                    <p className="text-sm text-muted-foreground">Add products to start accepting WhatsApp orders.</p>
+                                                </div>
+                                                <button
+                                                    onClick={() => setIsAddingProduct(true)}
+                                                    className="text-primary font-bold text-sm hover:underline"
+                                                >
+                                                    Add your first product &rarr;
+                                                </button>
                                             </div>
-                                            <button
-                                                onClick={() => setIsAddingProduct(true)}
-                                                className="text-primary font-bold text-sm hover:underline"
-                                            >
-                                                Add your first product &rarr;
-                                            </button>
-                                        </div>
-                                    )}
-                                </motion.div>
-                            )}
+                                        )}
+                                    </motion.div>
+                                )
+                            }
 
-                            {activeTab === 'sandbox' && (
-                                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="h-full max-w-4xl mx-auto flex flex-col gap-6">
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-[600px]">
-                                        {/* Prompt Workshop */}
-                                        <div className="bg-card border border-border rounded-3xl p-8 flex flex-col space-y-6 shadow-sm overflow-hidden">
-                                            <div className="flex items-center gap-2">
-                                                <Bot className="w-6 h-6 text-primary" />
-                                                <h3 className="font-bold text-xl">Prompt Workshop</h3>
-                                            </div>
-                                            <div className="flex-1 flex flex-col space-y-4 overflow-y-auto pr-2 custom-scrollbar">
-                                                <div className="space-y-4">
-                                                    <div className="space-y-2">
-                                                        <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Bot Name</label>
-                                                        <input
-                                                            className="w-full bg-secondary/20 border border-border rounded-xl px-4 py-2 text-sm font-medium outline-none focus:ring-1 focus:ring-primary transition-all"
-                                                            value={merchant?.name || ""}
-                                                            onChange={(e) => setMerchant({ ...merchant, name: e.target.value })}
-                                                        />
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Menu Image (Upload from Device)</label>
-                                                        <div className="relative group">
+                            {
+                                activeTab === 'sandbox' && (
+                                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="h-full max-w-4xl mx-auto flex flex-col gap-6">
+                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-[600px]">
+                                            {/* Prompt Workshop */}
+                                            <div className="bg-card border border-border rounded-3xl p-8 flex flex-col space-y-6 shadow-sm overflow-hidden">
+                                                <div className="flex items-center gap-2">
+                                                    <Bot className="w-6 h-6 text-primary" />
+                                                    <h3 className="font-bold text-xl">Prompt Workshop</h3>
+                                                </div>
+                                                <div className="flex-1 flex flex-col space-y-4 overflow-y-auto pr-2 custom-scrollbar">
+                                                    <div className="space-y-4">
+                                                        <div className="space-y-2">
+                                                            <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Bot Name</label>
                                                             <input
-                                                                type="file"
-                                                                accept="image/*"
-                                                                onChange={handleFileUpload}
-                                                                className="hidden"
-                                                                id="merchant-menu-upload"
+                                                                className="w-full bg-secondary/20 border border-border rounded-xl px-4 py-2 text-sm font-medium outline-none focus:ring-1 focus:ring-primary transition-all"
+                                                                value={merchant?.name || ""}
+                                                                onChange={(e) => setMerchant({ ...merchant, name: e.target.value })}
                                                             />
-                                                            <label
-                                                                htmlFor="merchant-menu-upload"
-                                                                className={`flex items-center justify-center gap-3 w-full h-48 border-2 border-dashed rounded-2xl cursor-pointer transition-all overflow-hidden relative
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Menu Image (Upload from Device)</label>
+                                                            <div className="relative group">
+                                                                <input
+                                                                    type="file"
+                                                                    accept="image/*"
+                                                                    onChange={handleFileUpload}
+                                                                    className="hidden"
+                                                                    id="merchant-menu-upload"
+                                                                />
+                                                                <label
+                                                                    htmlFor="merchant-menu-upload"
+                                                                    className={`flex items-center justify-center gap-3 w-full h-48 border-2 border-dashed rounded-2xl cursor-pointer transition-all overflow-hidden relative
                                                                         ${(localPreview || merchant?.menuImageUrl)
-                                                                        ? 'border-emerald-500/30 bg-emerald-500/5'
-                                                                        : 'border-border bg-secondary/20 hover:border-primary/50'}`}
-                                                            >
-                                                                {uploading ? (
-                                                                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                                                                ) : (localPreview || merchant?.menuImageUrl) ? (
-                                                                    <div className="relative w-full h-full group">
-                                                                        <img
-                                                                            src={localPreview || (merchant?.menuImageUrl?.startsWith('/') ? `${API_BASE}${merchant.menuImageUrl}` : merchant?.menuImageUrl) || ""}
-                                                                            alt="Menu Preview"
-                                                                            className="w-full h-full object-cover"
-                                                                        />
-                                                                        <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                                                            <RefreshCw className="w-8 h-8 text-white mb-2" />
-                                                                            <span className="text-xs font-bold text-white uppercase tracking-widest">Click to Change</span>
+                                                                            ? 'border-emerald-500/30 bg-emerald-500/5'
+                                                                            : 'border-border bg-secondary/20 hover:border-primary/50'}`}
+                                                                >
+                                                                    {uploading ? (
+                                                                        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                                                                    ) : (localPreview || merchant?.menuImageUrl) ? (
+                                                                        <div className="relative w-full h-full group">
+                                                                            <img
+                                                                                src={localPreview || (merchant?.menuImageUrl?.startsWith('/') ? `${API_BASE}${merchant.menuImageUrl}` : merchant?.menuImageUrl) || ""}
+                                                                                alt="Menu Preview"
+                                                                                className="w-full h-full object-cover"
+                                                                            />
+                                                                            <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                                <RefreshCw className="w-8 h-8 text-white mb-2" />
+                                                                                <span className="text-xs font-bold text-white uppercase tracking-widest">Click to Change</span>
+                                                                            </div>
+                                                                            <div className="absolute top-2 right-2 bg-emerald-500 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-lg">
+                                                                                SAVED
+                                                                            </div>
                                                                         </div>
-                                                                        <div className="absolute top-2 right-2 bg-emerald-500 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-lg">
-                                                                            SAVED
+                                                                    ) : (
+                                                                        <div className="flex flex-col items-center gap-1">
+                                                                            <Upload className="w-8 h-8 text-muted-foreground opacity-50 group-hover:scale-110 transition-transform" />
+                                                                            <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Pick Menu Image</span>
                                                                         </div>
-                                                                    </div>
-                                                                ) : (
-                                                                    <div className="flex flex-col items-center gap-1">
-                                                                        <Upload className="w-8 h-8 text-muted-foreground opacity-50 group-hover:scale-110 transition-transform" />
-                                                                        <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Pick Menu Image</span>
-                                                                    </div>
-                                                                )}
-                                                            </label>
+                                                                    )}
+                                                                </label>
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">OR Manual Menu URL</label>
-                                                        <input
-                                                            className="w-full bg-secondary/20 border border-border rounded-xl px-4 py-2 text-sm font-medium outline-none focus:ring-1 focus:ring-primary transition-all"
-                                                            value={merchant?.menuImageUrl || ""}
-                                                            onChange={(e) => merchant && setMerchant({ ...merchant, menuImageUrl: e.target.value })}
-                                                            placeholder="https://example.com/menu.jpg"
-                                                        />
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">System Prompt (Personality)</label>
-                                                        <textarea
-                                                            className="w-full h-48 bg-secondary/20 border border-border rounded-2xl p-4 text-sm font-medium resize-none outline-none focus:ring-1 focus:ring-primary transition-all"
-                                                            value={merchant?.systemPrompt || ""}
-                                                            onChange={(e) => merchant && setMerchant({ ...merchant, systemPrompt: e.target.value })}
-                                                            placeholder="Define how your bot should behave here..."
-                                                        />
-                                                    </div>
-                                                    <div className="flex items-center justify-between p-4 bg-secondary/10 rounded-2xl border border-border">
-                                                        <div className="space-y-0.5">
-                                                            <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Store Status</label>
-                                                            <p className="text-[10px] text-muted-foreground">When closed, AI will reject immediate orders</p>
-                                                        </div>
-                                                        <button
-                                                            onClick={() => merchant && setMerchant({ ...merchant, isClosed: !merchant?.isClosed })}
-                                                            className={`px-4 py-2 rounded-xl font-bold text-xs transition-all ${merchant?.isClosed ? 'bg-destructive text-destructive-foreground' : 'bg-emerald-500 text-white'}`}
-                                                        >
-                                                            {merchant?.isClosed ? '🔴 CLOSED' : '🟢 OPEN'}
-                                                        </button>
-                                                    </div>
-
-                                                    <div className="grid grid-cols-2 gap-4">
                                                         <div className="space-y-2">
-                                                            <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Location</label>
+                                                            <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">OR Manual Menu URL</label>
                                                             <input
                                                                 className="w-full bg-secondary/20 border border-border rounded-xl px-4 py-2 text-sm font-medium outline-none focus:ring-1 focus:ring-primary transition-all"
-                                                                value={merchant?.location || ""}
-                                                                onChange={(e) => merchant && setMerchant({ ...merchant, location: e.target.value })}
-                                                                placeholder="Accra, Ghana"
+                                                                value={merchant?.menuImageUrl || ""}
+                                                                onChange={(e) => merchant && setMerchant({ ...merchant, menuImageUrl: e.target.value })}
+                                                                placeholder="https://example.com/menu.jpg"
                                                             />
                                                         </div>
                                                         <div className="space-y-2">
-                                                            <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Operating Hours</label>
-                                                            <input
-                                                                className="w-full bg-secondary/20 border border-border rounded-xl px-4 py-2 text-sm font-medium outline-none focus:ring-1 focus:ring-primary transition-all"
-                                                                value={merchant?.operatingHours || ""}
-                                                                onChange={(e) => merchant && setMerchant({ ...merchant, operatingHours: e.target.value })}
-                                                                placeholder="Mon-Sat 9am-9pm"
+                                                            <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">System Prompt (Personality)</label>
+                                                            <textarea
+                                                                className="w-full h-48 bg-secondary/20 border border-border rounded-2xl p-4 text-sm font-medium resize-none outline-none focus:ring-1 focus:ring-primary transition-all"
+                                                                value={merchant?.systemPrompt || ""}
+                                                                onChange={(e) => merchant && setMerchant({ ...merchant, systemPrompt: e.target.value })}
+                                                                placeholder="Define how your bot should behave here..."
                                                             />
                                                         </div>
-                                                    </div>
-
-                                                    <div className="space-y-2">
-                                                        <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Payment Methods</label>
-                                                        <input
-                                                            className="w-full bg-secondary/20 border border-border rounded-xl px-4 py-2 text-sm font-medium outline-none focus:ring-1 focus:ring-primary transition-all"
-                                                            value={merchant?.paymentMethods || ""}
-                                                            onChange={(e) => merchant && setMerchant({ ...merchant, paymentMethods: e.target.value })}
-                                                            placeholder="MTN MoMo, Cash"
-                                                        />
-                                                    </div>
-
-                                                    <div className="space-y-2">
-                                                        <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Base Delivery Fee (GHS)</label>
-                                                        <input
-                                                            type="number"
-                                                            step="0.01"
-                                                            className="w-full bg-secondary/20 border border-border rounded-xl px-4 py-2 text-sm font-medium outline-none focus:ring-1 focus:ring-primary transition-all"
-                                                            value={merchant?.baseDeliveryFee || 0}
-                                                            onChange={(e) => merchant && setMerchant({ ...merchant, baseDeliveryFee: parseFloat(e.target.value) || 0 })}
-                                                        />
-                                                    </div>
-
-                                                    {/* Custom Delivery Zones Section */}
-                                                    <div className="space-y-4 pt-4 border-t border-border">
-                                                        <div className="flex items-center justify-between">
-                                                            <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Custom Delivery Zones</label>
+                                                        <div className="flex items-center justify-between p-4 bg-secondary/10 rounded-2xl border border-border">
+                                                            <div className="space-y-0.5">
+                                                                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Store Status</label>
+                                                                <p className="text-[10px] text-muted-foreground">When closed, AI will reject immediate orders</p>
+                                                            </div>
                                                             <button
-                                                                onClick={() => setIsAddingZone(true)}
-                                                                className="text-[10px] font-black bg-primary/10 text-primary px-3 py-1 rounded-lg hover:bg-primary/20 transition-all"
+                                                                onClick={() => merchant && setMerchant({ ...merchant, isClosed: !merchant?.isClosed })}
+                                                                className={`px-4 py-2 rounded-xl font-bold text-xs transition-all ${merchant?.isClosed ? 'bg-destructive text-destructive-foreground' : 'bg-emerald-500 text-white'}`}
                                                             >
-                                                                + ADD ZONE
+                                                                {merchant?.isClosed ? '🔴 CLOSED' : '🟢 OPEN'}
                                                             </button>
                                                         </div>
 
+                                                        <div className="grid grid-cols-2 gap-4">
+                                                            <div className="space-y-2">
+                                                                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Location</label>
+                                                                <input
+                                                                    className="w-full bg-secondary/20 border border-border rounded-xl px-4 py-2 text-sm font-medium outline-none focus:ring-1 focus:ring-primary transition-all"
+                                                                    value={merchant?.location || ""}
+                                                                    onChange={(e) => merchant && setMerchant({ ...merchant, location: e.target.value })}
+                                                                    placeholder="Accra, Ghana"
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Operating Hours</label>
+                                                                <input
+                                                                    className="w-full bg-secondary/20 border border-border rounded-xl px-4 py-2 text-sm font-medium outline-none focus:ring-1 focus:ring-primary transition-all"
+                                                                    value={merchant?.operatingHours || ""}
+                                                                    onChange={(e) => merchant && setMerchant({ ...merchant, operatingHours: e.target.value })}
+                                                                    placeholder="Mon-Sat 9am-9pm"
+                                                                />
+                                                            </div>
+                                                        </div>
+
                                                         <div className="space-y-2">
-                                                            {deliveryZones.map((zone) => (
-                                                                <div key={zone.id} className="flex items-center justify-between p-3 bg-secondary/10 rounded-xl border border-border group">
-                                                                    <div>
-                                                                        <p className="text-sm font-bold">{zone.name}</p>
-                                                                        <p className="text-[10px] text-muted-foreground">GHS {zone.price}</p>
-                                                                    </div>
-                                                                    <div className="flex items-center gap-2">
-                                                                        <button
-                                                                            onClick={() => setEditingZone(zone)}
-                                                                            className="opacity-0 group-hover:opacity-100 p-1 hover:text-primary transition-all"
-                                                                        >
-                                                                            <Sparkles className="w-4 h-4" />
-                                                                        </button>
-                                                                        <button
-                                                                            onClick={async () => {
-                                                                                if (!confirm(`Delete zone "${zone.name}"?`)) return;
-                                                                                await axios.delete(`${API_BASE}/api/merchants/${merchantId}/delivery-zones/${zone.id}`);
-                                                                                setDeliveryZones(deliveryZones.filter(z => z.id !== zone.id));
-                                                                                toast.success('Zone deleted');
-                                                                            }}
-                                                                            className="p-2 opacity-0 group-hover:opacity-100 text-destructive hover:bg-destructive/10 rounded-lg transition-all"
-                                                                        >
-                                                                            <X className="w-4 h-4" />
-                                                                        </button>
-                                                                    </div>
-                                                                </div>
-                                                            ))}
+                                                            <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Payment Methods</label>
+                                                            <input
+                                                                className="w-full bg-secondary/20 border border-border rounded-xl px-4 py-2 text-sm font-medium outline-none focus:ring-1 focus:ring-primary transition-all"
+                                                                value={merchant?.paymentMethods || ""}
+                                                                onChange={(e) => merchant && setMerchant({ ...merchant, paymentMethods: e.target.value })}
+                                                                placeholder="MTN MoMo, Cash"
+                                                            />
+                                                        </div>
 
-                                                            {isAddingZone && (
-                                                                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="p-4 bg-primary/5 border border-primary/20 rounded-xl space-y-3">
-                                                                    <h4 className="text-[10px] font-bold uppercase tracking-widest text-primary">New Zone</h4>
-                                                                    <input
-                                                                        className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-xs outline-none"
-                                                                        placeholder="Zone Name (e.g. East Legon)"
-                                                                        value={newZone.name}
-                                                                        onChange={e => setNewZone({ ...newZone, name: e.target.value })}
-                                                                    />
-                                                                    <input
-                                                                        type="number"
-                                                                        className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-xs outline-none"
-                                                                        placeholder="Price (GHS)"
-                                                                        value={newZone.price}
-                                                                        onChange={e => setNewZone({ ...newZone, price: e.target.value })}
-                                                                    />
-                                                                    <div className="flex gap-2">
-                                                                        <button
-                                                                            onClick={() => setIsAddingZone(false)}
-                                                                            className="flex-1 bg-secondary text-foreground py-2 rounded-lg text-[10px] font-bold"
-                                                                        >
-                                                                            CANCEL
-                                                                        </button>
-                                                                        <button
-                                                                            onClick={async () => {
-                                                                                if (!newZone.name || !newZone.price) return;
-                                                                                const resp = await axios.post(`${API_BASE}/api/merchants/${merchantId}/delivery-zones`, {
-                                                                                    name: newZone.name,
-                                                                                    price: parseFloat(newZone.price)
-                                                                                });
-                                                                                setDeliveryZones([...deliveryZones, resp.data]);
-                                                                                setIsAddingZone(false);
-                                                                                setNewZone({ name: '', price: '' });
-                                                                                toast.success('Zone added');
-                                                                            }}
-                                                                            className="flex-1 bg-primary text-white py-2 rounded-lg text-[10px] font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
-                                                                        >
-                                                                            ADD ZONE
-                                                                        </button>
-                                                                    </div>
-                                                                </motion.div>
-                                                            )}
+                                                        <div className="space-y-2">
+                                                            <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Base Delivery Fee (GHS)</label>
+                                                            <input
+                                                                type="number"
+                                                                step="0.01"
+                                                                className="w-full bg-secondary/20 border border-border rounded-xl px-4 py-2 text-sm font-medium outline-none focus:ring-1 focus:ring-primary transition-all"
+                                                                value={merchant?.baseDeliveryFee || 0}
+                                                                onChange={(e) => merchant && setMerchant({ ...merchant, baseDeliveryFee: parseFloat(e.target.value) || 0 })}
+                                                            />
+                                                        </div>
 
-                                                            {editingZone && (
-                                                                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="p-4 bg-primary/5 border border-primary/20 rounded-xl space-y-3">
-                                                                    <h4 className="text-[10px] font-bold uppercase tracking-widest text-primary">Edit Zone</h4>
-                                                                    <input
-                                                                        className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-xs outline-none"
-                                                                        value={editingZone.name}
-                                                                        onChange={e => setEditingZone({ ...editingZone, name: e.target.value })}
-                                                                    />
-                                                                    <input
-                                                                        type="number"
-                                                                        className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-xs outline-none"
-                                                                        value={editingZone.price}
-                                                                        onChange={e => setEditingZone({ ...editingZone, price: e.target.value })}
-                                                                    />
-                                                                    <div className="flex gap-2">
-                                                                        <button
-                                                                            onClick={() => setEditingZone(null)}
-                                                                            className="flex-1 bg-secondary text-foreground py-2 rounded-lg text-[10px] font-bold"
-                                                                        >
-                                                                            CANCEL
-                                                                        </button>
-                                                                        <button
-                                                                            onClick={async () => {
-                                                                                try {
-                                                                                    await axios.patch(`${API_BASE}/api/merchants/${merchantId}/delivery-zones/${editingZone.id}`, {
-                                                                                        name: editingZone.name,
-                                                                                        price: parseFloat(editingZone.price)
+                                                        {/* Custom Delivery Zones Section */}
+                                                        <div className="space-y-4 pt-4 border-t border-border">
+                                                            <div className="flex items-center justify-between">
+                                                                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Custom Delivery Zones</label>
+                                                                <button
+                                                                    onClick={() => setIsAddingZone(true)}
+                                                                    className="text-[10px] font-black bg-primary/10 text-primary px-3 py-1 rounded-lg hover:bg-primary/20 transition-all"
+                                                                >
+                                                                    + ADD ZONE
+                                                                </button>
+                                                            </div>
+
+                                                            <div className="space-y-2">
+                                                                {deliveryZones.map((zone) => (
+                                                                    <div key={zone.id} className="flex items-center justify-between p-3 bg-secondary/10 rounded-xl border border-border group">
+                                                                        <div>
+                                                                            <p className="text-sm font-bold">{zone.name}</p>
+                                                                            <p className="text-[10px] text-muted-foreground">GHS {zone.price}</p>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <button
+                                                                                onClick={() => setEditingZone(zone)}
+                                                                                className="opacity-0 group-hover:opacity-100 p-1 hover:text-primary transition-all"
+                                                                            >
+                                                                                <Sparkles className="w-4 h-4" />
+                                                                            </button>
+                                                                            <button
+                                                                                onClick={async () => {
+                                                                                    if (!confirm(`Delete zone "${zone.name}"?`)) return;
+                                                                                    await axios.delete(`${API_BASE}/api/merchants/${merchantId}/delivery-zones/${zone.id}`);
+                                                                                    setDeliveryZones(deliveryZones.filter(z => z.id !== zone.id));
+                                                                                    toast.success('Zone deleted');
+                                                                                }}
+                                                                                className="p-2 opacity-0 group-hover:opacity-100 text-destructive hover:bg-destructive/10 rounded-lg transition-all"
+                                                                            >
+                                                                                <X className="w-4 h-4" />
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+
+                                                                {isAddingZone && (
+                                                                    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="p-4 bg-primary/5 border border-primary/20 rounded-xl space-y-3">
+                                                                        <h4 className="text-[10px] font-bold uppercase tracking-widest text-primary">New Zone</h4>
+                                                                        <input
+                                                                            className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-xs outline-none"
+                                                                            placeholder="Zone Name (e.g. East Legon)"
+                                                                            value={newZone.name}
+                                                                            onChange={e => setNewZone({ ...newZone, name: e.target.value })}
+                                                                        />
+                                                                        <input
+                                                                            type="number"
+                                                                            className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-xs outline-none"
+                                                                            placeholder="Price (GHS)"
+                                                                            value={newZone.price}
+                                                                            onChange={e => setNewZone({ ...newZone, price: e.target.value })}
+                                                                        />
+                                                                        <div className="flex gap-2">
+                                                                            <button
+                                                                                onClick={() => setIsAddingZone(false)}
+                                                                                className="flex-1 bg-secondary text-foreground py-2 rounded-lg text-[10px] font-bold"
+                                                                            >
+                                                                                CANCEL
+                                                                            </button>
+                                                                            <button
+                                                                                onClick={async () => {
+                                                                                    if (!newZone.name || !newZone.price) return;
+                                                                                    const resp = await axios.post(`${API_BASE}/api/merchants/${merchantId}/delivery-zones`, {
+                                                                                        name: newZone.name,
+                                                                                        price: parseFloat(newZone.price)
                                                                                     });
-                                                                                    setDeliveryZones(deliveryZones.map(z => z.id === editingZone.id ? editingZone : z));
-                                                                                    setEditingZone(null);
-                                                                                    toast.success('Zone updated');
-                                                                                } catch (err) {
-                                                                                    toast.error('Failed to update zone');
-                                                                                }
-                                                                            }}
-                                                                            className="flex-1 bg-primary text-white py-2 rounded-lg text-[10px] font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
-                                                                        >
-                                                                            SAVE CHANGES
-                                                                        </button>
-                                                                    </div>
-                                                                </motion.div>
-                                                            )}
+                                                                                    setDeliveryZones([...deliveryZones, resp.data]);
+                                                                                    setIsAddingZone(false);
+                                                                                    setNewZone({ name: '', price: '' });
+                                                                                    toast.success('Zone added');
+                                                                                }}
+                                                                                className="flex-1 bg-primary text-white py-2 rounded-lg text-[10px] font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                                                                            >
+                                                                                ADD ZONE
+                                                                            </button>
+                                                                        </div>
+                                                                    </motion.div>
+                                                                )}
+
+                                                                {editingZone && (
+                                                                    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="p-4 bg-primary/5 border border-primary/20 rounded-xl space-y-3">
+                                                                        <h4 className="text-[10px] font-bold uppercase tracking-widest text-primary">Edit Zone</h4>
+                                                                        <input
+                                                                            className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-xs outline-none"
+                                                                            value={editingZone.name}
+                                                                            onChange={e => setEditingZone({ ...editingZone, name: e.target.value })}
+                                                                        />
+                                                                        <input
+                                                                            type="number"
+                                                                            className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-xs outline-none"
+                                                                            value={editingZone.price}
+                                                                            onChange={e => setEditingZone({ ...editingZone, price: e.target.value })}
+                                                                        />
+                                                                        <div className="flex gap-2">
+                                                                            <button
+                                                                                onClick={() => setEditingZone(null)}
+                                                                                className="flex-1 bg-secondary text-foreground py-2 rounded-lg text-[10px] font-bold"
+                                                                            >
+                                                                                CANCEL
+                                                                            </button>
+                                                                            <button
+                                                                                onClick={async () => {
+                                                                                    try {
+                                                                                        await axios.patch(`${API_BASE}/api/merchants/${merchantId}/delivery-zones/${editingZone.id}`, {
+                                                                                            name: editingZone.name,
+                                                                                            price: parseFloat(editingZone.price)
+                                                                                        });
+                                                                                        setDeliveryZones(deliveryZones.map(z => z.id === editingZone.id ? editingZone : z));
+                                                                                        setEditingZone(null);
+                                                                                        toast.success('Zone updated');
+                                                                                    } catch (err) {
+                                                                                        toast.error('Failed to update zone');
+                                                                                    }
+                                                                                }}
+                                                                                className="flex-1 bg-primary text-white py-2 rounded-lg text-[10px] font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                                                                            >
+                                                                                SAVE CHANGES
+                                                                            </button>
+                                                                        </div>
+                                                                    </motion.div>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     </div>
+                                                    <button
+                                                        onClick={async () => {
+                                                            if (!merchant) return;
+                                                            try {
+                                                                await axios.patch(`${API_BASE}/api/merchants/${merchantId}`, {
+                                                                    name: merchant?.name,
+                                                                    systemPrompt: merchant?.systemPrompt,
+                                                                    menuImageUrl: merchant?.menuImageUrl,
+                                                                    baseDeliveryFee: merchant?.baseDeliveryFee,
+                                                                    location: merchant?.location,
+                                                                    operatingHours: merchant?.operatingHours,
+                                                                    paymentMethods: merchant?.paymentMethods,
+                                                                    isClosed: merchant?.isClosed
+                                                                });
+                                                                toast.success('Bot profile updated!');
+                                                            } catch (err) {
+                                                                toast.error('Failed to save changes');
+                                                            }
+                                                        }}
+                                                        className="w-full bg-primary text-primary-foreground py-4 rounded-2xl font-black shadow-lg shadow-primary/20 hover:opacity-90 active:scale-95 transition-all"
+                                                    >
+                                                        Save Bot Profile
+                                                    </button>
                                                 </div>
                                                 <button
-                                                    onClick={async () => {
-                                                        if (!merchant) return;
-                                                        try {
-                                                            await axios.patch(`${API_BASE}/api/merchants/${merchantId}`, {
-                                                                name: merchant?.name,
-                                                                systemPrompt: merchant?.systemPrompt,
-                                                                menuImageUrl: merchant?.menuImageUrl,
-                                                                baseDeliveryFee: merchant?.baseDeliveryFee,
-                                                                location: merchant?.location,
-                                                                operatingHours: merchant?.operatingHours,
-                                                                paymentMethods: merchant?.paymentMethods,
-                                                                isClosed: merchant?.isClosed
-                                                            });
-                                                            toast.success('Bot profile updated!');
-                                                        } catch (err) {
-                                                            toast.error('Failed to save changes');
-                                                        }
-                                                    }}
-                                                    className="w-full bg-primary text-primary-foreground py-4 rounded-2xl font-black shadow-lg shadow-primary/20 hover:opacity-90 active:scale-95 transition-all"
+                                                    className="w-full bg-secondary py-3 rounded-2xl font-bold text-sm hover:scale-[1.01] transition-all flex items-center justify-center gap-2"
+                                                    onClick={() => fetchDashboardData()}
                                                 >
-                                                    Save Bot Profile
+                                                    <RefreshCw className="w-4 h-4" /> Reset to Live
                                                 </button>
                                             </div>
-                                            <button
-                                                className="w-full bg-secondary py-3 rounded-2xl font-bold text-sm hover:scale-[1.01] transition-all flex items-center justify-center gap-2"
-                                                onClick={() => fetchDashboardData()}
-                                            >
-                                                <RefreshCw className="w-4 h-4" /> Reset to Live
-                                            </button>
+
+                                            {/* Chat Interface */}
+                                            <ChatSandbox merchantId={merchantId} systemPrompt={merchant?.systemPrompt} />
                                         </div>
+                                    </motion.div>
+                                )
+                            }
 
-                                        {/* Chat Interface */}
-                                        <ChatSandbox merchantId={merchantId} systemPrompt={merchant?.systemPrompt} />
-                                    </div>
-                                </motion.div>
-                            )}
-
-                            {activeTab === 'marketing' && (
-                                <MarketingView merchantId={merchantId} />
-                            )}
+                            {
+                                activeTab === 'marketing' && (
+                                    <MarketingView merchantId={merchantId} />
+                                )
+                            }
                         </>
                     )}
-                </div>
+                </div >
             </main >
 
             <AnimatePresence>
@@ -791,6 +828,13 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
                             fetchDashboardData();
                             setActiveTab('catalog');
                         }}
+                    />
+                )}
+                {receiptOrder && (
+                    <ReceiptView
+                        order={receiptOrder}
+                        merchant={merchant}
+                        onClose={() => setReceiptOrder(null)}
                     />
                 )}
             </AnimatePresence>
@@ -1181,7 +1225,7 @@ const StatItem = ({ label, value, change, accent }: any) => (
     </div>
 );
 
-const OrderRow = ({ order, index, onStatusUpdate, isSelected, onSelect }: { order: any, index: number, onStatusUpdate: (id: string, s: string) => void, isSelected: boolean, onSelect: (id: string) => void }) => {
+const OrderRow = ({ order, index, onStatusUpdate, isSelected, onSelect, onPrint }: { order: any, index: number, onStatusUpdate: (id: string, s: string) => void, isSelected: boolean, onSelect: (id: string) => void, onPrint?: () => void }) => {
     const statusColors: any = {
         PENDING: 'bg-orange-500/10 text-orange-500',
         CONFIRMED: 'bg-blue-500/10 text-blue-500',
@@ -1259,12 +1303,37 @@ const OrderRow = ({ order, index, onStatusUpdate, isSelected, onSelect }: { orde
                             Delivered (Notify)
                         </button>
                     )}
-                    <button className="p-2 border border-border rounded-xl text-muted-foreground hover:bg-secondary transition-all">
-                        <Plus className="w-4 h-4 rotate-45" />
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onPrint?.();
+                        }}
+                        className="p-2 bg-secondary text-foreground rounded-xl hover:bg-secondary/80 transition-all"
+                        title="Print Receipt"
+                    >
+                        <Printer className="w-4 h-4" />
                     </button>
                 </div>
+                <button
+                    onClick={() => (onSelect as any)?.(order.id) || null} // Reusing select logic or just place holder
+                    className="p-2 border border-border rounded-xl text-muted-foreground hover:bg-secondary transition-all"
+                >
+                    {/* Fallback for now if needed, but we used the prop below */}
+                    <Plus className="w-4 h-4 rotate-45" />
+                </button>
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onPrint();
+                    }}
+                    className="p-2 bg-secondary text-foreground rounded-xl hover:bg-secondary/80 transition-all"
+                    title="Print Receipt"
+                >
+                    <Printer className="w-4 h-4" />
+                </button>
             </div>
-        </motion.div>
+        </div>
+        </motion.div >
     );
 };
 
