@@ -3,6 +3,7 @@ import { OpenAI } from 'openai';
 import { UserContextService } from 'src/user-context/user-context.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { OrderService } from 'src/order/order.service';
+import * as fs from 'fs';
 
 @Injectable()
 export class OpenaiService {
@@ -83,6 +84,19 @@ export class OpenaiService {
         }
       }
 
+      // 1.5 Fetch Customer Order History for "Memory"
+      const customerOrders = await this.prisma.order.findMany({
+        where: { customerPhone: userID, merchantId: merchant.id },
+        include: { items: { include: { product: true } } },
+        orderBy: { createdAt: 'desc' },
+        take: 3
+      });
+
+      const orderMemory = customerOrders.length > 0
+        ? `\n\nCUSTOMER ORDER HISTORY (Last 3 orders):
+${customerOrders.map(o => `- Order ${o.shortId} on ${o.createdAt.toLocaleDateString()}: ${o.items.map(i => `${i.product.name} (x${i.quantity})`).join(', ')} (Total: ${o.totalAmount} GHS)`).join('\n')}`
+        : "";
+
       // 2. Build Industrial Context (Catalog - limited to top 20 items to save tokens)
       const topProducts = merchant.catalog.slice(0, 20);
       const catalogInfo = topProducts
@@ -107,6 +121,11 @@ You are a WhatsApp business order assistant for ${merchant.name}.
 
 Your role is to professionally assist customers who message the business on WhatsApp by helping them view products, place orders, and receive order confirmations. You must behave like a polite, efficient customer service agent, not a general-purpose AI or personal assistant.
 
+LANGUAGE SUPPORT
+- You are capable of understanding and responding in English and local Ghanaian languages (e.g., Twi, Ga, Fante).
+- If a customer speaks in Twi, you should respond in Twi while maintaining a professional tone.
+- If they speak English, respond in English.
+
 BUSINESS CONTEXT
 Business name: ${merchant.name}
 Business type: ${merchant.category}
@@ -115,6 +134,8 @@ Operating hours: ${merchant.operatingHours || 'Not Specified'}
 Payment methods: ${merchant.paymentMethods || 'Not Specified'}
 Delivery options: Base Delivery Fee: ${merchant.baseDeliveryFee || 0} GHS
 Menu Image Available: ${merchant.menuImageUrl ? 'YES' : 'NO'}
+${orderMemory}
+${closedInstruction}
 
 WHAT YOU OFFER
 - Show the product or food menu
@@ -472,6 +493,22 @@ Keep it very short and use emojis.`;
     } catch (error: any) {
       this.logger.error(`Vision Error: ${error.message}`);
       return [];
+    }
+  }
+
+  async transcribeAudio(filePath: string): Promise<string> {
+    const client = this.getOpenAIClient();
+    if (!client) return '';
+
+    try {
+      const resp = await client.audio.transcriptions.create({
+        file: fs.createReadStream(filePath),
+        model: 'whisper-1',
+      });
+      return resp.text;
+    } catch (error: any) {
+      this.logger.error(`Whisper Error: ${error.message}`);
+      return '';
     }
   }
 }

@@ -1,13 +1,15 @@
 import { Injectable, NotFoundException, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { WhatsappService } from '../whatsapp/whatsapp.service';
+import { NotificationGateway } from '../notification/notification.gateway';
 
 @Injectable()
 export class OrderService {
     constructor(
         private prisma: PrismaService,
         @Inject(forwardRef(() => WhatsappService))
-        private whatsapp: WhatsappService
+        private whatsapp: WhatsappService,
+        private readonly notification: NotificationGateway,
     ) { }
 
     private generateShortId() {
@@ -54,7 +56,7 @@ export class OrderService {
             }
         });
 
-        return (this.prisma.order as any).create({
+        const order = await (this.prisma.order as any).create({
             data: {
                 shortId: this.generateShortId(),
                 merchantId: data.merchantId,
@@ -76,6 +78,12 @@ export class OrderService {
             },
             include: { items: { include: { product: true } } }
         });
+
+        // Notify merchant via WebSocket
+        this.notification.emitToMerchant(data.merchantId, 'newOrder', order);
+        this.notification.emitToAdmin('newOrder', { merchantId: data.merchantId, ...order });
+
+        return order;
     }
 
     async getMerchantOrders(merchantId: string) {

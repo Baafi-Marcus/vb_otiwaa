@@ -28,6 +28,29 @@ model Merchant {
   customers             Customer[]
   orders                Order[]
   catalog               Product[]
+  campaigns             Campaign[]
+}
+
+model Campaign {
+  id          String   @id @default(uuid())
+  merchantId  String
+  name        String
+  message     String
+  status      String   @default("PENDING") // PENDING, SENDING, COMPLETED, FAILED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  merchant    Merchant @relation(fields: [merchantId], references: [id])
+  logs        CampaignLog[]
+}
+
+model CampaignLog {
+  id          String   @id @default(uuid())
+  campaignId  String
+  customerId  String
+  status      String   // DELIVERED, FAILED
+  error       String?
+  createdAt   DateTime @default(now())
+  campaign    Campaign @relation(fields: [campaignId], references: [id])
 }
 
 model Admin {
@@ -106,6 +129,7 @@ model Customer {
   lastSeen    DateTime @default(now())
   merchantId  String
   botPaused   Boolean  @default(false)
+  lastNudgedAt DateTime?
   merchant    Merchant @relation(fields: [merchantId], references: [id])
   orders      Order[]
 }

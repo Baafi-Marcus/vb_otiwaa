@@ -1,12 +1,12 @@
 import { Body, Controller, Get, Header, HttpCode, Logger, Post, Req, Inject, forwardRef } from '@nestjs/common';
 import { Request } from 'express';
 import { WhatsappService } from './whatsapp.service';
-import { AudioService } from 'src/audio/audio.service';
 import { StabilityaiService } from 'src/stabilityai/stabilityai.service';
 import { OpenaiService } from 'src/openai/openai.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { TwilioService } from 'src/twilio/twilio.service';
 import { UserContextService } from 'src/user-context/user-context.service';
+import { NotificationGateway } from 'src/notification/notification.gateway';
 
 @Controller('whatsapp')
 export class WhatsappController {
@@ -15,12 +15,12 @@ export class WhatsappController {
   constructor(
     private readonly whatsAppService: WhatsappService,
     private readonly stabilityaiService: StabilityaiService,
-    private readonly audioService: AudioService,
     @Inject(forwardRef(() => OpenaiService))
     private readonly openaiService: OpenaiService,
     private readonly prismaService: PrismaService,
     private readonly twilioService: TwilioService,
     private readonly context: UserContextService,
+    private readonly notification: NotificationGateway,
   ) { }
 
   @Get('webhook')
@@ -137,14 +137,19 @@ export class WhatsappController {
 
     if (mediaUrl) {
       if (mediaType?.startsWith('image/')) {
+        this.notification.emitToMerchant(merchant.id, 'newMessage', { from: sender, type: 'image', url: mediaUrl });
+        this.notification.emitToAdmin('newMessage', { merchantId: merchant.id, from: sender, type: 'image' });
         return this.processMediaMessage(sender, 'image', mediaUrl, contextId, messageSid);
       } else if (mediaType?.startsWith('audio/')) {
+        this.notification.emitToMerchant(merchant.id, 'newMessage', { from: sender, type: 'audio', url: mediaUrl });
         return this.processMediaMessage(sender, 'audio', mediaUrl, contextId, messageSid);
       }
     }
 
     // Process standard text messages
     if (messageText) {
+      this.notification.emitToMerchant(merchant.id, 'newMessage', { from: sender, text: messageText });
+      this.notification.emitToAdmin('newMessage', { merchantId: merchant.id, from: sender, text: messageText });
       return this.processTextMessage(sender, messageText, contextId, messageSid, host);
     }
 
@@ -318,26 +323,25 @@ export class WhatsappController {
     return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
   }
 
-  private async processMediaMessage(sender: string, type: 'image' | 'audio', url: string, contextId: string, messageID: string) {
+  private async processMediaMessage(sender: string, type: 'image' | 'audio', url: string, contextId: string, messageID: string, host?: string) {
     if (type === 'audio') {
       const download = await this.whatsAppService.downloadMedia(url, messageID);
       if (download.status === 'success') {
-        const transcribed = await this.audioService.convertAudioToText(download.data);
-        if (transcribed.status === 'success') {
-          const aiResponse = await this.openaiService.generateAIResponse(sender, transcribed.data, contextId);
-          await this.whatsAppService.sendWhatsAppMessage(sender, aiResponse);
+        const transcribed = await this.openaiService.transcribeAudio(download.data);
+        if (transcribed) {
+          this.logger.log(`[Whisper] Transcribed audio: "${transcribed}"`);
+          // Inform the user we heard them (optional, but good UX)
+          // await this.whatsAppService.sendWhatsAppMessage(sender, `👂 I heard: "${transcribed}"`);
 
-          // Optional: Send voice response back
-          const tts = await this.audioService.convertTextToSpeech(aiResponse);
-          if (tts.status === 'success') {
-            await this.whatsAppService.sendAudioByUrl(sender, tts.data);
-          }
+          // Process as a text message
+          return this.processTextMessage(sender, transcribed, contextId, messageID, host);
         }
       }
       return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
     }
 
     // Image analysis logic could go here
+    this.logger.log(`[Media] Received ${type} message from ${sender}. URL: ${url}`);
     return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
   }
 }

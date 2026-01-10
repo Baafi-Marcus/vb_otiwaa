@@ -2,6 +2,7 @@ import { Injectable, Logger, ConflictException, InternalServerErrorException, No
 import { PrismaService } from '../prisma/prisma.service';
 import { OpenaiService } from '../openai/openai.service';
 import { StabilityaiService } from '../stabilityai/stabilityai.service';
+import { AnalyticsService } from '../analytics/analytics.service';
 import { WhatsappService } from '../whatsapp/whatsapp.service';
 
 @Injectable()
@@ -13,6 +14,7 @@ export class MerchantService {
         private openai: OpenaiService,
         private stability: StabilityaiService,
         private whatsapp: WhatsappService,
+        private analytics: AnalyticsService,
     ) { }
 
     async saveImage(file: any): Promise<string> {
@@ -333,15 +335,19 @@ export class MerchantService {
             return { date, revenue };
         });
 
+        // Advanced Analytics
+        const advancedAnalytics = await this.analytics.getMerchantAnalytics(merchantId);
+
         return {
             merchant,
             orders,
             analytics: {
-                totalOrders,
+                ...advancedAnalytics.metrics,
+                totalOrders: allOrders.length,
                 totalRevenue,
                 avgOrderValue,
-                revenueHistory,
-                activeCustomers: await this.prisma.customer.count({ where: { merchantId } })
+                revenueHistory: advancedAnalytics.revenueTrends, // Use the new 7-day trend
+                topProducts: advancedAnalytics.topProducts
             }
         };
     }

@@ -27,6 +27,7 @@ import {
     PlayCircle
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { useSocket } from '../../context/SocketContext';
 
 const SidebarLink = ({ active, onClick, icon: Icon, label }: any) => (
     <button
@@ -56,6 +57,27 @@ export const AdminDashboard: React.FC<{ onMerchantSelect: (id: string) => void }
             setLoading(false);
         }
     };
+
+    const { socket } = useSocket();
+
+    React.useEffect(() => {
+        if (socket) {
+            socket.emit('joinAdmin');
+
+            socket.on('newOrder', (data) => {
+                toast(`🛒 New Order in Platform: ${data.shortId}`, { icon: '📦' });
+            });
+
+            socket.on('newMessage', (msg) => {
+                toast(`✉️ Message arrived for Merchant ${msg.merchantId}`, { icon: '🤖' });
+            });
+
+            return () => {
+                socket.off('newOrder');
+                socket.off('newMessage');
+            };
+        }
+    }, [socket]);
 
     React.useEffect(() => {
         fetchMerchants();

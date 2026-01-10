@@ -14,7 +14,8 @@ import {
     Upload,
     X,
     CheckCircle2,
-    Printer
+    Printer,
+    Bell
 } from 'lucide-react';
 import {
     AreaChart,
@@ -31,6 +32,7 @@ import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import { DashboardStats } from './DashboardStats';
 import { ReceiptView } from './ReceiptView';
+import { useSocket } from '../../context/SocketContext';
 
 const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3000' : '';
 
@@ -52,8 +54,30 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
     const [editingZone, setEditingZone] = useState<any>(null);
     const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
     const [receiptOrder, setReceiptOrder] = useState<any>(null);
-
     const [localPreview, setLocalPreview] = useState<string | null>(null);
+    const { socket } = useSocket();
+
+    useEffect(() => {
+        if (socket && merchantId) {
+            socket.emit('joinMerchant', merchantId);
+
+            socket.on('newOrder', (order) => {
+                toast.success(`🎉 New Order Received: ${order.shortId}`, { duration: 6000 });
+                setOrders(prev => [order, ...prev]);
+                // Refresh full data to update stats too
+                fetchDashboardData(true);
+            });
+
+            socket.on('newMessage', (msg) => {
+                toast(`💬 Message from ${msg.from}: ${msg.text || '[Media]'}`, { icon: '📩' });
+            });
+
+            return () => {
+                socket.off('newOrder');
+                socket.off('newMessage');
+            };
+        }
+    }, [socket, merchantId]);
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -1356,30 +1380,47 @@ const ProductCard = ({ product, onEdit, onDelete }: { product?: any, onEdit: () 
 
 const MarketingView: React.FC<{ merchantId: string | null }> = ({ merchantId }) => {
     const [customers, setCustomers] = useState<any[]>([]);
-    // const [loading, setLoading] = useState(false); // Unused
+    const [campaigns, setCampaigns] = useState<any[]>([]);
     const [broadcastMsg, setBroadcastMsg] = useState('');
+    const [campaignName, setCampaignName] = useState('');
     const [sending, setSending] = useState(false);
 
-    useEffect(() => {
+    const fetchData = async () => {
         if (!merchantId) return;
-        // setLoading(true);
-        axios.get(`${API_BASE}/api/merchants/${merchantId}/customers`)
-            .then(res => setCustomers(res.data))
-            .catch(() => toast.error('Failed to load customers'))
-        // .finally(() => setLoading(false));
+        try {
+            const [custResp, campResp] = await Promise.all([
+                axios.get(`${API_BASE}/api/merchants/${merchantId}/customers`),
+                axios.get(`${API_BASE}/api/marketing/${merchantId}/campaigns`)
+            ]);
+            setCustomers(custResp.data);
+            setCampaigns(campResp.data);
+        } catch (err) {
+            toast.error('Failed to load marketing data');
+        }
+    };
+
+    useEffect(() => {
+        fetchData();
     }, [merchantId]);
 
     const handleBroadcast = async () => {
-        if (!broadcastMsg.trim() || sending) return;
+        if (!broadcastMsg.trim() || !campaignName.trim() || sending) {
+            toast.error('Please provide a campaign name and message');
+            return;
+        }
         setSending(true);
         try {
-            await axios.post(`${API_BASE}/api/merchants/${merchantId}/broadcast`, {
-                message: broadcastMsg
+            await axios.post(`${API_BASE}/api/marketing/${merchantId}/campaign`, {
+                name: campaignName,
+                message: broadcastMsg,
+                customerIds: customers.map((c: any) => c.id)
             });
-            toast.success('Campaign sent successfully!');
+            toast.success('Campaign started successfully!');
             setBroadcastMsg('');
+            setCampaignName('');
+            fetchData(); // Refresh history
         } catch (err) {
-            toast.error('Failed to send campaign');
+            toast.error('Failed to start campaign');
         } finally {
             setSending(false);
         }
@@ -1403,6 +1444,13 @@ const MarketingView: React.FC<{ merchantId: string | null }> = ({ merchantId }) 
                     </div>
 
                     <div className="space-y-4">
+                        <input
+                            type="text"
+                            className="w-full bg-secondary/20 border border-border rounded-xl p-4 text-sm font-bold outline-none focus:ring-1 focus:ring-primary transition-all"
+                            placeholder="Campaign Name (e.g., Weekend Promo)"
+                            value={campaignName}
+                            onChange={(e) => setCampaignName(e.target.value)}
+                        />
                         <textarea
                             className="w-full h-40 bg-secondary/20 border border-border rounded-2xl p-4 text-sm font-medium resize-none outline-none focus:ring-1 focus:ring-primary transition-all"
                             placeholder="Type your message here... (e.g., 'Check out our new menu!')"
@@ -1425,15 +1473,41 @@ const MarketingView: React.FC<{ merchantId: string | null }> = ({ merchantId }) 
                     </div>
                 </div>
 
-                {/* Audience Stats */}
+                {/* Audience Stats & History */}
                 <div className="space-y-6">
-                    <div className="bg-card border border-border rounded-3xl p-6 space-y-4">
+                    <div className="bg-card border border-border rounded-3xl p-6 space-y-4 shadow-sm">
                         <h4 className="font-bold text-sm text-muted-foreground uppercase tracking-widest">Audience Growth</h4>
                         <div className="text-4xl font-black">{customers.length}</div>
                         <div className="text-sm text-emerald-500 font-bold flex items-center gap-1">
                             <Sparkles className="w-4 h-4" /> +{customers.filter(c => new Date(c.createdAt) > new Date(Date.now() - 7 * 86400000)).length} this week
                         </div>
                     </div>
+
+                    <div className="bg-card border border-border rounded-3xl p-6 space-y-4 shadow-sm">
+                        <h4 className="font-bold text-sm text-muted-foreground uppercase tracking-widest">Recent Campaigns</h4>
+                        <div className="space-y-3">
+                            {campaigns.length === 0 ? (
+                                <p className="text-xs text-muted-foreground italic">No campaigns yet.</p>
+                            ) : (
+                                campaigns.slice(0, 5).map((camp: any) => (
+                                    <div key={camp.id} className="p-3 rounded-xl bg-secondary/20 border border-border/50 text-xs">
+                                        <div className="flex justify-between font-bold mb-1">
+                                            <span>{camp.name}</span>
+                                            <span className={`px-2 py-0.5 rounded ${camp.status === 'COMPLETED' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-blue-500/10 text-blue-500'}`}>
+                                                {camp.status}
+                                            </span>
+                                        </div>
+                                        <p className="text-muted-foreground line-clamp-1">{camp.message}</p>
+                                        <div className="mt-2 text-[10px] text-muted-foreground/60 flex justify-between">
+                                            <span>{new Date(camp.createdAt).toLocaleDateString()}</span>
+                                            <span>{camp.logs?.length || 0} recipients</span>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+
                     <div className="bg-blue-500/10 border border-blue-500/20 rounded-3xl p-6 space-y-2">
                         <h4 className="font-bold text-sm text-blue-500 uppercase tracking-widest">Pro Tip</h4>
                         <p className="text-sm text-muted-foreground/80">Use emojis in your broadcasts to increase engagement rates by up to 40%.</p>
@@ -1473,16 +1547,28 @@ const MarketingView: React.FC<{ merchantId: string | null }> = ({ merchantId }) 
                                         <td className="px-6 py-4 text-right flex justify-end gap-2">
                                             <button
                                                 onClick={async () => {
+                                                    try {
+                                                        await axios.post(`${API_BASE}/api/nudge/manual/${c.id}`);
+                                                        toast.success('Nudge sent to ' + (c.name || c.phoneNumber));
+                                                    } catch (err) {
+                                                        toast.error('Failed to send nudge');
+                                                    }
+                                                }}
+                                                className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-primary text-primary-foreground hover:scale-105 transition-all flex items-center gap-1"
+                                            >
+                                                <Bell className="w-3 h-3" /> Nudge
+                                            </button>
+                                            <button
+                                                onClick={async () => {
                                                     const newState = !c.botPaused;
                                                     await axios.patch(`${API_BASE}/api/merchants/${merchantId}/customers/${c.id}/toggle-bot`, { paused: newState });
                                                     setCustomers(customers.map(cust => cust.id === c.id ? { ...cust, botPaused: newState } : cust));
                                                     toast.success(newState ? 'AI Paused (Manual Mode)' : 'AI Resumed');
                                                 }}
-                                                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${c.botPaused ? 'bg-amber-500 text-white' : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'}`}
+                                                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${c.botPaused ? 'bg-amber-500 text-white' : 'bg-secondary text-foreground hover:bg-secondary/80'}`}
                                             >
                                                 {c.botPaused ? 'Resume AI' : 'Pause AI'}
                                             </button>
-                                            <button className="text-primary font-bold hover:underline">View History</button>
                                         </td>
                                     </tr>
                                 ))

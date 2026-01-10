@@ -14,6 +14,7 @@ import { AdminDashboard } from './components/admin/AdminDashboard';
 import { MerchantDashboard } from './components/merchant/MerchantDashboard';
 import LandingPage from './components/LandingPage';
 import { Toaster, toast } from 'react-hot-toast';
+import { SocketProvider } from './context/SocketContext';
 
 type UserRole = 'guest' | 'admin' | 'merchant';
 
@@ -24,14 +25,16 @@ const API_BASE = import.meta.env.VITE_API_BASE || '';
    ---------------------------------------------------------------------------------- */
 function App() {
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-background">
-      <Toaster position="top-right" />
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/trymeFF" element={<AuthPage desiredRole="admin" />} />
-        <Route path="/:merchantId" element={<MerchantRouteWrapper />} />
-      </Routes>
-    </div>
+    <SocketProvider>
+      <div className="h-screen flex flex-col overflow-hidden bg-background">
+        <Toaster position="top-right" />
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/trymeFF" element={<AuthPage desiredRole="admin" />} />
+          <Route path="/:merchantId" element={<MerchantRouteWrapper />} />
+        </Routes>
+      </div>
+    </SocketProvider>
   );
 }
 
@@ -260,8 +263,8 @@ function AuthPage({ desiredRole, forcedUsername }: { desiredRole: UserRole, forc
               animate={{ scale: 1 }}
               transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
               className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl mx-auto flex items-center justify-center mb-3 sm:mb-4 relative overflow-hidden ${desiredRole === 'admin'
-                  ? 'bg-gradient-to-br from-blue-500 to-blue-600'
-                  : 'bg-gradient-to-br from-purple-500 to-pink-600'
+                ? 'bg-gradient-to-br from-blue-500 to-blue-600'
+                : 'bg-gradient-to-br from-purple-500 to-pink-600'
                 }`}
             >
               <div className="absolute inset-0 bg-white/20 animate-pulse" />
@@ -323,8 +326,8 @@ function AuthPage({ desiredRole, forcedUsername }: { desiredRole: UserRole, forc
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               className={`relative w-full py-3.5 sm:py-4 rounded-2xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-2 transition-all overflow-hidden ${desiredRole === 'admin'
-                  ? 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400'
-                  : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500'
+                ? 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400'
+                : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500'
                 } disabled:opacity-50 disabled:cursor-not-allowed shadow-lg ${desiredRole === 'admin' ? 'shadow-blue-500/30' : 'shadow-purple-500/30'
                 }`}
             >
