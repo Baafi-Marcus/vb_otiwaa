@@ -8,49 +8,49 @@ datasource db {
 }
 
 model Merchant {
-  id                    String     @id @default(uuid())
+  id                    String         @id @default(uuid())
   name                  String
-  whatsappPhoneNumberId String     @unique
-  password              String?    // Added for authentication
+  whatsappPhoneNumberId String         @unique
   systemPrompt          String?
-  createdAt             DateTime   @default(now())
-  updatedAt             DateTime   @updatedAt
-  baseDeliveryFee       Decimal    @default(0) @db.Decimal(10, 2)
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  baseDeliveryFee       Decimal        @default(0) @db.Decimal(10, 2)
   category              String?
   clientVision          String?
-  isClosed              Boolean    @default(false)
+  isClosed              Boolean        @default(false)
   location              String?
   menuImageUrl          String?
   operatingHours        String?
   paymentMethods        String?
   twilioPhoneNumber     String?
-  deliveryZones         DeliveryZone[]
+  password              String?
+  campaigns             Campaign[]
   customers             Customer[]
+  deliveryZones         DeliveryZone[]
   orders                Order[]
   catalog               Product[]
-  campaigns             Campaign[]
 }
 
 model Campaign {
-  id          String   @id @default(uuid())
-  merchantId  String
-  name        String
-  message     String
-  status      String   @default("PENDING") // PENDING, SENDING, COMPLETED, FAILED
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  merchant    Merchant @relation(fields: [merchantId], references: [id])
-  logs        CampaignLog[]
+  id         String        @id @default(uuid())
+  merchantId String
+  name       String
+  message    String
+  status     String        @default("PENDING")
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  merchant   Merchant      @relation(fields: [merchantId], references: [id])
+  logs       CampaignLog[]
 }
 
 model CampaignLog {
-  id          String   @id @default(uuid())
-  campaignId  String
-  customerId  String
-  status      String   // DELIVERED, FAILED
-  error       String?
-  createdAt   DateTime @default(now())
-  campaign    Campaign @relation(fields: [campaignId], references: [id])
+  id         String   @id @default(uuid())
+  campaignId String
+  customerId String
+  status     String
+  error      String?
+  createdAt  DateTime @default(now())
+  campaign   Campaign @relation(fields: [campaignId], references: [id])
 }
 
 model Admin {
@@ -63,7 +63,7 @@ model Admin {
 
 model ApiKey {
   id        String   @id @default(uuid())
-  provider  String   // openai, anthropic, azure
+  provider  String
   key       String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -95,7 +95,6 @@ model Product {
 
 model Order {
   id              String      @id @default(uuid())
-  shortId         String?     @unique
   customerName    String
   customerPhone   String
   merchantId      String
@@ -107,6 +106,7 @@ model Order {
   fulfillmentMode String?
   customerId      String?
   location        String?
+  shortId         String?     @unique
   customer        Customer    @relation(fields: [customerPhone], references: [phoneNumber])
   merchant        Merchant    @relation(fields: [merchantId], references: [id])
   items           OrderItem[]
@@ -123,15 +123,15 @@ model OrderItem {
 }
 
 model Customer {
-  id          String   @id @default(uuid())
-  phoneNumber String   @unique
-  name        String?
-  lastSeen    DateTime @default(now())
-  merchantId  String
-  botPaused   Boolean  @default(false)
+  id           String    @id @default(uuid())
+  phoneNumber  String    @unique
+  name         String?
+  lastSeen     DateTime  @default(now())
+  merchantId   String
+  botPaused    Boolean   @default(false)
   lastNudgedAt DateTime?
-  merchant    Merchant @relation(fields: [merchantId], references: [id])
-  orders      Order[]
+  merchant     Merchant  @relation(fields: [merchantId], references: [id])
+  orders       Order[]
 }
 
 model StoredImage {
