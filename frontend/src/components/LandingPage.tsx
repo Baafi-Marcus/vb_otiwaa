@@ -21,17 +21,17 @@ export default function LandingPage() {
                     transition={{ duration: 0.8, ease: "easeOut" }}
                     className="max-w-2xl w-full space-y-10 text-center lg:text-left"
                 >
-                    <div className="space-y-6">
+                    <div className="flex flex-col lg:flex-row items-center gap-8">
                         <motion.div
                             initial={{ scale: 0.8, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             transition={{ duration: 0.5, delay: 0.2 }}
-                            className="w-32 h-32 mx-auto lg:mx-0"
+                            className="w-24 h-24 lg:w-32 lg:h-32 flex-shrink-0"
                         >
                             <img src="/logo-white.png" alt="VB.OTIWAA Logo" className="w-full h-full object-contain" />
                         </motion.div>
 
-                        <div className="space-y-2">
+                        <div className="space-y-2 text-center lg:text-left">
                             <h1 className="text-6xl lg:text-8xl font-black tracking-tighter leading-none bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60">
                                 VB.OTIWAA
                             </h1>
@@ -39,12 +39,12 @@ export default function LandingPage() {
                                 create.build.inspire.
                             </p>
                         </div>
-
-                        <p className="text-base lg:text-lg text-muted-foreground/80 leading-relaxed max-w-lg mx-auto lg:mx-0">
-                            Empowering small businesses with AI-driven WhatsApp commerce.
-                            Automate orders, engage customers, and scale effortlessy with the power of intelligent conversations.
-                        </p>
                     </div>
+
+                    <p className="text-base lg:text-lg text-muted-foreground/80 leading-relaxed max-w-lg mx-auto lg:mx-0 text-center lg:text-left">
+                        Empowering small businesses with AI-driven WhatsApp commerce.
+                        Automate orders, engage customers, and scale effortlessy with the power of intelligent conversations.
+                    </p>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <FeatureCard
@@ -74,16 +74,20 @@ export default function LandingPage() {
                 >
                     <ChatDemo />
                 </motion.div>
-            </div>
+            </div >
 
-            <footer className="w-full py-6 text-center text-xs font-medium text-muted-foreground/40 relative z-10 uppercase tracking-widest flex items-center justify-between px-8">
-                <p>&copy; {new Date().getFullYear()} VB.OTIWAA Inc.</p>
-                <div className="flex items-center gap-2">
+            <footer className="w-full py-8 text-center text-xs font-bold text-muted-foreground/60 relative z-10 uppercase tracking-widest flex flex-col md:flex-row items-center justify-between px-8 gap-4 bg-black/20 backdrop-blur-sm border-t border-white/5">
+                <div className="flex items-center gap-4">
+                    <span>&copy; {new Date().getFullYear()} FuseWeb Service</span>
+                    <span className="hidden md:inline text-white/20">|</span>
+                    <span>WhatsApp: 0276019796</span>
+                </div>
+                <div className="flex items-center gap-2 text-emerald-500/80">
                     <ShieldCheck className="w-3 h-3" />
                     <span>Secure Enterprise Platform</span>
                 </div>
             </footer>
-        </div>
+        </div >
     );
 }
 
