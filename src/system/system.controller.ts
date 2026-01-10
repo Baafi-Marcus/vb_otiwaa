@@ -12,6 +12,11 @@ export class SystemController {
         return this.systemService.testMediaSend(body.to, body.url);
     }
 
+    @Get('health')
+    health() {
+        return { status: 'ok', time: new Date().toISOString() };
+    }
+
     @UseGuards(JwtAuthGuard)
     @Get('api-keys')
     async getApiKeys() {
