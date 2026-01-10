@@ -21,8 +21,13 @@ export class UploadsController {
 
         this.logger.log(`[Uploads] Serving image ${id} (${image.mimeType}, ${image.data.length} bytes) to User-Agent: ${userAgent}`);
 
-        res.setHeader('Content-Type', image.mimeType);
-        res.setHeader('Content-Length', image.data.length);
-        res.send(image.data);
+        res.set({
+            'Content-Type': image.mimeType,
+            'Content-Length': image.data.length,
+            'Accept-Ranges': 'bytes',
+            'Cache-Control': 'public, max-age=3600',
+        });
+
+        res.end(image.data);
     }
 }
