@@ -21,4 +21,10 @@ export class SystemController {
     async deleteApiKey(@Param('id') id: string) {
         return this.systemService.deleteApiKey(id);
     }
+
+    // Public test endpoint for media delivery
+    @Post('test-media')
+    async testMedia(@Body() body: { to: string, url: string }) {
+        return this.systemService.testMediaSend(body.to, body.url);
+    }
 }
