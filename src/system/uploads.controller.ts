@@ -24,6 +24,7 @@ export class UploadsController {
         res.set({
             'Content-Type': image.mimeType,
             'Content-Length': image.data.length,
+            'Content-Disposition': `inline; filename="${image.filename}"`,
             'Accept-Ranges': 'bytes',
             'Cache-Control': 'public, max-age=3600',
         });

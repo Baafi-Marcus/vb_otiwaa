@@ -290,10 +290,10 @@ export class WhatsappController {
 
         this.logger.log(`[MENU_DEBUG] Final Image URL: ${imageUrl}`);
 
-        if (cleanResponse) {
-          await this.whatsAppService.sendWhatsAppMessage(sender, cleanResponse);
-        }
-        await this.whatsAppService.sendImageByUrl(sender, imageUrl, 'Here is our menu! 😊');
+        // Combine text and image into one message for better reliability
+        const finalCaption = cleanResponse ? `${cleanResponse}\n\nHere is our menu! 😊` : 'Here is our menu! 😊';
+
+        await this.whatsAppService.sendImageByUrl(sender, imageUrl, finalCaption);
         return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
       } else if (merchant) {
         this.logger.warn(`[MENU_DEBUG] Merchant found but menuImageUrl is EMPTY/NULL`);
