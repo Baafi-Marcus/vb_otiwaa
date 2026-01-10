@@ -80,7 +80,15 @@ export default function LandingPage() {
                 <div className="flex items-center gap-4">
                     <span>&copy; {new Date().getFullYear()} FuseWeb Service</span>
                     <span className="hidden md:inline text-white/20">|</span>
-                    <span>WhatsApp: 0276019796</span>
+                    <a
+                        href="https://wa.me/233276019796"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:text-emerald-400 transition-colors flex items-center gap-1"
+                    >
+                        <Send className="w-3 h-3" />
+                        WhatsApp: 0276019796
+                    </a>
                 </div>
                 <div className="flex items-center gap-2 text-emerald-500/80">
                     <ShieldCheck className="w-3 h-3" />
@@ -115,6 +123,10 @@ function ChatDemo() {
             { text: "Hello! 👋 Welcome to Tasty Bytes. Here is our menu...", isBot: true, delay: 2000, hasImage: true },
             { text: "1x Jollof Combo please", isBot: false, delay: 3500 },
             { text: "Great choice! That's GHS 45. Delivery or Pickup?", isBot: true, delay: 4500 },
+            { text: "Delivery to East Legon", isBot: false, delay: 6000 },
+            { text: "Understood. Delivery fee is GHS 15. Total: GHS 60.\nReply 'CONFIRM' to proceed.", isBot: true, delay: 7500 },
+            { text: "CONFIRM", isBot: false, delay: 9000 },
+            { text: "Order #1234 CONFIRMED! 🚀\nWe are preparing your food now.", isBot: true, delay: 10500 },
         ];
 
         let timeouts: any[] = [];
@@ -129,12 +141,7 @@ function ChatDemo() {
         // Loop animation
         const resetT = setTimeout(() => {
             setMessages([]);
-            // Trigger re-render to restart effect effectively? 
-            // In a real app we'd use a more robust loop, but this is a simple demo
-            // Let's just clear for now, effect dependency handles mount only.
-            // To loop, we can just clear and let the user refresh or set a state to trigger re-run.
-            // For this simple demo, one run is fine, or we can make it loop by toggling a key.
-        }, 8000);
+        }, 14000); // Extended loop time
         timeouts.push(resetT);
 
         return () => timeouts.forEach(clearTimeout);
