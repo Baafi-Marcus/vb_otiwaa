@@ -775,6 +775,7 @@ const SystemSettings = () => {
                             <option value="openai">OpenAI</option>
                             <option value="anthropic">Anthropic</option>
                             <option value="azure">Azure OpenAI</option>
+                            <option value="github">GitHub Models</option>
                         </select>
                         <input
                             type="password"

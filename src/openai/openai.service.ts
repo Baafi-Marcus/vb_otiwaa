@@ -14,36 +14,77 @@ export class OpenaiService {
     private readonly orderService: OrderService,
   ) { }
 
-  private get apiKeys() {
-    // Prioritize a single private key if provided
+  private async getActiveKeys() {
+    // 1. Try fetching from Database first (Dynamic Keys)
+    try {
+      const dbKeys = await (this.prisma as any).apiKey.findMany();
+      if (dbKeys.length > 0) {
+        return dbKeys.map(k => ({
+          key: k.key.trim().replace(/^"|"$/g, ''),
+          provider: k.provider.toLowerCase(),
+          id: k.id
+        }));
+      }
+    } catch (e) {
+      this.logger.warn(`Failed to fetch DB keys: ${e.message}. Falling back to ENV.`);
+    }
+
+    // 2. Fallback to ENV keys (Legacy)
     const singleKey = process.env.OPENAI_API_KEY;
     if (singleKey && singleKey.trim() !== '') {
-      return [singleKey.trim().replace(/^"|"$/g, '')];
+      return [{
+        key: singleKey.trim().replace(/^"|"$/g, ''),
+        provider: 'openai'
+      }];
     }
 
-    // Strip quotes if present in the environment variable
     const rawKeys = process.env.OPENAI_API_KEYS || '';
     const cleanedKeys = rawKeys.replace(/^"|"$/g, '');
-    return cleanedKeys.split(',').map(k => k.trim().replace(/^"|"$/g, ''));
+    return cleanedKeys.split(',').filter(k => k.trim()).map(k => ({
+      key: k.trim().replace(/^"|"$/g, ''),
+      provider: 'openai'
+    }));
   }
+
   private static currentKeyIndex = 0;
 
-  private getOpenAIClient() {
-    const keys = this.apiKeys;
-    const key = keys[OpenaiService.currentKeyIndex];
+  private async getOpenAIClient() {
+    const keys = await this.getActiveKeys();
 
-    if (!key || key.trim() === '') {
-      this.logger.error('OpenAI API Key is missing or empty! System will not be able to generate responses.');
+    if (keys.length === 0) {
+      this.logger.error('No AI API Keys found in DB or ENV!');
       return null;
     }
+
+    // Protect against index drift if key count changed
+    if (OpenaiService.currentKeyIndex >= keys.length) {
+      OpenaiService.currentKeyIndex = 0;
+    }
+
+    const keyConfig = keys[OpenaiService.currentKeyIndex];
 
     // Rotate index for next call
     OpenaiService.currentKeyIndex = (OpenaiService.currentKeyIndex + 1) % keys.length;
 
-    return new OpenAI({
-      apiKey: key,
-      baseURL: process.env.OPENAI_BASE_URL || 'https://openrouter.ai/api/v1',
-    });
+    this.logger.log(`[AI] Using provider: ${keyConfig.provider} (${OpenaiService.currentKeyIndex}/${keys.length})`);
+
+    let baseURL = process.env.OPENAI_BASE_URL || 'https://openrouter.ai/api/v1';
+    let model = process.env.OPENAI_MODEL || 'gpt-4o';
+
+    if (keyConfig.provider === 'github') {
+      baseURL = 'https://models.inference.ai.azure.com';
+      // GitHub Marketplace uses gpt-4o, llama-3.1-405b, etc. 
+      // We'll keep the model as is unless specifically github models have different names
+    }
+
+    return {
+      client: new OpenAI({
+        apiKey: keyConfig.key,
+        baseURL: baseURL,
+      }),
+      model: model,
+      provider: keyConfig.provider
+    };
   }
   private readonly logger = new Logger(OpenaiService.name);
 
@@ -206,18 +247,18 @@ Keep it very short and use emojis.`;
       );
 
       let lastError;
-      const keys = this.apiKeys;
-
       // Try ALL available keys before giving up
+      const keys = await this.getActiveKeys();
+
       for (let attempt = 0; attempt < keys.length; attempt++) {
         try {
-          const model = process.env.OPENAI_MODEL || 'gpt-4o';
-          const client = this.getOpenAIClient();
-          if (!client) {
+          const clientConfig = await this.getOpenAIClient();
+          if (!clientConfig) {
             this.logger.error(`Attempt ${attempt + 1}/${keys.length}: Skipping due to null client.`);
             continue;
           }
-          this.logger.log(`Attempt ${attempt + 1}/${keys.length}: Testing Key Index ${OpenaiService.currentKeyIndex} (Model: ${model})`);
+          const { client, model, provider } = clientConfig;
+          this.logger.log(`Attempt ${attempt + 1}/${keys.length}: Testing Provider ${provider} (Model: ${model})`);
 
           const tools: any[] = [
             {
@@ -376,13 +417,14 @@ Keep it very short and use emojis.`;
 
       OUTPUT: Only provide the final system prompt text. No titles, no explanations. Start directly with "You are..."`;
 
-      const keys = this.apiKeys;
+      const keys = await this.getActiveKeys();
       let lastError;
 
       for (let attempt = 0; attempt < keys.length; attempt++) {
         try {
-          const model = process.env.OPENAI_MODEL || 'gpt-4o';
-          const client = this.getOpenAIClient();
+          const clientConfig = await this.getOpenAIClient();
+          if (!clientConfig) continue;
+          const { client, model } = clientConfig;
 
           const response = await client.chat.completions.create({
             messages: [{ role: 'user', content: prompt }],
@@ -405,8 +447,9 @@ Keep it very short and use emojis.`;
   }
 
   async generateSandboxResponse(systemPrompt: string, userMessage: string): Promise<string> {
-    const model = process.env.OPENAI_MODEL || 'gpt-4o';
-    const client = this.getOpenAIClient();
+    const clientConfig = await this.getOpenAIClient();
+    if (!clientConfig) return 'No AI Client available.';
+    const { client, model } = clientConfig;
 
     try {
       const response = await client.chat.completions.create({
@@ -426,8 +469,9 @@ Keep it very short and use emojis.`;
   }
 
   async analyzeMenuImage(imageUrl: string): Promise<any[]> {
-    const model = process.env.OPENAI_MODEL || 'gpt-4o';
-    const client = this.getOpenAIClient();
+    const clientConfig = await this.getOpenAIClient();
+    if (!clientConfig) return [];
+    const { client, model } = clientConfig;
 
     try {
       this.logger.log(`[Vision] Analyzing menu image: ${imageUrl}`);
@@ -497,8 +541,9 @@ Keep it very short and use emojis.`;
   }
 
   async transcribeAudio(filePath: string): Promise<string> {
-    const client = this.getOpenAIClient();
-    if (!client) return '';
+    const clientConfig = await this.getOpenAIClient();
+    if (!clientConfig) return '';
+    const { client } = clientConfig;
 
     try {
       const resp = await client.audio.transcriptions.create({
