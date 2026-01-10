@@ -1,30 +1,24 @@
-import { Controller, Get, Post, Body } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { Controller, Get, Post, Delete, Body, Param, UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { SystemService } from './system.service';
 
 @Controller('system')
+@UseGuards(JwtAuthGuard)
 export class SystemController {
-    constructor(private prisma: PrismaService) { }
+    constructor(private readonly systemService: SystemService) { }
 
-    @Get('config')
-    async getConfig() {
-        const configs = await this.prisma.systemConfig.findMany();
-        return configs.reduce((acc, curr) => ({ ...acc, [curr.key]: curr.value }), {});
+    @Get('api-keys')
+    async getApiKeys() {
+        return this.systemService.getApiKeys();
     }
 
-    @Post('config')
-    async updateConfig(@Body() data: { key: string; value: string }) {
-        return this.prisma.systemConfig.upsert({
-            where: { key: data.key },
-            update: { value: data.value },
-            create: { key: data.key, value: data.value },
-        });
+    @Post('api-keys')
+    async addApiKey(@Body() body: { provider: string; key: string }) {
+        return this.systemService.addApiKey(body.provider, body.key);
     }
 
-    @Get('logs')
-    async getLogs() {
-        return this.prisma.webhookLog.findMany({
-            orderBy: { createdAt: 'desc' },
-            take: 50,
-        });
+    @Delete('api-keys/:id')
+    async deleteApiKey(@Param('id') id: string) {
+        return this.systemService.deleteApiKey(id);
     }
 }

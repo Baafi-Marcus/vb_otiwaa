@@ -669,87 +669,193 @@ const MerchantDirectory = ({ merchants, onSelect, loading }: any) => {
 };
 
 const SystemSettings = () => {
-    const [logs, setLogs] = useState<any[]>([]);
-    const [configs, setConfigs] = useState<any>(null);
+    const [apiKeys, setApiKeys] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
+    const [newKey, setNewKey] = useState({ provider: 'openai', key: '' });
+    const [adding, setAdding] = useState(false);
 
-    const fetchData = async () => {
+    const fetchApiKeys = async () => {
         setLoading(true);
         try {
-            const [cResp, lResp] = await Promise.all([
-                axios.get(`${API_BASE}/api/system/configs`),
-                axios.get(`${API_BASE}/api/system/logs`)
-            ]);
-            setConfigs(cResp.data);
-            setLogs(lResp.data);
+            const resp = await axios.get(`${API_BASE}/api/system/api-keys`);
+            setApiKeys(resp.data);
         } catch (err) {
-            console.error('Failed to fetch settings');
+            toast.error('Failed to fetch API keys');
         } finally {
             setLoading(false);
         }
     };
 
+    const handleAddKey = async () => {
+        if (!newKey.key.trim()) {
+            toast.error('Please enter an API key');
+            return;
+        }
+
+        setAdding(true);
+        try {
+            await axios.post(`${API_BASE}/api/system/api-keys`, newKey);
+            toast.success('API key added successfully');
+            setNewKey({ provider: 'openai', key: '' });
+            fetchApiKeys();
+        } catch (err) {
+            toast.error('Failed to add API key');
+        } finally {
+            setAdding(false);
+        }
+    };
+
+    const handleDeleteKey = async (id: string) => {
+        try {
+            await axios.delete(`${API_BASE}/api/system/api-keys/${id}`);
+            toast.success('API key deleted');
+            fetchApiKeys();
+        } catch (err) {
+            toast.error('Failed to delete API key');
+        }
+    };
+
     React.useEffect(() => {
-        fetchData();
+        fetchApiKeys();
     }, []);
 
     return (
-        <div className="space-y-8 max-w-5xl mx-auto">
+        <div className="space-y-8 max-w-7xl mx-auto">
             <header>
-                <h2 className="text-3xl font-bold">System Status & Logs</h2>
-                <p className="text-muted-foreground">Monitor technical health and global configurations.</p>
+                <h1 className="text-3xl font-bold text-foreground">System Control</h1>
+                <p className="text-muted-foreground mt-1">Manage API keys, system configuration, and monitoring.</p>
             </header>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-1 space-y-6">
-                    <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-                        <h3 className="font-bold flex items-center gap-2 border-b border-border pb-4">
-                            <Settings className="w-4 h-4 text-blue-500" />
-                            Global Config
-                        </h3>
-                        <div className="space-y-4">
-                            {configs && Object.entries(configs).map(([key, val]: any) => (
-                                <div key={key} className="space-y-1">
-                                    <label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">{key}</label>
-                                    <div className="flex items-center gap-2">
-                                        <Key className="w-3 h-3 text-amber-500" />
-                                        <code className="text-xs bg-secondary px-2 py-1 rounded-lg block overflow-hidden text-ellipsis whitespace-nowrap">{val || 'NOT_SET'}</code>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+            {/* API Key Management */}
+            <div className="bg-card border border-border rounded-3xl p-8 space-y-6">
+                <div className="flex items-center justify-between">
+                    <h3 className="text-xl font-bold flex items-center gap-2">
+                        <Key className="w-5 h-5 text-blue-500" />
+                        API Key Management
+                    </h3>
+                    <button
+                        onClick={fetchApiKeys}
+                        className="p-2 hover:bg-secondary rounded-xl transition-colors"
+                        title="Refresh"
+                    >
+                        <RefreshCw className="w-4 h-4" />
+                    </button>
+                </div>
+
+                {/* Add New Key */}
+                <div className="bg-secondary/30 border border-border rounded-2xl p-6 space-y-4">
+                    <h4 className="font-bold text-sm uppercase tracking-wider text-muted-foreground">Add New API Key</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <select
+                            value={newKey.provider}
+                            onChange={(e) => setNewKey({ ...newKey, provider: e.target.value })}
+                            className="px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-blue-500 transition-colors"
+                        >
+                            <option value="openai">OpenAI</option>
+                            <option value="anthropic">Anthropic</option>
+                            <option value="azure">Azure OpenAI</option>
+                        </select>
+                        <input
+                            type="password"
+                            value={newKey.key}
+                            onChange={(e) => setNewKey({ ...newKey, key: e.target.value })}
+                            placeholder="sk-..."
+                            className="px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-blue-500 transition-colors"
+                        />
+                        <button
+                            onClick={handleAddKey}
+                            disabled={adding}
+                            className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                        >
+                            {adding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                            Add Key
+                        </button>
                     </div>
                 </div>
 
-                <div className="lg:col-span-2">
-                    <div className="bg-card border border-border rounded-2xl overflow-hidden">
-                        <div className="p-6 border-b border-border flex items-center justify-between">
-                            <h3 className="font-bold flex items-center gap-2">
-                                <ClipboardList className="w-4 h-4 text-emerald-500" />
-                                Application Logs
-                            </h3>
-                            <button
-                                onClick={fetchData}
-                                className="p-2 hover:bg-secondary rounded-lg transition-colors"
+                {/* Existing Keys */}
+                <div className="space-y-3">
+                    {loading ? (
+                        <div className="text-center py-8">
+                            <Loader2 className="w-6 h-6 animate-spin mx-auto text-blue-500" />
+                        </div>
+                    ) : apiKeys.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">
+                            <Key className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                            <p>No API keys configured</p>
+                        </div>
+                    ) : (
+                        apiKeys.map((key, index) => (
+                            <div
+                                key={index}
+                                className="flex items-center justify-between p-4 bg-secondary/20 border border-border rounded-xl hover:bg-secondary/30 transition-colors"
                             >
-                                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                            </button>
-                        </div>
-                        <div className="h-[500px] overflow-auto bg-black/5 dark:bg-black/40 p-4 font-mono text-[10px] space-y-1">
-                            {logs.map((log: any, i: number) => (
-                                <div key={i} className="flex gap-4 border-b border-border/5 py-1">
-                                    <span className="text-muted-foreground opacity-50 shrink-0">{new Date(log.timestamp).toLocaleTimeString()}</span>
-                                    <span className={`font-bold shrink-0 ${log.level === 'error' ? 'text-red-500' : 'text-blue-500'}`}>{log.level.toUpperCase()}</span>
-                                    <span className="text-foreground shrink-0 opacity-70">[{log.context}]</span>
-                                    <span className="text-foreground">{log.message}</span>
+                                <div className="flex items-center gap-4">
+                                    <div className="p-2 bg-blue-500/10 text-blue-500 rounded-lg">
+                                        <Key className="w-4 h-4" />
+                                    </div>
+                                    <div>
+                                        <p className="font-bold text-sm capitalize">{key.provider}</p>
+                                        <p className="text-xs text-muted-foreground font-mono">
+                                            {key.key.substring(0, 8)}...{key.key.substring(key.key.length - 4)}
+                                        </p>
+                                    </div>
                                 </div>
-                            ))}
-                            {logs.length === 0 && (
-                                <div className="h-full flex flex-col items-center justify-center opacity-30 italic">
-                                    No logs recorded yet.
+                                <button
+                                    onClick={() => handleDeleteKey(key.id)}
+                                    className="p-2 hover:bg-red-500/10 text-red-500 rounded-lg transition-colors"
+                                    title="Delete Key"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                            </div>
+                        ))
+                    )}
+                </div>
+            </div>
+
+            {/* System Health */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-card border border-border rounded-3xl p-8 space-y-6">
+                    <h3 className="text-xl font-bold flex items-center gap-2">
+                        <Activity className="w-5 h-5 text-emerald-500" />
+                        System Health
+                    </h3>
+                    <div className="space-y-4">
+                        {[
+                            { label: 'Database', status: 'Operational', color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+                            { label: 'AI Services', status: 'Operational', color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+                            { label: 'WhatsApp API', status: 'Operational', color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+                            { label: 'Redis Cache', status: 'Operational', color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+                        ].map((service, i) => (
+                            <div key={i} className="flex items-center justify-between p-4 bg-secondary/20 rounded-xl">
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-2 h-2 rounded-full ${service.bg} ${service.color}`} />
+                                    <span className="font-medium">{service.label}</span>
                                 </div>
-                            )}
-                        </div>
+                                <span className={`text-xs font-bold uppercase ${service.color}`}>{service.status}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="bg-card border border-border rounded-3xl p-8 space-y-6">
+                    <h3 className="text-xl font-bold flex items-center gap-2">
+                        <Terminal className="w-5 h-5 text-purple-500" />
+                        System Information
+                    </h3>
+                    <div className="space-y-4">
+                        {[
+                            { label: 'Platform Version', value: 'v2.1.0' },
+                            { label: 'Node.js', value: 'v20.x' },
+                            { label: 'Database', value: 'PostgreSQL 15' },
+                            { label: 'Uptime', value: '99.9%' },
+                        ].map((info, i) => (
+                            <div key={i} className="flex items-center justify-between p-4 bg-secondary/20 rounded-xl">
+                                <span className="text-sm font-medium text-muted-foreground">{info.label}</span>
+                                <span className="text-sm font-bold">{info.value}</span>
+                            </div>
+                        ))}
                     </div>
                 </div>
             </div>
