@@ -229,7 +229,7 @@ function AuthPage({ desiredRole, forcedUsername }: { desiredRole: UserRole, forc
 
   // 3. Login Screen
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#020202] via-[#0a0a0a] to-[#020202] text-white flex flex-col items-center justify-center p-6 relative overflow-hidden">
+    <div className="h-screen bg-gradient-to-br from-[#020202] via-[#0a0a0a] to-[#020202] text-white flex flex-col items-center justify-center p-4 sm:p-6 relative overflow-hidden">
       <BackgroundEffects />
 
       {/* Animated Logo/Brand */}
@@ -237,54 +237,54 @@ function AuthPage({ desiredRole, forcedUsername }: { desiredRole: UserRole, forc
         initial={{ opacity: 0, scale: 0.5 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
-        className="absolute top-8 left-8 flex items-center gap-3 z-20"
+        className="absolute top-4 sm:top-8 left-4 sm:left-8 flex items-center gap-2 sm:gap-3 z-20"
       >
-        <img src="/logo-white.png" alt="Logo" className="w-12 h-12 object-contain" />
-        <span className="font-black text-xl tracking-tight hidden sm:block">VB.OTIWAA</span>
+        <img src="/logo-white.png" alt="Logo" className="w-8 h-8 sm:w-12 sm:h-12 object-contain" />
+        <span className="font-black text-base sm:text-xl tracking-tight hidden sm:block">VB.OTIWAA</span>
       </motion.div>
 
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: "easeOut" }}
-        className="w-full max-w-md relative z-10"
+        className="w-full max-w-md relative z-10 my-auto"
       >
         {/* Glowing Card Effect */}
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-pink-500/20 rounded-[3rem] blur-3xl opacity-50" />
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-pink-500/20 rounded-[2rem] sm:rounded-[3rem] blur-3xl opacity-50" />
 
-        <div className="relative bg-black/40 backdrop-blur-2xl border border-white/10 p-12 rounded-[3rem] shadow-2xl">
+        <div className="relative bg-black/40 backdrop-blur-2xl border border-white/10 p-6 sm:p-12 rounded-[2rem] sm:rounded-[3rem] shadow-2xl">
           {/* Header */}
-          <div className="text-center mb-10 space-y-4">
+          <div className="text-center mb-6 sm:mb-10 space-y-3 sm:space-y-4">
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-              className={`w-20 h-20 rounded-3xl mx-auto flex items-center justify-center mb-6 relative overflow-hidden ${desiredRole === 'admin'
+              className={`w-16 h-16 sm:w-20 sm:h-20 rounded-2xl sm:rounded-3xl mx-auto flex items-center justify-center mb-4 sm:mb-6 relative overflow-hidden ${desiredRole === 'admin'
                   ? 'bg-gradient-to-br from-blue-500 to-blue-600'
                   : 'bg-gradient-to-br from-purple-500 to-pink-600'
                 }`}
             >
               <div className="absolute inset-0 bg-white/20 animate-pulse" />
-              {desiredRole === 'admin' ? <ShieldCheck className="w-10 h-10 relative z-10" /> : <Store className="w-10 h-10 relative z-10" />}
+              {desiredRole === 'admin' ? <ShieldCheck className="w-8 h-8 sm:w-10 sm:h-10 relative z-10" /> : <Store className="w-8 h-8 sm:w-10 sm:h-10 relative z-10" />}
             </motion.div>
 
-            <h2 className="text-4xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-white to-white/60">
+            <h2 className="text-2xl sm:text-4xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-white to-white/60">
               {desiredRole === 'merchant' ? 'MERCHANT PORTAL' : 'ADMIN PORTAL'}
             </h2>
-            <p className="text-muted-foreground text-sm font-medium">
+            <p className="text-muted-foreground text-xs sm:text-sm font-medium">
               Welcome back! Please sign in to continue
             </p>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-6">
+          <form onSubmit={handleLogin} className="space-y-4 sm:space-y-6">
             {/* Username/ID Field */}
-            <div className="space-y-3">
+            <div className="space-y-2 sm:space-y-3">
               <label className="text-xs font-bold text-white/60 uppercase tracking-widest px-2">
                 {desiredRole === 'admin' ? 'Username' : 'Merchant ID'}
               </label>
               <div className="relative group">
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-2xl blur opacity-0 group-focus-within:opacity-100 transition-opacity" />
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-white transition-colors z-10" />
+                <User className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground group-focus-within:text-white transition-colors z-10" />
                 <input
                   type="text"
                   required
@@ -292,26 +292,26 @@ function AuthPage({ desiredRole, forcedUsername }: { desiredRole: UserRole, forc
                   onChange={(e) => setUsername(e.target.value)}
                   disabled={!!forcedUsername}
                   placeholder={desiredRole === 'admin' ? "Enter username" : "Your merchant ID"}
-                  className="relative w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-14 pr-4 text-sm font-medium focus:outline-none focus:border-white/30 focus:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed placeholder:text-white/30"
+                  className="relative w-full bg-white/5 border border-white/10 rounded-2xl py-3 sm:py-4 pl-11 sm:pl-14 pr-4 text-sm font-medium focus:outline-none focus:border-white/30 focus:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed placeholder:text-white/30"
                 />
               </div>
             </div>
 
             {/* Password Field */}
-            <div className="space-y-3">
+            <div className="space-y-2 sm:space-y-3">
               <label className="text-xs font-bold text-white/60 uppercase tracking-widest px-2">
                 Password
               </label>
               <div className="relative group">
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-2xl blur opacity-0 group-focus-within:opacity-100 transition-opacity" />
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-white transition-colors z-10" />
+                <Lock className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground group-focus-within:text-white transition-colors z-10" />
                 <input
                   type="password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
-                  className="relative w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-14 pr-4 text-sm font-medium focus:outline-none focus:border-white/30 focus:bg-white/10 transition-all placeholder:text-white/30"
+                  className="relative w-full bg-white/5 border border-white/10 rounded-2xl py-3 sm:py-4 pl-11 sm:pl-14 pr-4 text-sm font-medium focus:outline-none focus:border-white/30 focus:bg-white/10 transition-all placeholder:text-white/30"
                 />
               </div>
             </div>
@@ -322,7 +322,7 @@ function AuthPage({ desiredRole, forcedUsername }: { desiredRole: UserRole, forc
               disabled={isLoading}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className={`relative w-full py-5 rounded-2xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-2 transition-all overflow-hidden ${desiredRole === 'admin'
+              className={`relative w-full py-4 sm:py-5 rounded-2xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-2 transition-all overflow-hidden ${desiredRole === 'admin'
                   ? 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400'
                   : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500'
                 } disabled:opacity-50 disabled:cursor-not-allowed shadow-lg ${desiredRole === 'admin' ? 'shadow-blue-500/30' : 'shadow-purple-500/30'
@@ -343,7 +343,7 @@ function AuthPage({ desiredRole, forcedUsername }: { desiredRole: UserRole, forc
           </form>
 
           {/* Return Home Link */}
-          <div className="mt-10 text-center">
+          <div className="mt-6 sm:mt-10 text-center">
             <a
               href="/"
               className="inline-flex items-center gap-2 text-xs font-bold text-white/40 hover:text-white transition-colors uppercase tracking-widest group"
@@ -356,8 +356,8 @@ function AuthPage({ desiredRole, forcedUsername }: { desiredRole: UserRole, forc
       </motion.div>
 
       {/* Decorative Elements */}
-      <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl" />
-      <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl" />
+      <div className="absolute bottom-0 left-0 w-48 h-48 sm:w-64 sm:h-64 bg-blue-500/10 rounded-full blur-3xl" />
+      <div className="absolute top-0 right-0 w-48 h-48 sm:w-64 sm:h-64 bg-purple-500/10 rounded-full blur-3xl" />
     </div>
   );
 }
