@@ -15,6 +15,7 @@ export class TwilioService {
 
         if (accountSid && authToken) {
             this.client = new Twilio(accountSid, authToken);
+            this.logger.log(`Twilio initialized with Account SID: ${accountSid.substring(0, 6)}...${accountSid.substring(accountSid.length - 4)}`);
         } else {
             this.logger.warn('Twilio credentials missing! TwilioService will not work.');
         }
