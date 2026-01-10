@@ -303,6 +303,8 @@ export class MerchantService {
         });
         if (!merchant) throw new NotFoundException('Merchant not found');
 
+        this.logger.log(`[DashboardSync] Found Merchant ${merchantId}. menuImageUrl: ${merchant.menuImageUrl}`);
+
         const orders = await this.prisma.order.findMany({
             where: { merchantId },
             include: { items: { include: { product: true } } },

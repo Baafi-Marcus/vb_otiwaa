@@ -55,6 +55,7 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
     const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
     const [receiptOrder, setReceiptOrder] = useState<any>(null);
     const [localPreview, setLocalPreview] = useState<string | null>(null);
+    const [reviewImageUrl, setReviewImageUrl] = useState<string | null>(null);
     const { socket } = useSocket();
 
     useEffect(() => {
@@ -101,11 +102,14 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
                 menuImageUrl: imageUrl
             });
 
-            setMerchant({ ...merchant, menuImageUrl: imageUrl });
+            setMerchant(prev => prev ? { ...prev, menuImageUrl: imageUrl } : prev);
             toast.success('Image uploaded! Starting AI analysis...');
 
             const analyzeResp = await axios.post(`${API_BASE}/api/merchants/analyze-menu`, { imageUrl });
             setDraftProducts(analyzeResp.data.products);
+
+            // Explicitly pass the NEW imageUrl to ensure the modal isn't stale
+            setReviewImageUrl(imageUrl);
             setIsReviewingMenu(true);
             toast.success('Menu analysis complete! Please review items.');
         } catch (err: any) {
@@ -121,7 +125,15 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
         if (!silent) setLoading(true);
         try {
             const resp = await axios.get(`${API_BASE}/api/merchants/${merchantId}/dashboard`);
-            setMerchant(resp.data.merchant);
+
+            if (resp.data.merchant) {
+                console.log('[DEBUG] Syncing Merchant Data:', {
+                    id: resp.data.merchant.id,
+                    menuImageUrl: resp.data.merchant.menuImageUrl
+                });
+                setMerchant(resp.data.merchant);
+            }
+
             setOrders(resp.data.orders);
             setAnalytics(resp.data.analytics);
 
@@ -844,7 +856,7 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
                 {isReviewingMenu && (
                     <ReviewWorkspaceModal
                         merchantId={merchantId}
-                        menuImageUrl={merchant?.menuImageUrl || null}
+                        menuImageUrl={reviewImageUrl || merchant?.menuImageUrl || null}
                         drafts={draftProducts}
                         onClose={() => setIsReviewingMenu(false)}
                         onSuccess={() => {
