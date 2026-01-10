@@ -263,6 +263,8 @@ export class WhatsappController {
 
         if (!imageUrl.startsWith('http')) {
           let serverUrl = process.env.SERVER_URL || host || '';
+          // Strip paths if host/SERVER_URL accidentally includes them
+          serverUrl = serverUrl.split('/api/whatsapp')[0];
           serverUrl = serverUrl.replace(/\/$/, '');
 
           let cleanPath = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
