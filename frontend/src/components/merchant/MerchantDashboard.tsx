@@ -1238,7 +1238,7 @@ const OrderRow = ({ order, index, onStatusUpdate, isSelected, onSelect, onPrint 
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.05 }}
-            className="bg-card border border-border p-6 rounded-2xl flex items-center justify-between group hover:border-primary/50 transition-all shadow-sm"
+            className="bg-card border border-border p-4 sm:p-6 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 group hover:border-primary/50 transition-all shadow-sm"
         >
             <div className="flex items-center gap-4">
                 <input
@@ -1314,26 +1314,8 @@ const OrderRow = ({ order, index, onStatusUpdate, isSelected, onSelect, onPrint 
                         <Printer className="w-4 h-4" />
                     </button>
                 </div>
-                <button
-                    onClick={() => (onSelect as any)?.(order.id) || null} // Reusing select logic or just place holder
-                    className="p-2 border border-border rounded-xl text-muted-foreground hover:bg-secondary transition-all"
-                >
-                    {/* Fallback for now if needed, but we used the prop below */}
-                    <Plus className="w-4 h-4 rotate-45" />
-                </button>
-                <button
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onPrint();
-                    }}
-                    className="p-2 bg-secondary text-foreground rounded-xl hover:bg-secondary/80 transition-all"
-                    title="Print Receipt"
-                >
-                    <Printer className="w-4 h-4" />
-                </button>
             </div>
-        </div>
-        </motion.div >
+        </motion.div>
     );
 };
 
