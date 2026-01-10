@@ -2,7 +2,7 @@ import { Controller, Get, Post, Delete, Body, Param, UseGuards, Logger } from '@
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { SystemService } from './system.service';
 
-@Controller('diagnostics')
+@Controller('system')
 export class SystemController {
     private readonly logger = new Logger(SystemController.name);
     constructor(private readonly systemService: SystemService) {
