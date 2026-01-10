@@ -7,6 +7,11 @@ export class UploadsController {
     private readonly logger = new Logger(UploadsController.name);
     constructor(private prisma: PrismaService) { }
 
+    @Get('health')
+    health() {
+        return { status: 'uploads-ok', time: new Date().toISOString() };
+    }
+
     @Get(':id/:filename?')
     async getImage(@Param('id') id: string, @Res() res: Response) {
         const userAgent = res.req.headers['user-agent'];
