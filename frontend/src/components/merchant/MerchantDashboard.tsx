@@ -102,7 +102,7 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
                 menuImageUrl: imageUrl
             });
 
-            setMerchant(prev => prev ? { ...prev, menuImageUrl: imageUrl } : prev);
+            setMerchant((prev: any) => prev ? { ...prev, menuImageUrl: imageUrl } : prev);
             toast.success('Image uploaded! Starting AI analysis...');
 
             const analyzeResp = await axios.post(`${API_BASE}/api/merchants/analyze-menu`, { imageUrl });
