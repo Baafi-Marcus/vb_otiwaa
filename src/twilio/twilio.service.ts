@@ -53,9 +53,10 @@ export class TwilioService {
                 from: this.fromNumber,
                 to: to.startsWith('whatsapp:') ? to : `whatsapp:${to}`,
             });
+            this.logger.log(`[Twilio Service] Media Message Created. SID: ${response.sid}, Status: ${response.status}`);
             return response;
-        } catch (error) {
-            this.logger.error(`Failed to send WhatsApp media message: ${error.message}`);
+        } catch (error: any) {
+            this.logger.error(`[Twilio Error] Failed to send media: ${error.message}`, error.stack);
             throw error;
         }
     }
