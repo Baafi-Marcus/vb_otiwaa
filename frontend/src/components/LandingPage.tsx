@@ -116,36 +116,63 @@ function FeatureCard({ icon: Icon, title, description }: any) {
 
 function ChatDemo() {
     const [messages, setMessages] = useState<any[]>([]);
+    const [scenarioIndex, setScenarioIndex] = useState(0);
 
     useEffect(() => {
-        const scenario = [
-            { text: "Hi, I'd like to order jollof rice", isBot: false, delay: 1000 },
-            { text: "Hello! 👋 Welcome to Tasty Bytes. Here is our menu...", isBot: true, delay: 2000, hasImage: true },
-            { text: "1x Jollof Combo please", isBot: false, delay: 3500 },
-            { text: "Great choice! That's GHS 45. Delivery or Pickup?", isBot: true, delay: 4500 },
-            { text: "Delivery to East Legon", isBot: false, delay: 6000 },
-            { text: "Understood. Delivery fee is GHS 15. Total: GHS 60.\nReply 'CONFIRM' to proceed.", isBot: true, delay: 7500 },
-            { text: "CONFIRM", isBot: false, delay: 9000 },
-            { text: "Order #1234 CONFIRMED! 🚀\nWe are preparing your food now.", isBot: true, delay: 10500 },
+        const scenarios = [
+            // Scenario 1: Food Order
+            [
+                { text: "Hi, I'd like to order jollof rice", isBot: false, delay: 1000 },
+                { text: "Hello! 👋 Welcome to Tasty Bytes. Here is our menu...", isBot: true, delay: 2000, hasImage: true },
+                { text: "1x Jollof Combo please", isBot: false, delay: 3500 },
+                { text: "Great choice! That's GHS 45. Delivery or Pickup?", isBot: true, delay: 4500 },
+                { text: "Delivery to East Legon", isBot: false, delay: 6000 },
+                { text: "Understood. Delivery fee is GHS 15. Total: GHS 60.\nReply 'CONFIRM' to proceed.", isBot: true, delay: 7500 },
+                { text: "CONFIRM", isBot: false, delay: 9000 },
+                { text: "Order #1234 CONFIRMED! 🚀\nWe are preparing your food now.", isBot: true, delay: 10500 },
+            ],
+            // Scenario 2: Menu Inquiry
+            [
+                { text: "What's on the menu today?", isBot: false, delay: 1000 },
+                { text: "Great question! 🍽️ Here's what we have...", isBot: true, delay: 2000, hasImage: true },
+                { text: "Do you have vegetarian options?", isBot: false, delay: 3500 },
+                { text: "Yes! We have:\n- Veggie Fried Rice (GHS 35)\n- Garden Salad (GHS 25)\n- Grilled Veggies (GHS 30)", isBot: true, delay: 5000 },
+                { text: "I'll take the Veggie Fried Rice", isBot: false, delay: 6500 },
+                { text: "Perfect! GHS 35. Pickup or Delivery?", isBot: true, delay: 7500 },
+                { text: "Pickup", isBot: false, delay: 8500 },
+                { text: "Order #1235 confirmed for pickup! Ready in 20 mins. 🎉", isBot: true, delay: 9500 },
+            ],
+            // Scenario 3: Order Status Check
+            [
+                { text: "Hi, what's the status of order #1230?", isBot: false, delay: 1000 },
+                { text: "Let me check that for you... 🔍", isBot: true, delay: 2000 },
+                { text: "Order #1230 is out for delivery! 🚗\nETA: 15 minutes", isBot: true, delay: 3500 },
+                { text: "Great! Can I add drinks to it?", isBot: false, delay: 5000 },
+                { text: "Sure! What would you like?\n- Coke (GHS 5)\n- Sprite (GHS 5)\n- Water (GHS 3)", isBot: true, delay: 6500 },
+                { text: "2x Coke please", isBot: false, delay: 8000 },
+                { text: "Added! New total: GHS 10 extra.\nDriver will bring them. 🥤", isBot: true, delay: 9500 },
+            ],
         ];
 
+        const currentScenario = scenarios[scenarioIndex];
         let timeouts: any[] = [];
 
-        scenario.forEach((msg) => {
+        currentScenario.forEach((msg) => {
             const t = setTimeout(() => {
                 setMessages(prev => [...prev, msg]);
             }, msg.delay);
             timeouts.push(t);
         });
 
-        // Loop animation
+        // Loop to next scenario
         const resetT = setTimeout(() => {
             setMessages([]);
-        }, 14000); // Extended loop time
+            setScenarioIndex((prev) => (prev + 1) % scenarios.length);
+        }, 12000);
         timeouts.push(resetT);
 
         return () => timeouts.forEach(clearTimeout);
-    }, []); // Run once on mount
+    }, [scenarioIndex]);
 
     return (
         <div className="w-full aspect-[9/19] bg-black rounded-[3rem] border-8 border-neutral-800 shadow-2xl overflow-hidden relative">
