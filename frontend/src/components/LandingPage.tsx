@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 
 export default function LandingPage() {
     return (
-        <div className="min-h-screen bg-[#020202] text-white flex flex-col font-sans relative overflow-hidden">
+        <div className="min-h-screen bg-[#020202] text-white flex flex-col font-sans relative overflow-y-auto">
             {/* Background Grid Pattern */}
             <div className="absolute inset-0 z-0 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:14px_24px]" />
 
