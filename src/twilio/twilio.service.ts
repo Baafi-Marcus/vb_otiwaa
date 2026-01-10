@@ -27,7 +27,7 @@ export class TwilioService {
             return null;
         }
         try {
-            this.logger.log(`Sending WhatsApp message to ${to}`);
+            this.logger.log(`[Twilio Client: ${this.client.accountSid}] Sending WhatsApp message to ${to}`);
             const response = await this.client.messages.create({
                 body,
                 from: this.fromNumber,
@@ -46,7 +46,7 @@ export class TwilioService {
             return null;
         }
         try {
-            this.logger.log(`Sending WhatsApp media message to ${to}: ${mediaUrl}`);
+            this.logger.log(`[Twilio Client: ${this.client.accountSid}] Sending WhatsApp media message to ${to}: ${mediaUrl}`);
             const response = await this.client.messages.create({
                 body: caption,
                 mediaUrl: [mediaUrl],
