@@ -42,6 +42,8 @@ export class MerchantService {
         paymentMethods?: string;
         systemPrompt?: string;
         menuImageUrl?: string;
+        tier?: string;
+        tierDurationMonths?: number;
     }) {
         this.logger.log(`Registering new ${data.category} merchant: ${data.name}`);
 
@@ -56,6 +58,12 @@ export class MerchantService {
                 data.clientVision
             );
 
+            // Calculate tier expiration date
+            const tier = data.tier || 'BASIC';
+            const durationMonths = data.tierDurationMonths || 1;
+            const tierExpiresAt = new Date();
+            tierExpiresAt.setMonth(tierExpiresAt.getMonth() + durationMonths);
+
             const merchant = await (this.prisma.merchant as any).create({
                 data: {
                     name: data.name,
@@ -68,6 +76,8 @@ export class MerchantService {
                     paymentMethods: data.paymentMethods,
                     systemPrompt: finalPrompt,
                     menuImageUrl: data.menuImageUrl,
+                    tier: tier,
+                    tierExpiresAt: tierExpiresAt,
                 },
             });
 

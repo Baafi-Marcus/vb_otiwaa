@@ -229,7 +229,9 @@ const MerchantRegistration = ({ onComplete }: any) => {
         location: '',
         operatingHours: '',
         paymentMethods: '',
-        menuImageUrl: ''
+        menuImageUrl: '',
+        tier: 'BASIC',
+        tierDurationMonths: 1
     });
     const [draftProducts, setDraftProducts] = useState<any[]>([]);
     const [analyzingMenu, setAnalyzingMenu] = useState(false);
@@ -308,7 +310,9 @@ const MerchantRegistration = ({ onComplete }: any) => {
                 operatingHours: formData.operatingHours || undefined,
                 paymentMethods: formData.paymentMethods || undefined,
                 menuImageUrl: formData.menuImageUrl || undefined,
-                systemPrompt: expandedPrompt || undefined
+                systemPrompt: expandedPrompt || undefined,
+                tier: formData.tier,
+                tierDurationMonths: formData.tierDurationMonths
             });
 
             const newId = resp.data.merchantId;
@@ -326,7 +330,7 @@ const MerchantRegistration = ({ onComplete }: any) => {
                 setIsReviewingMenu(true);
             } else {
                 // Clear form data so if they click "Register Another" it's clean
-                setFormData({ name: '', phoneId: '', twilioPhoneNumber: '', category: 'Restaurant', vision: '', location: '', operatingHours: '', paymentMethods: '', menuImageUrl: '' });
+                setFormData({ name: '', phoneId: '', twilioPhoneNumber: '', category: 'Restaurant', vision: '', location: '', operatingHours: '', paymentMethods: '', menuImageUrl: '', tier: 'BASIC', tierDurationMonths: 1 });
                 setExpandedPrompt(null);
             }
 
@@ -389,7 +393,7 @@ const MerchantRegistration = ({ onComplete }: any) => {
                                 onClick={() => {
                                     setSuccess(false);
                                     setRegisteredId(null);
-                                    setFormData({ name: '', phoneId: '', twilioPhoneNumber: '', category: 'Restaurant', vision: '', location: '', operatingHours: '', paymentMethods: '', menuImageUrl: '' });
+                                    setFormData({ name: '', phoneId: '', twilioPhoneNumber: '', category: 'Restaurant', vision: '', location: '', operatingHours: '', paymentMethods: '', menuImageUrl: '', tier: 'BASIC', tierDurationMonths: 1 });
                                     setExpandedPrompt(null);
                                 }}
                                 className="px-6 py-3 font-bold text-muted-foreground hover:text-foreground transition-colors"
@@ -446,6 +450,34 @@ const MerchantRegistration = ({ onComplete }: any) => {
                                         <option value="Logistics">🚚 Logistics / Delivery</option>
                                         <option value="General">🏢 General Business</option>
                                     </select>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Subscription Tier</label>
+                                    <select
+                                        className="w-full bg-secondary/30 border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all appearance-none cursor-pointer font-bold"
+                                        value={formData.tier}
+                                        onChange={(e) => setFormData({ ...formData, tier: e.target.value })}
+                                        disabled={loading}
+                                    >
+                                        <option value="BASIC">💼 Basic (150 GHS/mo - 100 orders)</option>
+                                        <option value="PRO">🚀 Pro (450 GHS/mo - Unlimited)</option>
+                                        <option value="ENTERPRISE">💎 Enterprise (Custom Pricing)</option>
+                                    </select>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Duration (Months)</label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        placeholder="e.g. 12"
+                                        className="w-full bg-secondary/30 border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all text-sm"
+                                        value={formData.tierDurationMonths}
+                                        onChange={(e) => setFormData({ ...formData, tierDurationMonths: parseInt(e.target.value) || 1 })}
+                                        disabled={loading}
+                                    />
                                 </div>
                             </div>
 
@@ -970,24 +1002,10 @@ const ReviewWorkspaceModal = ({ merchantId, drafts, onClose, onSuccess }: any) =
                                     className="w-full bg-background border border-border rounded-xl px-4 py-2 text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none"
                                 />
                             </div>
-                            <div className="col-span-1 flex justify-end gap-2">
-                                <button
-                                    onClick={() => {
-                                        const newItem = { ...item, name: `${item.name} (Copy)` };
-                                        const newItems = [...items];
-                                        newItems.splice(idx + 1, 0, newItem);
-                                        setItems(newItems);
-                                        toast.success('Variant added! Please update the name and price.');
-                                    }}
-                                    className="p-2 hover:bg-blue-500/10 text-muted-foreground hover:text-blue-500 rounded-xl transition-all"
-                                    title="Add Variant"
-                                >
-                                    <Plus className="w-5 h-5" />
-                                </button>
+                            <div className="col-span-1 flex justify-end">
                                 <button
                                     onClick={() => handleRemoveItem(idx)}
                                     className="p-2 hover:bg-red-500/10 text-muted-foreground hover:text-red-500 rounded-xl transition-all"
-                                    title="Remove Item"
                                 >
                                     <X className="w-5 h-5" />
                                 </button>

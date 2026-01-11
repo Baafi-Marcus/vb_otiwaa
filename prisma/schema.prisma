@@ -24,6 +24,10 @@ model Merchant {
   paymentMethods        String?
   twilioPhoneNumber     String?
   password              String?
+  tier                  String         @default("BASIC")
+  tierExpiresAt         DateTime?
+  monthlyOrderCount     Int            @default(0)
+  lastOrderCountReset   DateTime       @default(now())
   campaigns             Campaign[]
   customers             Customer[]
   deliveryZones         DeliveryZone[]

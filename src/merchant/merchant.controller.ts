@@ -32,8 +32,17 @@ export class MerchantController {
     }
 
     @Post('register')
-    async register(@Body() data: { name: string; whatsappPhoneNumberId?: string; twilioPhoneNumber?: string; category: string; clientVision: string; systemPrompt?: string; menuImageUrl?: string }
-    ) {
+    async register(@Body() data: {
+        name: string;
+        whatsappPhoneNumberId?: string;
+        twilioPhoneNumber?: string;
+        category: string;
+        clientVision: string;
+        systemPrompt?: string;
+        menuImageUrl?: string;
+        tier?: string;
+        tierDurationMonths?: number;
+    }) {
         return this.merchantService.registerMerchant(data);
     }
 
