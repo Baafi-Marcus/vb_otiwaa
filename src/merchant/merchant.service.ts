@@ -4,6 +4,7 @@ import { OpenaiService } from '../openai/openai.service';
 import { StabilityaiService } from '../stabilityai/stabilityai.service';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { WhatsappService } from '../whatsapp/whatsapp.service';
+import { AdminNotificationService } from '../notification/admin-notification.service';
 
 @Injectable()
 export class MerchantService {
@@ -15,6 +16,7 @@ export class MerchantService {
         private stability: StabilityaiService,
         private whatsapp: WhatsappService,
         private analytics: AnalyticsService,
+        private adminNotificationService: AdminNotificationService,
     ) { }
 
     async saveImage(file: any): Promise<string> {
@@ -369,7 +371,7 @@ export class MerchantService {
         if (!merchant) throw new NotFoundException('Merchant not found');
 
         // Only allow menuImageUrl update for Pro/Enterprise tiers
-        if (data.menuImageUrl && merchant.tier === 'BASIC') {
+        if (data.menuImageUrl && (merchant as any).tier === 'BASIC') {
             this.logger.warn(`[Tier Restriction] Basic tier merchant ${id} attempted to save menu image. Skipping image save.`);
             delete data.menuImageUrl; // Remove from update data
         }
@@ -418,6 +420,73 @@ export class MerchantService {
         return this.prisma.customer.update({
             where: { id: customerId, merchantId },
             data: { botPaused: paused }
+        });
+    }
+
+    async getUpgradeRequests() {
+        return (this.prisma as any).upgradeRequest.findMany({
+            where: { status: 'PENDING' },
+            include: { merchant: true },
+            orderBy: { createdAt: 'desc' },
+        });
+    }
+
+    async createUpgradeRequest(merchantId: string, requestedTier: string) {
+        const merchant = await this.prisma.merchant.findUnique({ where: { id: merchantId } });
+        if (!merchant) throw new NotFoundException('Merchant not found');
+
+        const request = await (this.prisma as any).upgradeRequest.create({
+            data: {
+                merchantId,
+                currentTier: (merchant as any).tier,
+                requestedTier,
+                status: 'PENDING'
+            }
+        });
+
+        // Trigger persistent notification
+        await this.adminNotificationService.createAlert({
+            type: 'UPGRADE_REQUEST',
+            priority: 'NORMAL',
+            title: `Upgrade Request: ${merchant.name}`,
+            message: `${merchant.name} requested an upgrade from ${(merchant as any).tier} to ${requestedTier}.`,
+            merchantId: merchant.id,
+        });
+
+        return request;
+    }
+
+    async approveUpgradeRequest(id: string) {
+        const request = await (this.prisma as any).upgradeRequest.findUnique({
+            where: { id },
+            include: { merchant: true }
+        });
+        if (!request) throw new NotFoundException('Upgrade request not found');
+
+        // Update merchant tier and expiration
+        const tierExpiresAt = new Date();
+        tierExpiresAt.setMonth(tierExpiresAt.getMonth() + 1); // Default 1 month on approval
+
+        await (this.prisma.merchant as any).update({
+            where: { id: request.merchantId },
+            data: {
+                tier: request.requestedTier,
+                tierExpiresAt: tierExpiresAt,
+                monthlyOrderCount: 0
+            }
+        });
+
+        // Update request status
+        return (this.prisma as any).upgradeRequest.update({
+            where: { id },
+            data: { status: 'APPROVED' }
+        });
+    }
+
+    async rejectUpgradeRequest(id: string) {
+        return (this.prisma as any).upgradeRequest.update({
+            where: { id },
+            data: { status: 'REJECTED' }
         });
     }
 }

@@ -44,14 +44,26 @@ export class NotificationGateway implements OnGatewayConnection, OnGatewayDiscon
 
     // Helper methodologies to emit events from services
     emitToMerchant(merchantId: string, event: string, data: any) {
+        if (!this.server) {
+            this.logger.warn(`Cannot emit to merchant ${merchantId}: Server not initialized`);
+            return;
+        }
         this.server.to(`merchant_${merchantId}`).emit(event, data);
     }
 
     emitToAdmin(event: string, data: any) {
+        if (!this.server) {
+            this.logger.warn(`Cannot emit to admin: Server not initialized`);
+            return;
+        }
         this.server.to('admin_room').emit(event, data);
     }
 
     emitToAll(event: string, data: any) {
+        if (!this.server) {
+            this.logger.warn(`Cannot emit to all: Server not initialized`);
+            return;
+        }
         this.server.emit(event, data);
     }
 }

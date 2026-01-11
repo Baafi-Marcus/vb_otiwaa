@@ -167,6 +167,17 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
         return () => clearInterval(interval);
     }, [merchantId, uploading, isReviewingMenu]);
 
+    const handleUpgradeRequest = async () => {
+        try {
+            await axios.post(`${API_BASE}/api/merchants/${merchantId}/upgrade-request`, {
+                requestedTier: merchant.tier === 'BASIC' ? 'PRO' : 'ENTERPRISE'
+            });
+            toast.success('Upgrade request sent! Admin will contact you soon.');
+        } catch (err) {
+            toast.error('Failed to send upgrade request');
+        }
+    };
+
     const handleStatusUpdate = async (orderId: string, newStatus: string) => {
         try {
             await axios.patch(`${API_BASE}/api/orders/${orderId}/status`, { status: newStatus });
@@ -242,13 +253,15 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
                         <MessageSquare className="w-5 h-5" />
                         <span className="font-medium hidden lg:block">AI Sandbox</span>
                     </button>
-                    <button
-                        onClick={() => setActiveTab('marketing')}
-                        className={`w-full flex items-center justify-center lg:justify-start gap-3 p-3 rounded-xl transition-all ${activeTab === 'marketing' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-secondary'}`}
-                    >
-                        <Users className="w-5 h-5" />
-                        <span className="font-medium hidden lg:block">CRM & Marketing</span>
-                    </button>
+                    {merchant?.tier !== 'BASIC' && (
+                        <button
+                            onClick={() => setActiveTab('marketing')}
+                            className={`w-full flex items-center justify-center lg:justify-start gap-3 p-3 rounded-xl transition-all ${activeTab === 'marketing' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-secondary'}`}
+                        >
+                            <Users className="w-5 h-5" />
+                            <span className="font-medium hidden lg:block">CRM & Marketing</span>
+                        </button>
+                    )}
                 </nav>
             </aside>
 
@@ -266,10 +279,12 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
                     <MessageSquare className="w-6 h-6" />
                     <span className="text-[10px] font-bold">Sandbox</span>
                 </button>
-                <button onClick={() => setActiveTab('marketing')} className={`flex flex-col items-center gap-1 ${activeTab === 'marketing' ? 'text-primary' : 'text-muted-foreground'}`}>
-                    <Users className="w-6 h-6" />
-                    <span className="text-[10px] font-bold">CRM</span>
-                </button>
+                {merchant?.tier !== 'BASIC' && (
+                    <button onClick={() => setActiveTab('marketing')} className={`flex flex-col items-center gap-1 ${activeTab === 'marketing' ? 'text-primary' : 'text-muted-foreground'}`}>
+                        <Users className="w-6 h-6" />
+                        <span className="text-[10px] font-bold">CRM</span>
+                    </button>
+                )}
             </div>
 
             {/* Content Area */}
@@ -284,18 +299,51 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
                             {/* Header Section */}
                             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
                                 <div className="space-y-1">
-                                    <h1 className="text-4xl font-black tracking-tight text-foreground">
+                                    <h1 className="text-4xl font-black tracking-tight text-foreground flex flex-wrap items-center gap-4">
                                         {activeTab === 'orders' ? 'Dashboard' :
                                             activeTab === 'catalog' ? 'Smart Catalog' :
                                                 activeTab === 'sandbox' ? 'AI Sandbox' : 'Marketing CRM'}
+
+                                        {merchant?.tier && (
+                                            <div className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest flex items-center gap-2 shadow-sm ${merchant.tier === 'BASIC' ? 'bg-zinc-100 text-zinc-600 border border-zinc-200' :
+                                                merchant.tier === 'PRO' ? 'bg-primary/10 text-primary border border-primary/20' :
+                                                    'bg-amber-400/10 text-amber-600 border border-amber-400/20'
+                                                }`}>
+                                                {merchant.tier === 'BASIC' ? '💼 Basic' : merchant.tier === 'PRO' ? '🚀 Pro' : '💎 Enterprise'}
+                                            </div>
+                                        )}
                                     </h1>
-                                    <p className="text-muted-foreground font-medium text-lg">
-                                        {merchant?.name ? `Managing ${merchant.name}` : 'Automated business at your fingertips.'}
-                                    </p>
+                                    <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+                                        <p className="text-muted-foreground font-medium text-lg">
+                                            {merchant?.name ? `Managing ${merchant.name}` : 'Automated business at your fingertips.'}
+                                        </p>
+                                        {merchant?.tierExpiresAt && (
+                                            <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground/60 uppercase">
+                                                <div className="w-1 h-1 rounded-full bg-muted-foreground/30" />
+                                                Expires: {new Date(merchant.tierExpiresAt).toLocaleDateString()}
+                                            </div>
+                                        )}
+                                        {merchant?.tier === 'BASIC' && (
+                                            <div className={`flex items-center gap-2 text-xs font-bold uppercase ${merchant.monthlyOrderCount >= 100 ? 'text-red-500' : 'text-primary'}`}>
+                                                <div className="w-1 h-1 rounded-full bg-current opacity-30" />
+                                                {merchant.monthlyOrderCount}/100 Orders Used
+                                                {merchant.monthlyOrderCount >= 100 && ' (Exceeded)'}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
 
                                 {activeTab === 'orders' && (
                                     <div className="flex items-center gap-3">
+                                        {merchant?.tier !== 'ENTERPRISE' && (
+                                            <button
+                                                onClick={handleUpgradeRequest}
+                                                className="px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl text-xs font-black uppercase tracking-wider transition-all active:scale-95 border border-primary/20 hidden sm:flex items-center gap-2"
+                                            >
+                                                <Sparkles className="w-3.5 h-3.5" />
+                                                Upgrade
+                                            </button>
+                                        )}
                                         <button
                                             onClick={() => fetchDashboardData()}
                                             disabled={loading}
@@ -1051,14 +1099,14 @@ const ReviewWorkspaceModal: React.FC<{
                 products: items
             });
 
-            // 2. Auto-save Menu Image if present (Fixes user issue)
-            if (menuImageUrl) {
+            // 2. Auto-save Menu Image if present and Pro/Enterprise (Fixes user issue)
+            if (menuImageUrl && merchant?.tier !== 'BASIC') {
                 await axios.patch(`${API_BASE}/api/merchants/${merchantId}`, {
                     menuImageUrl: menuImageUrl
                 });
             }
 
-            toast.success(`Imported ${items.length} items & Updated Menu Image!`);
+            toast.success(`Imported ${items.length} items${merchant?.tier !== 'BASIC' ? ' & Updated Menu Image' : ''}!`);
             onSuccess();
         } catch (err) {
             toast.error('Failed to import items');

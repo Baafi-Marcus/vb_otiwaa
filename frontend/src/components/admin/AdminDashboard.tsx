@@ -24,7 +24,14 @@ import {
     Trash2,
     Copy,
     PauseCircle,
-    PlayCircle
+    PlayCircle,
+    Clock,
+    Calendar,
+    ChevronRight,
+    ArrowUpCircle,
+    Bell,
+    Mail,
+    User
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useSocket } from '../../context/SocketContext';
@@ -42,7 +49,7 @@ const SidebarLink = ({ active, onClick, icon: Icon, label }: any) => (
 const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3000' : '';
 
 export const AdminDashboard: React.FC<{ onMerchantSelect: (id: string) => void }> = ({ onMerchantSelect }) => {
-    const [activeView, setActiveView] = useState<'overview' | 'register' | 'directory' | 'settings'>('overview');
+    const [activeView, setActiveView] = useState<'overview' | 'register' | 'directory' | 'settings' | 'upgrades' | 'alerts' | 'profile'>('overview');
     const [merchants, setMerchants] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
 
@@ -72,9 +79,22 @@ export const AdminDashboard: React.FC<{ onMerchantSelect: (id: string) => void }
                 toast(`✉️ Message arrived for Merchant ${msg.merchantId}`, { icon: '🤖' });
             });
 
+            socket.on('newAlert', (data) => {
+                toast(`🚨 System Alert: ${data.title}`, {
+                    icon: '🚨',
+                    duration: 5000,
+                    style: {
+                        background: '#fee2e2',
+                        color: '#991b1b',
+                        border: '1px solid #fecaca'
+                    }
+                });
+            });
+
             return () => {
                 socket.off('newOrder');
                 socket.off('newMessage');
+                socket.off('newAlert');
             };
         }
     }, [socket]);
@@ -114,10 +134,28 @@ export const AdminDashboard: React.FC<{ onMerchantSelect: (id: string) => void }
                         label="Register New"
                     />
                     <SidebarLink
+                        active={activeView === 'upgrades'}
+                        onClick={() => setActiveView('upgrades')}
+                        icon={Sparkles}
+                        label="Upgrade Requests"
+                    />
+                    <SidebarLink
+                        active={activeView === 'alerts'}
+                        onClick={() => setActiveView('alerts')}
+                        icon={Bell}
+                        label="System Alerts"
+                    />
+                    <SidebarLink
                         active={activeView === 'settings'}
                         onClick={() => setActiveView('settings')}
                         icon={Settings}
                         label="Systems Control"
+                    />
+                    <SidebarLink
+                        active={activeView === 'profile'}
+                        onClick={() => setActiveView('profile')}
+                        icon={User}
+                        label="My Profile"
                     />
                 </nav>
             </aside>
@@ -127,7 +165,10 @@ export const AdminDashboard: React.FC<{ onMerchantSelect: (id: string) => void }
                 {activeView === 'overview' && <AdminOverview merchants={merchants} setView={setActiveView} />}
                 {activeView === 'register' && <MerchantRegistration onComplete={() => { fetchMerchants(); setActiveView('directory'); }} />}
                 {activeView === 'directory' && <MerchantDirectory merchants={merchants} onSelect={onMerchantSelect} loading={loading} />}
+                {activeView === 'upgrades' && <UpgradeRequests />}
                 {activeView === 'settings' && <SystemSettings />}
+                {activeView === 'alerts' && <Notifications />}
+                {activeView === 'profile' && <AdminProfile />}
             </main>
         </div>
     );
@@ -1086,10 +1127,25 @@ const MerchantCard = ({ merchant, index, onSelect, onRefresh }: any) => {
 
             <div className="flex items-start justify-between relative z-20">
                 <div className="space-y-1">
-                    <h3 className="font-bold text-lg text-foreground">{merchant.name}</h3>
+                    <div className="flex items-center gap-3">
+                        <h3 className="font-bold text-lg text-foreground">{merchant.name}</h3>
+                        <div className={`px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-tighter border shadow-sm ${merchant.tier === 'BASIC' ? 'bg-secondary text-muted-foreground border-border' :
+                            merchant.tier === 'PRO' ? 'bg-primary/10 text-primary border-primary/20' :
+                                'bg-amber-400/10 text-amber-600 border-amber-400/20'
+                            }`}>
+                            {merchant.tier}
+                        </div>
+                    </div>
                     <div className="flex items-center gap-2 text-xs font-semibold px-2 py-1 bg-secondary/50 rounded-lg text-muted-foreground w-fit">
                         <Smartphone className="w-3 h-3 text-blue-500" />
                         {merchant.whatsappPhoneNumberId || 'No ID'}
+                    </div>
+                    <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground uppercase pt-1">
+                        <Clock className="w-3 h-3" />
+                        Expires: {merchant.tierExpiresAt ? new Date(merchant.tierExpiresAt).toLocaleDateString() : 'Never'}
+                        {merchant.tierExpiresAt && new Date(merchant.tierExpiresAt) < new Date() && (
+                            <span className="text-red-500 bg-red-500/10 px-1.5 rounded animate-pulse">Expired</span>
+                        )}
                     </div>
                     <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{merchant.clientVision}</p>
                 </div>
@@ -1128,3 +1184,325 @@ const MerchantCard = ({ merchant, index, onSelect, onRefresh }: any) => {
         </motion.div>
     );
 }
+
+const UpgradeRequests = () => {
+    const [requests, setRequests] = useState<any[]>([]);
+    const [loading, setLoading] = useState(false);
+
+    const fetchRequests = async () => {
+        setLoading(true);
+        try {
+            const resp = await axios.get(`${API_BASE}/api/merchants/upgrade-requests`);
+            setRequests(resp.data);
+        } catch (err) {
+            toast.error('Failed to fetch upgrade requests');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchRequests();
+    }, []);
+
+    const handleApprove = async (requestId: string) => {
+        try {
+            await axios.patch(`${API_BASE}/api/merchants/upgrade-requests/${requestId}/approve`);
+            toast.success('Upgrade approved!');
+            fetchRequests();
+        } catch (err) {
+            toast.error('Failed to approve upgrade');
+        }
+    };
+
+    const handleReject = async (requestId: string) => {
+        try {
+            await axios.patch(`${API_BASE}/api/merchants/upgrade-requests/${requestId}/reject`);
+            toast.success('Upgrade rejected');
+            fetchRequests();
+        } catch (err) {
+            toast.error('Failed to reject upgrade');
+        }
+    };
+
+    return (
+        <div className="space-y-8 max-w-7xl mx-auto pb-20">
+            <header className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-3xl font-black text-foreground flex items-center gap-3">
+                        <Sparkles className="w-8 h-8 text-blue-500" />
+                        Upgrade Requests
+                    </h1>
+                    <p className="text-muted-foreground mt-1">Review and manage merchant requests for higher subscription tiers.</p>
+                </div>
+                <button
+                    onClick={fetchRequests}
+                    className="p-3 bg-secondary/50 hover:bg-secondary text-foreground rounded-xl transition-all"
+                >
+                    <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+                </button>
+            </header>
+
+            {loading ? (
+                <div className="flex items-center justify-center h-64">
+                    <Loader2 className="w-10 h-10 animate-spin text-primary opacity-20" />
+                </div>
+            ) : requests.length === 0 ? (
+                <div className="bg-card border border-border rounded-3xl p-12 text-center space-y-4">
+                    <div className="w-20 h-20 bg-secondary/50 rounded-full flex items-center justify-center mx-auto">
+                        <CheckCircle2 className="w-10 h-10 text-muted-foreground opacity-20" />
+                    </div>
+                    <h3 className="text-xl font-bold text-foreground">Clean Slate!</h3>
+                    <p className="text-muted-foreground">No pending upgrade requests at the moment.</p>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 gap-4">
+                    {requests.map((req, idx) => (
+                        <motion.div
+                            key={req.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: idx * 0.1 }}
+                            className="bg-card border border-border rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-6 hover:border-blue-500/30 transition-all shadow-sm"
+                        >
+                            <div className="flex items-center gap-6">
+                                <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-500 font-black">
+                                    {req.merchant.name[0]}
+                                </div>
+                                <div>
+                                    <h4 className="font-bold text-lg">{req.merchant.name}</h4>
+                                    <div className="flex items-center gap-3 text-xs font-bold uppercase tracking-wider mt-1">
+                                        <span className="text-muted-foreground line-through opacity-50">{req.currentTier}</span>
+                                        <ChevronRight className="w-4 h-4 text-primary" />
+                                        <span className="text-primary px-2 py-0.5 bg-primary/10 rounded-lg border border-primary/20 flex items-center gap-1">
+                                            <ArrowUpCircle className="w-3 h-3" />
+                                            {req.requestedTier}
+                                        </span>
+                                    </div>
+                                    <p className="text-[10px] text-muted-foreground/60 mt-2">
+                                        Requested on {new Date(req.createdAt).toLocaleString()}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={() => handleReject(req.id)}
+                                    className="px-6 py-2 rounded-xl text-sm font-bold text-muted-foreground hover:bg-red-500/10 hover:text-red-500 transition-all border border-transparent hover:border-red-500/20"
+                                >
+                                    Reject
+                                </button>
+                                <button
+                                    onClick={() => handleApprove(req.id)}
+                                    className="px-8 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-blue-500/20 transition-all"
+                                >
+                                    Approve Upgrade
+                                </button>
+                            </div>
+                        </motion.div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
+const Notifications = () => {
+    const [notifications, setNotifications] = React.useState<any[]>([]);
+    const [loading, setLoading] = React.useState(false);
+
+    const fetchNotifications = async () => {
+        setLoading(true);
+        try {
+            const resp = await axios.get(`${API_BASE}/api/admin/notifications`);
+            setNotifications(resp.data);
+        } catch (err) {
+            toast.error('Failed to fetch notifications');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    React.useEffect(() => {
+        fetchNotifications();
+    }, []);
+
+    const handleMarkAsRead = async (id: string) => {
+        try {
+            await axios.patch(`${API_BASE}/api/admin/notifications/${id}/read`);
+            setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+        } catch (err) {
+            toast.error('Failed to update notification');
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        try {
+            await axios.delete(`${API_BASE}/api/admin/notifications/${id}`);
+            setNotifications(prev => prev.filter(n => n.id !== id));
+            toast.success('Notification cleared');
+        } catch (err) {
+            toast.error('Failed to delete notification');
+        }
+    };
+
+    const handleMarkAllRead = async () => {
+        try {
+            await axios.patch(`${API_BASE}/api/admin/notifications/read-all`);
+            setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+            toast.success('All marked as read');
+        } catch (err) {
+            toast.error('Action failed');
+        }
+    };
+
+    return (
+        <div className="space-y-8 max-w-7xl mx-auto pb-20">
+            <header className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-3xl font-black text-foreground flex items-center gap-3">
+                        <Bell className="w-8 h-8 text-blue-500" />
+                        System Alerts
+                    </h1>
+                    <p className="text-muted-foreground mt-1">Permanent record of system events and merchant alerts.</p>
+                </div>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={handleMarkAllRead}
+                        className="px-4 py-2 bg-secondary/50 hover:bg-secondary text-foreground text-sm font-bold rounded-xl transition-all"
+                    >
+                        Mark All Read
+                    </button>
+                    <button
+                        onClick={fetchNotifications}
+                        className="p-3 bg-secondary/50 hover:bg-secondary text-foreground rounded-xl transition-all"
+                    >
+                        <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+                    </button>
+                </div>
+            </header>
+
+            {loading ? (
+                <div className="flex items-center justify-center h-64">
+                    <Loader2 className="w-10 h-10 animate-spin text-primary opacity-20" />
+                </div>
+            ) : notifications.length === 0 ? (
+                <div className="bg-card border border-border rounded-3xl p-12 text-center space-y-4">
+                    <div className="w-20 h-20 bg-secondary/50 rounded-full flex items-center justify-center mx-auto">
+                        <Mail className="w-10 h-10 text-muted-foreground opacity-20" />
+                    </div>
+                    <h3 className="text-xl font-bold text-foreground">No Alerts Yet</h3>
+                    <p className="text-muted-foreground">Critical platform notifications will appear here.</p>
+                </div>
+            ) : (
+                <div className="space-y-4">
+                    {notifications.map((n, idx) => (
+                        <motion.div
+                            key={n.id}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: idx * 0.05 }}
+                            className={`p-6 rounded-2xl border transition-all flex items-start gap-4 ${n.isRead ? 'bg-card/50 border-border opacity-70' : 'bg-card border-blue-500/30'}`}
+                        >
+                            <div className={`p-3 rounded-xl ${n.priority === 'CRITICAL' ? 'bg-red-500/10 text-red-500' : 'bg-blue-500/10 text-blue-500'}`}>
+                                <ShieldAlert className="w-6 h-6" />
+                            </div>
+                            <div className="flex-1">
+                                <div className="flex items-center justify-between">
+                                    <h4 className={`font-bold text-lg ${!n.isRead ? 'text-foreground' : 'text-muted-foreground'}`}>{n.title}</h4>
+                                    <span className="text-xs text-muted-foreground">{new Date(n.createdAt).toLocaleString()}</span>
+                                </div>
+                                <p className="text-muted-foreground mt-1">{n.message}</p>
+                                <div className="flex items-center gap-4 mt-4">
+                                    {!n.isRead && (
+                                        <button
+                                            onClick={() => handleMarkAsRead(n.id)}
+                                            className="text-xs font-bold text-blue-500 hover:text-blue-600"
+                                        >
+                                            Mark as Read
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={() => handleDelete(n.id)}
+                                        className="text-xs font-bold text-muted-foreground hover:text-red-500"
+                                    >
+                                        Delete
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
+const AdminProfile = () => {
+    const [phone, setPhone] = React.useState('');
+    const [loading, setLoading] = React.useState(false);
+
+    React.useEffect(() => {
+        const fetchProfile = async () => {
+            try {
+                const resp = await axios.get(`${API_BASE}/api/admin/profile`);
+                setPhone(resp.data.phone || '');
+            } catch (err) {
+                console.error('Failed to fetch admin profile');
+            }
+        };
+        fetchProfile();
+    }, []);
+
+    const handleUpdate = async (e: any) => {
+        e.preventDefault();
+        setLoading(true);
+        try {
+            await axios.patch(`${API_BASE}/api/admin/profile`, { phone });
+            toast.success('Admin profile updated successfully!');
+        } catch (err) {
+            toast.error('Failed to update profile');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="space-y-8 max-w-2xl mx-auto pb-20">
+            <header>
+                <h1 className="text-3xl font-black text-foreground flex items-center gap-3">
+                    <User className="w-8 h-8 text-blue-500" />
+                    Admin Profile
+                </h1>
+                <p className="text-muted-foreground mt-1">Manage your administrative contact details.</p>
+            </header>
+
+            <div className="bg-card border border-border rounded-3xl p-8 shadow-sm">
+                <form onSubmit={handleUpdate} className="space-y-6">
+                    <div className="space-y-2">
+                        <label className="text-sm font-bold text-muted-foreground">Notification Phone Number (WhatsApp)</label>
+                        <div className="relative">
+                            <Smartphone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                            <input
+                                type="text"
+                                value={phone}
+                                onChange={(e) => setPhone(e.target.value)}
+                                placeholder="+233..."
+                                className="w-full pl-12 pr-4 py-4 bg-secondary/30 border border-border rounded-2xl focus:border-blue-500 outline-none transition-all font-medium"
+                            />
+                        </div>
+                        <p className="text-[10px] text-muted-foreground">Critical alerts will be sent here when you are offline.</p>
+                    </div>
+
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-bold shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-2"
+                    >
+                        {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Save Profile Changes'}
+                    </button>
+                </form>
+            </div>
+        </div>
+    );
+};

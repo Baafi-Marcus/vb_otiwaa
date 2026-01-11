@@ -506,12 +506,10 @@ Keep it very short and use emojis.`;
       }
 
       const prompt = `Extract all food/product items from this menu image. 
-      IMPORTANT: If an item has multiple sizes or options (e.g. Small/Medium/Large/1kg/0.5kg), create a SEPARATE entry for each option.
-      Append the option to the name in parentheses, e.g., "Jollof Rice (Small)".
       Return ONLY a JSON array of objects. 
       Each object must have: "name", "price" (number), and "description". 
       If no price is found, use 0. 
-      Format: [{"name": "Item Name (Option)", "price": 10.5, "description": "Short description"}]`;
+      Format: [{"name": "Item Name", "price": 10.5, "description": "Short description"}]`;
 
       const response = await client.chat.completions.create({
         model: model,

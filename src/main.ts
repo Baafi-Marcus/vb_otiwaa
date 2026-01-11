@@ -1,9 +1,11 @@
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { ValidationPipe } from '@nestjs/common';
 import { join } from 'path';
 import { AppModule } from './app.module';
 import { SpaFallbackFilter } from './spa.filter';
 import * as crypto from 'crypto';
+import helmet from 'helmet';
 
 // Polyfill for Node.js < 20 where crypto is not a global
 if (!global.crypto) {
@@ -12,6 +14,16 @@ if (!global.crypto) {
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  // 1. Security Headers (XSS protection, etc.)
+  app.use(helmet());
+
+  // 2. Global Validation Pipe (Strict input validation)
+  app.useGlobalPipes(new ValidationPipe({
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transform: true,
+  }));
 
   // Enable CORS as early as possible with broad permissions for dev
   app.enableCors({

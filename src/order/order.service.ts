@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { WhatsappService } from '../whatsapp/whatsapp.service';
+import { AdminNotificationService } from '../notification/admin-notification.service';
 import { NotificationGateway } from '../notification/notification.gateway';
 
 @Injectable()
@@ -9,6 +10,7 @@ export class OrderService {
         private prisma: PrismaService,
         @Inject(forwardRef(() => WhatsappService))
         private whatsapp: WhatsappService,
+        private adminNotificationService: AdminNotificationService,
         private readonly notification: NotificationGateway,
     ) { }
 
@@ -88,7 +90,7 @@ export class OrderService {
         if (merchant) {
             const newCount = (merchant as any).monthlyOrderCount + 1;
 
-            await this.prisma.merchant.update({
+            await (this.prisma.merchant as any).update({
                 where: { id: data.merchantId },
                 data: { monthlyOrderCount: newCount }
             });
@@ -96,11 +98,13 @@ export class OrderService {
             // Soft limit warning for Basic tier
             if ((merchant as any).tier === 'BASIC' && newCount > 100) {
                 console.log(`[Tier Warning] Basic tier merchant ${data.merchantId} has exceeded 100 orders (${newCount}/100). Consider upgrading.`);
-                // Optionally notify admin
-                this.notification.emitToAdmin('tierLimitExceeded', {
+                // Persist alert and optionally notify admin via WhatsApp
+                await this.adminNotificationService.createAlert({
+                    type: 'ORDER_LIMIT_EXCEEDED',
+                    priority: 'NORMAL',
+                    title: `Order Limit Exceeded: ${merchant.name}`,
+                    message: `Merchant ${merchant.name} has exceeded their monthly order limit. Current count: ${newCount}/100.`,
                     merchantId: data.merchantId,
-                    merchantName: merchant.name,
-                    orderCount: newCount
                 });
             }
         }

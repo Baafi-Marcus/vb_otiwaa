@@ -7,11 +7,13 @@ import { StabilityaiModule } from '../stabilityai/stabilityai.module';
 import { WhatsappModule } from '../whatsapp/whatsapp.module';
 import { OrderModule } from '../order/order.module';
 import { AnalyticsModule } from '../analytics/analytics.module';
+import { TierScheduler } from './tier.scheduler';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
-    imports: [PrismaModule, OpenaiModule, StabilityaiModule, WhatsappModule, OrderModule, AnalyticsModule],
+    imports: [PrismaModule, OpenaiModule, StabilityaiModule, WhatsappModule, OrderModule, AnalyticsModule, NotificationModule],
     controllers: [MerchantController],
-    providers: [MerchantService],
+    providers: [MerchantService, TierScheduler],
     exports: [MerchantService],
 })
 export class MerchantModule { }
