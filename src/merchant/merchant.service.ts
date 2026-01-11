@@ -456,21 +456,23 @@ export class MerchantService {
         return request;
     }
 
-    async approveUpgradeRequest(id: string) {
+    async approveUpgradeRequest(id: string, tier?: string, durationMonths: number = 1) {
         const request = await (this.prisma as any).upgradeRequest.findUnique({
             where: { id },
             include: { merchant: true }
         });
         if (!request) throw new NotFoundException('Upgrade request not found');
 
+        const finalTier = tier || request.requestedTier;
+
         // Update merchant tier and expiration
         const tierExpiresAt = new Date();
-        tierExpiresAt.setMonth(tierExpiresAt.getMonth() + 1); // Default 1 month on approval
+        tierExpiresAt.setMonth(tierExpiresAt.getMonth() + durationMonths);
 
         await (this.prisma.merchant as any).update({
             where: { id: request.merchantId },
             data: {
-                tier: request.requestedTier,
+                tier: finalTier,
                 tierExpiresAt: tierExpiresAt,
                 monthlyOrderCount: 0
             }

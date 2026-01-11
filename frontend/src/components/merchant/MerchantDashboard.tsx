@@ -37,7 +37,7 @@ import { useSocket } from '../../context/SocketContext';
 const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3000' : '';
 
 export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ merchantId }) => {
-    const [activeTab, setActiveTab] = useState<'orders' | 'catalog' | 'sandbox' | 'marketing'>('orders');
+    const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'catalog' | 'sandbox' | 'marketing'>('overview');
     const [merchant, setMerchant] = useState<any>(null);
     const [orders, setOrders] = useState<any[]>([]);
     const [analytics, setAnalytics] = useState<any>(null);
@@ -56,6 +56,8 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
     const [receiptOrder, setReceiptOrder] = useState<any>(null);
     const [localPreview, setLocalPreview] = useState<string | null>(null);
     const [reviewImageUrl, setReviewImageUrl] = useState<string | null>(null);
+    const [orderFilter, setOrderFilter] = useState<'ALL' | 'PENDING' | 'CONFIRMED' | 'DELIVERED' | 'REJECTED'>('ALL');
+    const [orderSearch, setOrderSearch] = useState('');
     const { socket } = useSocket();
 
     useEffect(() => {
@@ -233,11 +235,23 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
 
                 <nav className="flex-1 p-4 space-y-4">
                     <button
+                        onClick={() => setActiveTab('overview')}
+                        className={`w-full flex items-center justify-center lg:justify-start gap-3 p-3 rounded-xl transition-all ${activeTab === 'overview' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-secondary'}`}
+                    >
+                        <Bot className="w-5 h-5" />
+                        <span className="font-medium hidden lg:block">Business Overview</span>
+                    </button>
+                    <button
                         onClick={() => setActiveTab('orders')}
                         className={`w-full flex items-center justify-center lg:justify-start gap-3 p-3 rounded-xl transition-all ${activeTab === 'orders' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-secondary'}`}
                     >
                         <Clock className="w-5 h-5" />
                         <span className="font-medium hidden lg:block">Live Orders</span>
+                        {orders.filter(o => o.status === 'PENDING').length > 0 && (
+                            <span className="ml-auto bg-primary text-white text-[10px] px-2 py-0.5 rounded-full">
+                                {orders.filter(o => o.status === 'PENDING').length}
+                            </span>
+                        )}
                     </button>
                     <button
                         onClick={() => setActiveTab('catalog')}
@@ -266,23 +280,32 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
             </aside>
 
             {/* Mobile Bottom Navigation */}
-            <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border p-4 flex justify-around z-50 pb-safe">
-                <button onClick={() => setActiveTab('orders')} className={`flex flex-col items-center gap-1 ${activeTab === 'orders' ? 'text-primary' : 'text-muted-foreground'}`}>
-                    <Clock className="w-6 h-6" />
-                    <span className="text-[10px] font-bold">Orders</span>
+            <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border p-4 flex justify-around z-50 pb-safe shadow-[0_-10px_40px_rgba(0,0,0,0.1)]">
+                <button onClick={() => setActiveTab('overview')} className={`flex flex-col items-center gap-1 ${activeTab === 'overview' ? 'text-primary' : 'text-muted-foreground'}`}>
+                    <Bot className="w-5 h-5" />
+                    <span className="text-[9px] font-bold">Insights</span>
+                </button>
+                <button onClick={() => setActiveTab('orders')} className={`flex flex-col items-center gap-1 relative ${activeTab === 'orders' ? 'text-primary' : 'text-muted-foreground'}`}>
+                    <Clock className="w-5 h-5" />
+                    <span className="text-[9px] font-bold">Orders</span>
+                    {orders.filter(o => o.status === 'PENDING').length > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-primary text-white text-[8px] w-4 h-4 rounded-full flex items-center justify-center font-black">
+                            {orders.filter(o => o.status === 'PENDING').length}
+                        </span>
+                    )}
                 </button>
                 <button onClick={() => setActiveTab('catalog')} className={`flex flex-col items-center gap-1 ${activeTab === 'catalog' ? 'text-primary' : 'text-muted-foreground'}`}>
-                    <Package className="w-6 h-6" />
-                    <span className="text-[10px] font-bold">Catalog</span>
+                    <Package className="w-5 h-5" />
+                    <span className="text-[9px] font-bold">Catalog</span>
                 </button>
                 <button onClick={() => setActiveTab('sandbox')} className={`flex flex-col items-center gap-1 ${activeTab === 'sandbox' ? 'text-primary' : 'text-muted-foreground'}`}>
-                    <MessageSquare className="w-6 h-6" />
-                    <span className="text-[10px] font-bold">Sandbox</span>
+                    <MessageSquare className="w-5 h-5" />
+                    <span className="text-[9px] font-bold">Chat</span>
                 </button>
                 {merchant?.tier !== 'BASIC' && (
                     <button onClick={() => setActiveTab('marketing')} className={`flex flex-col items-center gap-1 ${activeTab === 'marketing' ? 'text-primary' : 'text-muted-foreground'}`}>
-                        <Users className="w-6 h-6" />
-                        <span className="text-[10px] font-bold">CRM</span>
+                        <Users className="w-5 h-5" />
+                        <span className="text-[9px] font-bold">CRM</span>
                     </button>
                 )}
             </div>
@@ -300,9 +323,10 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
                             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
                                 <div className="space-y-1">
                                     <h1 className="text-4xl font-black tracking-tight text-foreground flex flex-wrap items-center gap-4">
-                                        {activeTab === 'orders' ? 'Dashboard' :
-                                            activeTab === 'catalog' ? 'Smart Catalog' :
-                                                activeTab === 'sandbox' ? 'AI Sandbox' : 'Marketing CRM'}
+                                        {activeTab === 'overview' ? 'Business Overview' :
+                                            activeTab === 'orders' ? 'Live Orders' :
+                                                activeTab === 'catalog' ? 'Smart Catalog' :
+                                                    activeTab === 'sandbox' ? 'AI Sandbox' : 'Marketing CRM'}
 
                                         {merchant?.tier && (
                                             <div className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest flex items-center gap-2 shadow-sm ${merchant.tier === 'BASIC' ? 'bg-zinc-100 text-zinc-600 border border-zinc-200' :
@@ -333,7 +357,7 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
                                     </div>
                                 </div>
 
-                                {activeTab === 'orders' && (
+                                {(activeTab === 'orders' || activeTab === 'overview') && (
                                     <div className="flex items-center gap-3">
                                         {merchant?.tier !== 'ENTERPRISE' && (
                                             <button
@@ -369,11 +393,11 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
                                 )}
                             </div>
 
-                            {activeTab === 'orders' && (
+                            {activeTab === 'overview' && (
                                 <DashboardStats orders={orders} analytics={analytics} />
                             )}
 
-                            {activeTab === 'orders' && (
+                            {activeTab === 'overview' && (
                                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
                                     {/* Analytics Section */}
                                     <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
@@ -438,32 +462,87 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
                                             <StatItem label="Success Rate" value="94%" change="Stable" />
                                         </div>
                                     </div>
+                                </motion.div>
+                            )}
 
-                                    <div className="space-y-4 relative">
-                                        <div className="flex items-center justify-between mb-4">
+                            {activeTab === 'orders' && (
+                                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 relative">
+                                    <div className="space-y-6 mb-8">
+                                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
                                             <div className="flex items-center gap-2 text-muted-foreground">
                                                 <Clock className="w-5 h-5" />
-                                                <span className="font-bold text-sm uppercase tracking-widest text-muted-foreground/60">Real-time Feed</span>
+                                                <span className="font-bold text-sm uppercase tracking-widest text-muted-foreground/60">Real-time Feed Management</span>
                                             </div>
                                             {orders.length > 0 && (
-                                                <div className="flex items-center gap-2 bg-secondary/20 px-3 py-1.5 rounded-xl border border-border">
+                                                <div className="flex items-center gap-2 bg-secondary/20 px-4 py-2 rounded-xl border border-border">
                                                     <input
                                                         type="checkbox"
+                                                        id="select-all-orders"
                                                         checked={selectedOrders.size === orders.length && orders.length > 0}
                                                         onChange={toggleSelectAll}
-                                                        className="w-4 h-4 rounded text-primary accent-primary"
+                                                        className="w-4 h-4 rounded text-primary accent-primary cursor-pointer"
                                                     />
-                                                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-tight">Select All</span>
+                                                    <label htmlFor="select-all-orders" className="text-xs font-bold text-muted-foreground uppercase tracking-tight cursor-pointer">Select All Visible</label>
                                                 </div>
                                             )}
                                         </div>
-                                        {orders.length === 0 ? (
-                                            <div className="py-20 text-center text-muted-foreground italic bg-secondary/5 rounded-3xl border border-dashed border-border">
-                                                No incoming orders yet.
+
+                                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-card border border-border p-4 lg:p-6 rounded-[2rem] shadow-sm">
+                                            <div className="flex-1 max-w-md relative group">
+                                                <div className="absolute inset-0 bg-primary/5 rounded-2xl blur-lg opacity-0 group-focus-within:opacity-100 transition-opacity" />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Search ID, Name or Phone..."
+                                                    value={orderSearch}
+                                                    onChange={(e) => setOrderSearch(e.target.value)}
+                                                    className="relative w-full bg-secondary/10 border border-border rounded-2xl py-3 px-6 text-sm font-bold outline-none focus:ring-2 focus:ring-primary/20 focus:bg-card transition-all"
+                                                />
                                             </div>
-                                        ) : (
-                                            <div className="space-y-3">
-                                                {orders.map((o, i) => (
+
+                                            <div className="flex items-center gap-2 overflow-x-auto pb-2 lg:pb-0 no-scrollbar">
+                                                {(['ALL', 'PENDING', 'CONFIRMED', 'DELIVERED', 'REJECTED'] as const).map((status) => (
+                                                    <button
+                                                        key={status}
+                                                        onClick={() => setOrderFilter(status)}
+                                                        className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap ${orderFilter === status
+                                                            ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20'
+                                                            : 'bg-secondary/10 text-muted-foreground hover:bg-secondary border border-border/50'
+                                                            }`}
+                                                    >
+                                                        {status === 'ALL' ? 'Everything' : status}
+                                                        {status !== 'ALL' && orders.filter(o => o.status === status).length > 0 && (
+                                                            <span className={`ml-2 px-1.5 py-0.5 rounded-md text-[8px] ${orderFilter === status ? 'bg-white/20' : 'bg-primary/10 text-primary'}`}>
+                                                                {orders.filter(o => o.status === status).length}
+                                                            </span>
+                                                        )}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {orders.filter(o => {
+                                        const matchesStatus = orderFilter === 'ALL' || o.status === orderFilter;
+                                        const matchesSearch = !orderSearch ||
+                                            o.shortId?.toLowerCase().includes(orderSearch.toLowerCase()) ||
+                                            o.customer?.name?.toLowerCase().includes(orderSearch.toLowerCase()) ||
+                                            o.customer?.phoneNumber?.includes(orderSearch);
+                                        return matchesStatus && matchesSearch;
+                                    }).length === 0 ? (
+                                        <div className="py-20 text-center text-muted-foreground italic bg-secondary/5 rounded-3xl border border-dashed border-border">
+                                            {orderSearch ? 'No matches found.' : orderFilter === 'ALL' ? 'No incoming orders yet.' : `No ${orderFilter.toLowerCase()} orders.`}
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            {orders
+                                                .filter(o => {
+                                                    const matchesStatus = orderFilter === 'ALL' || o.status === orderFilter;
+                                                    const matchesSearch = !orderSearch ||
+                                                        o.shortId?.toLowerCase().includes(orderSearch.toLowerCase()) ||
+                                                        o.customer?.name?.toLowerCase().includes(orderSearch.toLowerCase()) ||
+                                                        o.customer?.phoneNumber?.includes(orderSearch);
+                                                    return matchesStatus && matchesSearch;
+                                                })
+                                                .map((o, i) => (
                                                     <OrderRow
                                                         key={o.id}
                                                         order={o}
@@ -474,52 +553,50 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
                                                         onPrint={() => setReceiptOrder(o)}
                                                     />
                                                 ))}
-                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Floating Bulk Action Bar */}
+                                    <AnimatePresence>
+                                        {selectedOrders.size > 0 && (
+                                            <motion.div
+                                                initial={{ y: 100, opacity: 0 }}
+                                                animate={{ y: 0, opacity: 1 }}
+                                                exit={{ y: 100, opacity: 0 }}
+                                                className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 bg-black/80 backdrop-blur-xl border border-white/10 px-6 py-4 rounded-3xl shadow-2xl flex items-center gap-6 min-w-[400px]"
+                                            >
+                                                <div className="flex items-center gap-3 pr-6 border-r border-white/10">
+                                                    <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-xs font-black text-white">
+                                                        {selectedOrders.size}
+                                                    </div>
+                                                    <span className="text-xs font-bold text-white uppercase tracking-widest">Selected</span>
+                                                </div>
+
+                                                <div className="flex items-center gap-3">
+                                                    <button
+                                                        onClick={() => handleBulkStatusUpdate('CONFIRMED')}
+                                                        className="bg-primary text-primary-foreground px-5 py-2.5 rounded-xl text-xs font-black uppercase hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
+                                                    >
+                                                        Confirm All (Notify)
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleBulkStatusUpdate('DELIVERED')}
+                                                        className="bg-emerald-500 text-white px-5 py-2.5 rounded-xl text-xs font-black uppercase hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
+                                                    >
+                                                        Deliver All (Notify)
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setSelectedOrders(new Set())}
+                                                        className="p-2.5 text-white/50 hover:text-white hover:bg-white/10 rounded-xl transition-all"
+                                                    >
+                                                        <X className="w-5 h-5" />
+                                                    </button>
+                                                </div>
+                                            </motion.div>
                                         )}
-
-                                        {/* Floating Bulk Action Bar */}
-                                        <AnimatePresence>
-                                            {selectedOrders.size > 0 && (
-                                                <motion.div
-                                                    initial={{ y: 100, opacity: 0 }}
-                                                    animate={{ y: 0, opacity: 1 }}
-                                                    exit={{ y: 100, opacity: 0 }}
-                                                    className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 bg-black/80 backdrop-blur-xl border border-white/10 px-6 py-4 rounded-3xl shadow-2xl flex items-center gap-6 min-w-[400px]"
-                                                >
-                                                    <div className="flex items-center gap-3 pr-6 border-r border-white/10">
-                                                        <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-xs font-black text-white">
-                                                            {selectedOrders.size}
-                                                        </div>
-                                                        <span className="text-xs font-bold text-white uppercase tracking-widest">Selected</span>
-                                                    </div>
-
-                                                    <div className="flex items-center gap-3">
-                                                        <button
-                                                            onClick={() => handleBulkStatusUpdate('CONFIRMED')}
-                                                            className="bg-primary text-primary-foreground px-5 py-2.5 rounded-xl text-xs font-black uppercase hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
-                                                        >
-                                                            Confirm All (Notify)
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleBulkStatusUpdate('DELIVERED')}
-                                                            className="bg-emerald-500 text-white px-5 py-2.5 rounded-xl text-xs font-black uppercase hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
-                                                        >
-                                                            Deliver All (Notify)
-                                                        </button>
-                                                        <button
-                                                            onClick={() => setSelectedOrders(new Set())}
-                                                            className="p-2.5 text-white/50 hover:text-white hover:bg-white/10 rounded-xl transition-all"
-                                                        >
-                                                            <X className="w-5 h-5" />
-                                                        </button>
-                                                    </div>
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
-                                    </div>
+                                    </AnimatePresence>
                                 </motion.div>
-                            )
-                            }
+                            )}
 
                             {
                                 activeTab === 'catalog' && (
@@ -1315,6 +1392,7 @@ const OrderRow = ({ order, index, onStatusUpdate, isSelected, onSelect, onPrint 
     const statusColors: any = {
         PENDING: 'bg-orange-500/10 text-orange-500',
         CONFIRMED: 'bg-blue-500/10 text-blue-500',
+        READY: 'bg-amber-500/10 text-amber-500',
         DELIVERED: 'bg-emerald-500/10 text-emerald-500',
         CANCELLED: 'bg-red-500/10 text-red-500'
     };
@@ -1381,12 +1459,28 @@ const OrderRow = ({ order, index, onStatusUpdate, isSelected, onSelect, onPrint 
                             Confirm (Notify)
                         </button>
                     )}
-                    {order.status === 'CONFIRMED' && (
+                    {order.status === 'CONFIRMED' && order.fulfillmentMode === 'PICKUP' && (
+                        <button
+                            onClick={() => onStatusUpdate(order.id, 'READY')}
+                            className="bg-amber-500 text-white px-4 py-2 rounded-xl text-xs font-bold hover:opacity-90 transition-all shadow-lg shadow-amber-500/20"
+                        >
+                            Ready (Notify)
+                        </button>
+                    )}
+                    {order.status === 'CONFIRMED' && order.fulfillmentMode === 'DELIVERY' && (
                         <button
                             onClick={() => onStatusUpdate(order.id, 'DELIVERED')}
                             className="bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-bold hover:opacity-90 transition-all shadow-lg shadow-emerald-500/20"
                         >
                             Delivered (Notify)
+                        </button>
+                    )}
+                    {order.status === 'READY' && order.fulfillmentMode === 'PICKUP' && (
+                        <button
+                            onClick={() => onStatusUpdate(order.id, 'DELIVERED')}
+                            className="bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-bold hover:opacity-90 transition-all shadow-lg shadow-emerald-500/20"
+                        >
+                            Collected
                         </button>
                     )}
                     <button

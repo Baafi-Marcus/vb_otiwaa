@@ -1187,6 +1187,9 @@ const MerchantCard = ({ merchant, index, onSelect, onRefresh }: any) => {
 const UpgradeRequests = () => {
     const [requests, setRequests] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
+    const [approvingRequestId, setApprovingRequestId] = useState<string | null>(null);
+    const [selectedTier, setSelectedTier] = useState<string>('BASIC');
+    const [selectedDuration, setSelectedDuration] = useState<number>(1);
 
     const fetchRequests = async () => {
         setLoading(true);
@@ -1204,10 +1207,15 @@ const UpgradeRequests = () => {
         fetchRequests();
     }, []);
 
-    const handleApprove = async (requestId: string) => {
+    const handleApprove = async () => {
+        if (!approvingRequestId) return;
         try {
-            await axios.patch(`${API_BASE}/api/merchants/upgrade-requests/${requestId}/approve`);
+            await axios.patch(`${API_BASE}/api/merchants/upgrade-requests/${approvingRequestId}/approve`, {
+                tier: selectedTier,
+                durationMonths: selectedDuration
+            });
             toast.success('Upgrade approved!');
+            setApprovingRequestId(null);
             fetchRequests();
         } catch (err) {
             toast.error('Failed to approve upgrade');
@@ -1292,16 +1300,93 @@ const UpgradeRequests = () => {
                                     Reject
                                 </button>
                                 <button
-                                    onClick={() => handleApprove(req.id)}
+                                    onClick={() => {
+                                        setApprovingRequestId(req.id);
+                                        setSelectedTier(req.requestedTier);
+                                        setSelectedDuration(1);
+                                    }}
                                     className="px-8 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-blue-500/20 transition-all"
                                 >
-                                    Approve Upgrade
+                                    Approve...
                                 </button>
                             </div>
                         </motion.div>
                     ))}
                 </div>
             )}
+
+            <AnimatePresence>
+                {approvingRequestId && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, y: 20 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.9, y: 20 }}
+                            className="bg-card border border-border w-full max-w-md rounded-[2.5rem] p-10 shadow-2xl space-y-8"
+                        >
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-2xl font-black text-foreground">Finalize Upgrade</h2>
+                                <button onClick={() => setApprovingRequestId(null)} className="p-2 hover:bg-secondary rounded-full transition-all">
+                                    <X className="w-6 h-6" />
+                                </button>
+                            </div>
+
+                            <div className="space-y-6">
+                                <div className="space-y-3">
+                                    <label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Select Final Tier</label>
+                                    <div className="grid grid-cols-3 gap-3">
+                                        {['BASIC', 'PREMIUM', 'ENTERPRISE'].map((t) => (
+                                            <button
+                                                key={t}
+                                                onClick={() => setSelectedTier(t)}
+                                                className={`py-3 rounded-2xl text-[10px] font-black uppercase transition-all border ${selectedTier === t ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20' : 'bg-secondary/30 border-border hover:border-primary/30 text-muted-foreground'}`}
+                                            >
+                                                {t}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-3">
+                                    <label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Duration (Months)</label>
+                                    <div className="grid grid-cols-4 gap-2">
+                                        {[1, 3, 6, 12].map((m) => (
+                                            <button
+                                                key={m}
+                                                onClick={() => setSelectedDuration(m)}
+                                                className={`py-3 rounded-xl text-xs font-bold transition-all border ${selectedDuration === m ? 'bg-primary text-white border-primary' : 'bg-secondary/30 border-border hover:border-primary/30 text-muted-foreground'}`}
+                                            >
+                                                {m}m
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="pt-4 flex flex-col gap-3">
+                                <button
+                                    onClick={handleApprove}
+                                    className="w-full py-4 bg-primary hover:bg-primary/90 text-white rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2"
+                                >
+                                    <Sparkles className="w-4 h-4" />
+                                    Confirm Approval
+                                </button>
+                                <button
+                                    onClick={() => setApprovingRequestId(null)}
+                                    className="w-full py-4 text-muted-foreground hover:text-foreground font-bold text-sm transition-all"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

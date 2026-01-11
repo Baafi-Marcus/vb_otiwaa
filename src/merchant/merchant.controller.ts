@@ -242,8 +242,11 @@ export class MerchantController {
 
     @Patch('upgrade-requests/:id/approve')
     @Roles('admin')
-    async approveUpgradeRequest(@Param('id') id: string) {
-        return this.merchantService.approveUpgradeRequest(id);
+    async approveUpgradeRequest(
+        @Param('id') id: string,
+        @Body() body: { tier?: string, durationMonths?: number }
+    ) {
+        return this.merchantService.approveUpgradeRequest(id, body.tier, body.durationMonths);
     }
 
     @Patch('upgrade-requests/:id/reject')
