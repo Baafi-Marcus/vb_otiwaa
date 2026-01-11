@@ -970,10 +970,24 @@ const ReviewWorkspaceModal = ({ merchantId, drafts, onClose, onSuccess }: any) =
                                     className="w-full bg-background border border-border rounded-xl px-4 py-2 text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none"
                                 />
                             </div>
-                            <div className="col-span-1 flex justify-end">
+                            <div className="col-span-1 flex justify-end gap-2">
+                                <button
+                                    onClick={() => {
+                                        const newItem = { ...item, name: `${item.name} (Copy)` };
+                                        const newItems = [...items];
+                                        newItems.splice(idx + 1, 0, newItem);
+                                        setItems(newItems);
+                                        toast.success('Variant added! Please update the name and price.');
+                                    }}
+                                    className="p-2 hover:bg-blue-500/10 text-muted-foreground hover:text-blue-500 rounded-xl transition-all"
+                                    title="Add Variant"
+                                >
+                                    <Plus className="w-5 h-5" />
+                                </button>
                                 <button
                                     onClick={() => handleRemoveItem(idx)}
                                     className="p-2 hover:bg-red-500/10 text-muted-foreground hover:text-red-500 rounded-xl transition-all"
+                                    title="Remove Item"
                                 >
                                     <X className="w-5 h-5" />
                                 </button>
