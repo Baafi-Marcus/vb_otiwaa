@@ -309,11 +309,19 @@ export class MerchantService {
     }
 
     async getMerchantDashboardData(merchantId: string) {
-        const merchant = await this.prisma.merchant.findUnique({
+        const merchant = await (this.prisma.merchant as any).findUnique({
             where: { id: merchantId },
-            include: { catalog: true }
+            include: {
+                catalog: true,
+                upgradeRequests: {
+                    where: { status: 'PENDING' },
+                    take: 1
+                }
+            }
         });
         if (!merchant) throw new NotFoundException('Merchant not found');
+
+        const hasPendingUpgrade = (merchant as any).upgradeRequests?.length > 0;
 
         this.logger.log(`[DashboardSync] Found Merchant ${merchantId}. menuImageUrl: ${merchant.menuImageUrl}`);
 
@@ -355,6 +363,7 @@ export class MerchantService {
         return {
             merchant,
             orders,
+            hasPendingUpgrade,
             analytics: {
                 ...advancedAnalytics.metrics,
                 totalOrders: allOrders.length,
@@ -434,6 +443,18 @@ export class MerchantService {
     async createUpgradeRequest(merchantId: string, requestedTier: string) {
         const merchant = await this.prisma.merchant.findUnique({ where: { id: merchantId } });
         if (!merchant) throw new NotFoundException('Merchant not found');
+
+        // Check for existing pending request
+        const existingRequest = await (this.prisma as any).upgradeRequest.findFirst({
+            where: {
+                merchantId,
+                status: 'PENDING'
+            }
+        });
+
+        if (existingRequest) {
+            throw new Error('You already have a pending upgrade request.');
+        }
 
         const request = await (this.prisma as any).upgradeRequest.create({
             data: {

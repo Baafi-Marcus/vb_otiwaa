@@ -39,6 +39,7 @@ const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:30
 export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ merchantId }) => {
     const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'catalog' | 'sandbox' | 'marketing'>('overview');
     const [merchant, setMerchant] = useState<any>(null);
+    const [hasPendingUpgrade, setHasPendingUpgrade] = useState(false);
     const [orders, setOrders] = useState<any[]>([]);
     const [analytics, setAnalytics] = useState<any>(null);
     const [loading, setLoading] = useState(false);
@@ -138,6 +139,7 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
 
             setOrders(resp.data.orders);
             setAnalytics(resp.data.analytics);
+            setHasPendingUpgrade(resp.data.hasPendingUpgrade || false);
 
             // Fetch delivery zones (protected)
             try {
@@ -175,8 +177,9 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
                 requestedTier: merchant.tier === 'BASIC' ? 'PRO' : 'ENTERPRISE'
             });
             toast.success('Upgrade request sent! Admin will contact you soon.');
-        } catch (err) {
-            toast.error('Failed to send upgrade request');
+            setHasPendingUpgrade(true);
+        } catch (err: any) {
+            toast.error(err.response?.data?.message || 'Failed to send upgrade request');
         }
     };
 
@@ -362,10 +365,14 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
                                         {merchant?.tier !== 'ENTERPRISE' && (
                                             <button
                                                 onClick={handleUpgradeRequest}
-                                                className="px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl text-xs font-black uppercase tracking-wider transition-all active:scale-95 border border-primary/20 hidden sm:flex items-center gap-2"
+                                                disabled={hasPendingUpgrade}
+                                                className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all active:scale-95 border hidden sm:flex items-center gap-2 ${hasPendingUpgrade
+                                                        ? 'bg-secondary/50 text-muted-foreground border-border cursor-not-allowed'
+                                                        : 'bg-primary/10 hover:bg-primary/20 text-primary border-primary/20 shadow-sm'
+                                                    }`}
                                             >
-                                                <Sparkles className="w-3.5 h-3.5" />
-                                                Upgrade
+                                                <Sparkles className={`w-3.5 h-3.5 ${hasPendingUpgrade ? 'opacity-30' : ''}`} />
+                                                {hasPendingUpgrade ? 'Pending Approval...' : 'Upgrade'}
                                             </button>
                                         )}
                                         <button

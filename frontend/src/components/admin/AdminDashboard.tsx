@@ -1340,7 +1340,7 @@ const UpgradeRequests = () => {
                                 <div className="space-y-3">
                                     <label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Select Final Tier</label>
                                     <div className="grid grid-cols-3 gap-3">
-                                        {['BASIC', 'PREMIUM', 'ENTERPRISE'].map((t) => (
+                                        {['BASIC', 'PRO', 'ENTERPRISE'].map((t) => (
                                             <button
                                                 key={t}
                                                 onClick={() => setSelectedTier(t)}
