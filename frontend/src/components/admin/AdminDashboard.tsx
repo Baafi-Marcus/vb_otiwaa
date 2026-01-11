@@ -648,13 +648,13 @@ const MerchantRegistration = ({ onComplete }: any) => {
                             onClose={() => {
                                 setIsReviewingMenu(false);
                                 onComplete();
-                                setFormData({ name: '', phoneId: '', twilioPhoneNumber: '', category: 'Restaurant', vision: '', location: '', operatingHours: '', paymentMethods: '', menuImageUrl: '' });
+                                setFormData({ name: '', phoneId: '', twilioPhoneNumber: '', category: 'Restaurant', vision: '', location: '', operatingHours: '', paymentMethods: '', menuImageUrl: '', tier: 'BASIC', tierDurationMonths: 1 });
                                 setExpandedPrompt(null);
                             }}
                             onSuccess={() => {
                                 setIsReviewingMenu(false);
                                 onComplete();
-                                setFormData({ name: '', phoneId: '', twilioPhoneNumber: '', category: 'Restaurant', vision: '', location: '', operatingHours: '', paymentMethods: '', menuImageUrl: '' });
+                                setFormData({ name: '', phoneId: '', twilioPhoneNumber: '', category: 'Restaurant', vision: '', location: '', operatingHours: '', paymentMethods: '', menuImageUrl: '', tier: 'BASIC', tierDurationMonths: 1 });
                                 setExpandedPrompt(null);
                             }}
                         />
