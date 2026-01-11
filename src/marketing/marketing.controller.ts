@@ -1,10 +1,12 @@
 import { Controller, Post, Get, Body, Param, UseGuards, Request, ForbiddenException } from '@nestjs/common';
 import { MarketingService } from './marketing.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 
 @Controller('marketing')
 @UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('merchant', 'admin')
 export class MarketingController {
     constructor(private readonly marketingService: MarketingService) { }
 

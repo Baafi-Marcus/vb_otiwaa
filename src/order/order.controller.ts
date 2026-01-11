@@ -2,10 +2,12 @@ import { Controller, Get, Patch, Param, Body, Query, UseGuards, Request, Forbidd
 import { OrderService } from './order.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Controller('orders')
 @UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('merchant', 'admin')
 export class OrderController {
     constructor(
         private readonly orderService: OrderService,
