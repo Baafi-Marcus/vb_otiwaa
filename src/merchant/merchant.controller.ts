@@ -14,8 +14,10 @@ import { Request } from '@nestjs/common';
 import { RegisterMerchantDto } from './dto/register-merchant.dto';
 import { CreateUpgradeRequestDto } from './dto/create-upgrade-request.dto';
 
+import { RolesGuard } from '../auth/roles.guard';
+
 @Controller('merchants')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class MerchantController {
     constructor(
         private readonly merchantService: MerchantService,

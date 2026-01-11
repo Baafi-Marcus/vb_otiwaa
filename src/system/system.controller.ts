@@ -1,6 +1,8 @@
 import { Controller, Get, Post, Delete, Body, Param, UseGuards, Logger } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { SystemService } from './system.service';
+import { Roles } from '../auth/roles.decorator';
+import { RolesGuard } from '../auth/roles.guard';
 
 @Controller('system')
 export class SystemController {
@@ -20,17 +22,22 @@ export class SystemController {
         return { status: 'ok', time: new Date().toISOString() };
     }
 
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles('admin')
     @Get('api-keys')
     async getApiKeys() {
         return this.systemService.getApiKeys();
     }
 
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles('admin')
     @Post('api-keys')
     async addApiKey(@Body() body: { provider: string; key: string }) {
         return this.systemService.addApiKey(body.provider, body.key);
     }
 
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles('admin')
     @Delete('api-keys/:id')
     async deleteApiKey(@Param('id') id: string) {
         return this.systemService.deleteApiKey(id);

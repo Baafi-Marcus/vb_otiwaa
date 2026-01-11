@@ -1,22 +1,26 @@
-import { Controller, Post, Get, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, UseGuards, Request, ForbiddenException } from '@nestjs/common';
 import { MarketingService } from './marketing.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
 
 @Controller('marketing')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class MarketingController {
     constructor(private readonly marketingService: MarketingService) { }
 
     @Post(':merchantId/campaign')
     async createCampaign(
         @Param('merchantId') merchantId: string,
-        @Body() data: { name: string; message: string; customerIds: string[] }
+        @Body() data: { name: string; message: string; customerIds: string[] },
+        @Request() req: any
     ) {
+        if (req.user.type === 'merchant' && req.user.sub !== merchantId) throw new ForbiddenException('Not owner');
         return this.marketingService.createCampaign(merchantId, data);
     }
 
     @Get(':merchantId/campaigns')
-    async getCampaigns(@Param('merchantId') merchantId: string) {
+    async getCampaigns(@Param('merchantId') merchantId: string, @Request() req: any) {
+        if (req.user.type === 'merchant' && req.user.sub !== merchantId) throw new ForbiddenException('Not owner');
         return this.marketingService.getCampaigns(merchantId);
     }
 }

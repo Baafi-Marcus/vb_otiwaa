@@ -2,9 +2,10 @@ import { Controller, Get, Patch, Delete, Param, Query, UseGuards } from '@nestjs
 import { AdminNotificationService } from './admin-notification.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
+import { RolesGuard } from '../auth/roles.guard';
 
-@Controller('api/admin/notifications')
-@UseGuards(JwtAuthGuard)
+@Controller('admin/notifications')
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('admin')
 export class AdminNotificationController {
     constructor(private readonly notificationService: AdminNotificationService) { }

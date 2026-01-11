@@ -4,8 +4,10 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 import { Roles } from '../auth/roles.decorator';
 
-@Controller('api/admin')
-@UseGuards(JwtAuthGuard)
+import { RolesGuard } from '../auth/roles.guard';
+
+@Controller('admin')
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('admin')
 export class AdminController {
     constructor(private prisma: PrismaService) { }
