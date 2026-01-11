@@ -368,6 +368,12 @@ export class MerchantService {
         const merchant = await this.prisma.merchant.findUnique({ where: { id } });
         if (!merchant) throw new NotFoundException('Merchant not found');
 
+        // Only allow menuImageUrl update for Pro/Enterprise tiers
+        if (data.menuImageUrl && merchant.tier === 'BASIC') {
+            this.logger.warn(`[Tier Restriction] Basic tier merchant ${id} attempted to save menu image. Skipping image save.`);
+            delete data.menuImageUrl; // Remove from update data
+        }
+
         return (this.prisma.merchant as any).update({
             where: { id },
             data,

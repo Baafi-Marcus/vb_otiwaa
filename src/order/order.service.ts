@@ -83,6 +83,28 @@ export class OrderService {
         this.notification.emitToMerchant(data.merchantId, 'newOrder', order);
         this.notification.emitToAdmin('newOrder', { merchantId: data.merchantId, ...order });
 
+        // Increment monthly order count and check soft limit
+        const merchant = await this.prisma.merchant.findUnique({ where: { id: data.merchantId } });
+        if (merchant) {
+            const newCount = (merchant as any).monthlyOrderCount + 1;
+
+            await this.prisma.merchant.update({
+                where: { id: data.merchantId },
+                data: { monthlyOrderCount: newCount }
+            });
+
+            // Soft limit warning for Basic tier
+            if ((merchant as any).tier === 'BASIC' && newCount > 100) {
+                console.log(`[Tier Warning] Basic tier merchant ${data.merchantId} has exceeded 100 orders (${newCount}/100). Consider upgrading.`);
+                // Optionally notify admin
+                this.notification.emitToAdmin('tierLimitExceeded', {
+                    merchantId: data.merchantId,
+                    merchantName: merchant.name,
+                    orderCount: newCount
+                });
+            }
+        }
+
         return order;
     }
 

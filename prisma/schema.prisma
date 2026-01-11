@@ -33,6 +33,7 @@ model Merchant {
   deliveryZones         DeliveryZone[]
   orders                Order[]
   catalog               Product[]
+  upgradeRequests       UpgradeRequest[]
 }
 
 model Campaign {
@@ -165,4 +166,14 @@ model WebhookLog {
   provider  String   @default("TWILIO")
   payload   Json
   createdAt DateTime @default(now())
+}
+
+model UpgradeRequest {
+  id            String   @id @default(uuid())
+  merchantId    String
+  currentTier   String
+  requestedTier String
+  status        String   @default("PENDING")
+  createdAt     DateTime @default(now())
+  merchant      Merchant @relation(fields: [merchantId], references: [id])
 }
