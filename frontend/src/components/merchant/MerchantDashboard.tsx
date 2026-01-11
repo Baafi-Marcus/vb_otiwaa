@@ -904,6 +904,7 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
                 {isReviewingMenu && (
                     <ReviewWorkspaceModal
                         merchantId={merchantId}
+                        merchant={merchant}
                         menuImageUrl={reviewImageUrl || merchant?.menuImageUrl || null}
                         drafts={draftProducts}
                         onClose={() => setIsReviewingMenu(false)}
@@ -1073,11 +1074,12 @@ const ProductModal: React.FC<{ merchantId: string | null, product?: any, onClose
 
 const ReviewWorkspaceModal: React.FC<{
     merchantId: string | null,
+    merchant: any,
     menuImageUrl: string | null,
     drafts: any[],
     onClose: () => void,
     onSuccess: () => void
-}> = ({ merchantId, menuImageUrl, drafts, onClose, onSuccess }) => {
+}> = ({ merchantId, merchant, menuImageUrl, drafts, onClose, onSuccess }) => {
     const [items, setItems] = useState(drafts);
     const [loading, setLoading] = useState(false);
 

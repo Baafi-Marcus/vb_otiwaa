@@ -26,7 +26,6 @@ import {
     PauseCircle,
     PlayCircle,
     Clock,
-    Calendar,
     ChevronRight,
     ArrowUpCircle,
     Bell,
@@ -1201,7 +1200,7 @@ const UpgradeRequests = () => {
         }
     };
 
-    useEffect(() => {
+    React.useEffect(() => {
         fetchRequests();
     }, []);
 
