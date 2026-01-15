@@ -39,12 +39,14 @@ export class OrderController {
             if (!allOwned) throw new ForbiddenException('One or more orders not owned');
         }
         return this.orderService.bulkUpdateStatus(data.ids, data.status);
-        @Patch(':id/payment')
-        async updatePaymentStatus(@Param('id') id: string, @Body('paymentStatus') paymentStatus: string, @Request() req: any) {
-            if (req.user.type === 'merchant') {
-                const order = await (this.prisma as any).order.findUnique({ where: { id } });
-                if (!order || order.merchantId !== req.user.sub) throw new ForbiddenException('Not owner');
-            }
-            return this.orderService.updatePaymentStatus(id, paymentStatus);
-        }
     }
+
+    @Patch(':id/payment')
+    async updatePaymentStatus(@Param('id') id: string, @Body('paymentStatus') paymentStatus: string, @Request() req: any) {
+        if (req.user.type === 'merchant') {
+            const order = await (this.prisma as any).order.findUnique({ where: { id } });
+            if (!order || order.merchantId !== req.user.sub) throw new ForbiddenException('Not owner');
+        }
+        return this.orderService.updatePaymentStatus(id, paymentStatus);
+    }
+}
