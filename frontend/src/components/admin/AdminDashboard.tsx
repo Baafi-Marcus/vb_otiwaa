@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useSocket } from '../../context/SocketContext';
+import { ChatSandbox } from '../shared/ChatSandbox';
 
 const SidebarLink = ({ active, onClick, icon: Icon, label }: any) => (
     <button
@@ -48,7 +49,7 @@ const SidebarLink = ({ active, onClick, icon: Icon, label }: any) => (
 const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3000' : '';
 
 export const AdminDashboard: React.FC<{ onMerchantSelect: (id: string) => void }> = ({ onMerchantSelect }) => {
-    const [activeView, setActiveView] = useState<'overview' | 'register' | 'directory' | 'settings' | 'upgrades' | 'alerts' | 'profile'>('overview');
+    const [activeView, setActiveView] = useState<'overview' | 'register' | 'directory' | 'settings' | 'upgrades' | 'alerts' | 'profile' | 'simulation'>('overview');
     const [merchants, setMerchants] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
 
@@ -145,6 +146,12 @@ export const AdminDashboard: React.FC<{ onMerchantSelect: (id: string) => void }
                         label="System Alerts"
                     />
                     <SidebarLink
+                        active={activeView === 'simulation'}
+                        onClick={() => setActiveView('simulation')}
+                        icon={Smartphone}
+                        label="Live Simulator"
+                    />
+                    <SidebarLink
                         active={activeView === 'settings'}
                         onClick={() => setActiveView('settings')}
                         icon={Settings}
@@ -168,7 +175,60 @@ export const AdminDashboard: React.FC<{ onMerchantSelect: (id: string) => void }
                 {activeView === 'settings' && <SystemSettings />}
                 {activeView === 'alerts' && <Notifications />}
                 {activeView === 'profile' && <AdminProfile />}
+                {activeView === 'simulation' && <AdminSandbox merchants={merchants} />}
             </main>
+        </div>
+    );
+};
+
+const AdminSandbox = ({ merchants }: { merchants: any[] }) => {
+    const [selectedMerchantId, setSelectedMerchantId] = useState<string>('');
+
+    // Find selected merchant to get their system prompt
+    const selectedMerchant = merchants.find(m => m.id === selectedMerchantId);
+
+    return (
+        <div className="space-y-6 max-w-5xl mx-auto h-[calc(100vh-100px)] flex flex-col">
+            <header>
+                <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
+                    <Smartphone className="w-8 h-8 text-blue-500" />
+                    Live Bot Simulator
+                </h1>
+                <p className="text-muted-foreground mt-1">Test the chatbot behavior of any merchant in a safe sandbox environment.</p>
+            </header>
+
+            <div className="bg-card border border-border p-4 rounded-2xl flex items-center gap-4 shadow-sm shrink-0">
+                <div className="flex-1">
+                    <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground block mb-2">Select Merchant to Simulate</label>
+                    <div className="relative">
+                        <select
+                            className="w-full bg-secondary/30 border-border rounded-xl px-4 py-3 appearance-none font-bold outline-none ring-offset-background focus:ring-2 focus:ring-ring"
+                            value={selectedMerchantId}
+                            onChange={(e) => setSelectedMerchantId(e.target.value)}
+                        >
+                            <option value="">-- Choose a Merchant --</option>
+                            {merchants.map((m: any) => (
+                                <option key={m.id} value={m.id}>{m.name} ({m.phoneId})</option>
+                            ))}
+                        </select>
+                        <ChevronRight className="w-4 h-4 text-muted-foreground absolute right-4 top-1/2 -translate-y-1/2 rotate-90" />
+                    </div>
+                </div>
+            </div>
+
+            {selectedMerchantId ? (
+                <div className="flex-1 overflow-hidden pb-6">
+                    <ChatSandbox
+                        merchantId={selectedMerchantId}
+                        systemPrompt={selectedMerchant?.systemPrompt || "You are a helpful assistant."}
+                    />
+                </div>
+            ) : (
+                <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground bg-secondary/10 rounded-3xl border border-dashed border-border mx-4 mb-4">
+                    <Smartphone className="w-16 h-16 opacity-20 mb-4" />
+                    <p className="font-medium">Select a merchant above to start the simulation</p>
+                </div>
+            )}
         </div>
     );
 };
