@@ -28,6 +28,11 @@ model Merchant {
   tierExpiresAt         DateTime?
   monthlyOrderCount     Int            @default(0)
   lastOrderCountReset   DateTime       @default(now())
+  logoUrl               String?
+  contactPhone          String?
+  contactEmail          String?
+  nudgeDays             Int            @default(2)
+  nudgeMessage          String?
   campaigns             Campaign[]
   customers             Customer[]
   deliveryZones         DeliveryZone[]
@@ -95,6 +100,8 @@ model Product {
   merchantId  String
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
+  stockQuantity Int       @default(0)
+  trackStock    Boolean   @default(false)
   orderItems  OrderItem[]
   merchant    Merchant    @relation(fields: [merchantId], references: [id])
 }
@@ -113,6 +120,8 @@ model Order {
   customerId      String?
   location        String?
   shortId         String?     @unique
+  paymentScreenshotUrl String?
+  paymentStatus        String      @default("NONE") // NONE, PENDING, VERIFIED, REJECTED
   customer        Customer    @relation(fields: [customerPhone], references: [phoneNumber])
   merchant        Merchant    @relation(fields: [merchantId], references: [id])
   items           OrderItem[]

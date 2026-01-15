@@ -55,26 +55,64 @@ export const ReceiptView: React.FC<ReceiptViewProps> = ({ order, merchant, onClo
                     </style>
 
                     <div className="text-center mb-8 border-b pb-6 border-dashed border-gray-300">
-                        <h1 className="text-3xl font-black uppercase tracking-tight mb-2">{merchant?.name || 'Merchant'}</h1>
-                        <p className="text-sm text-gray-500 mb-1">Receipt #{order.id.slice(-4)}</p>
-                        <p className="text-xs text-gray-400">{new Date(order.createdAt).toLocaleString()}</p>
-                    </div>
-
-                    <div className="space-y-6 mb-8">
-                        <div>
-                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Customer</p>
-                            <p className="font-bold text-lg">{order.customerName || 'Guest'}</p>
-                            <p className="text-gray-600">{order.customerPhone}</p>
-                        </div>
-
-                        {(order.deliveryLocation || order.location) && (
-                            <div>
-                                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Delivery To</p>
-                                <p className="font-medium text-gray-800 leading-snug">
-                                    {order.deliveryLocation?.address || order.location || 'N/A'}
-                                </p>
+                        {merchant?.logoUrl ? (
+                            <div className="w-24 h-24 mx-auto mb-4 bg-white rounded-2xl p-2 border border-gray-100 shadow-sm flex items-center justify-center overflow-hidden">
+                                <img
+                                    src={merchant.logoUrl.startsWith('http') ? merchant.logoUrl : `${window.location.protocol}//${window.location.host}${merchant.logoUrl}`}
+                                    className="w-full h-full object-contain"
+                                    alt={merchant.name}
+                                />
+                            </div>
+                        ) : (
+                            <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto text-gray-400 font-black text-2xl mb-4">
+                                {merchant?.name?.[0] || 'M'}
                             </div>
                         )}
+                        <h1 className="text-3xl font-black uppercase tracking-tight mb-2">{merchant?.name || 'Merchant'}</h1>
+                        <div className="text-[10px] text-gray-500 font-bold uppercase tracking-widest space-y-1">
+                            {merchant?.location && <p>📍 {merchant.location}</p>}
+                            <div className="flex justify-center gap-4">
+                                {merchant?.contactPhone && <p>📞 {merchant.contactPhone}</p>}
+                                {merchant?.contactEmail && <p>✉️ {merchant.contactEmail}</p>}
+                            </div>
+                        </div>
+                        <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center">
+                            <div>
+                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Receipt #</p>
+                                <p className="font-black text-sm">{order.shortId || order.id.slice(-4)}</p>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Date</p>
+                                <p className="font-bold text-xs">{new Date(order.createdAt).toLocaleDateString()} {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-8 mb-8">
+                        <div>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Bill To</p>
+                            <p className="font-black text-sm text-gray-900 leading-tight">{order.customerName || 'Valued Customer'}</p>
+                            <p className="text-xs text-gray-500">{order.customerPhone}</p>
+                            {order.fulfillmentMode === 'DELIVERY' && order.location && (
+                                <div className="mt-2 p-2 bg-gray-50 rounded-lg border border-gray-100">
+                                    <p className="text-[9px] font-bold text-blue-500 uppercase mb-1">Delivery Address</p>
+                                    <p className="text-[10px] text-gray-700 leading-tight italic">{order.location}</p>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="text-right">
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Fulfillment</p>
+                            <div className={`inline-block px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter mb-2 ${order.fulfillmentMode === 'DELIVERY' ? 'bg-blue-100 text-blue-600' : 'bg-amber-100 text-amber-600'}`}>
+                                {order.fulfillmentMode || 'Standard'}
+                            </div>
+                            {order.fulfillmentMode === 'PICKUP' && (
+                                <div className="text-[10px] text-gray-500 leading-tight">
+                                    <p className="font-bold">Self-Pickup</p>
+                                    <p>{merchant?.location || 'At our store'}</p>
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     <div className="mb-8">

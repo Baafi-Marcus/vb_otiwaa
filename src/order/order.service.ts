@@ -45,6 +45,16 @@ export class OrderService {
             return duplicate;
         }
 
+        // --- Inventory Check ---
+        for (const item of data.items) {
+            const product = await this.prisma.product.findUnique({ where: { id: item.productId } });
+            if (product && (product as any).trackStock) {
+                if ((product as any).stockQuantity < item.quantity) {
+                    throw new Error(`Insufficient stock for ${product.name}. Available: ${(product as any).stockQuantity}`);
+                }
+            }
+        }
+
         const totalAmount = data.items.reduce((sum, item) => sum + (item.price * item.quantity), 0) + data.deliveryFee;
 
         // Ensure customer exists or update lastSeen
@@ -109,6 +119,17 @@ export class OrderService {
             }
         }
 
+        // --- Deduct Stock ---
+        for (const item of data.items) {
+            const product = await this.prisma.product.findUnique({ where: { id: item.productId } });
+            if (product && (product as any).trackStock) {
+                await (this.prisma.product as any).update({
+                    where: { id: item.productId },
+                    data: { stockQuantity: { decrement: item.quantity } }
+                });
+            }
+        }
+
         return order;
     }
 
@@ -130,6 +151,10 @@ export class OrderService {
         });
         if (!order) throw new NotFoundException('Order not found');
 
+        if (order.status === 'DELIVERED' || order.status === 'CANCELLED') {
+            throw new Error(`Order is already ${order.status.toLowerCase()} and cannot be modified.`);
+        }
+
         const updatedOrder = await this.prisma.order.update({
             where: { id: orderId },
             data: { status },
@@ -148,6 +173,38 @@ export class OrderService {
             await this.whatsapp.sendWhatsAppMessage(order.customerPhone, message);
         } catch (err) {
             console.error(`Failed to send status update to ${order.customerPhone}: ${err.message}`);
+        }
+
+        return updatedOrder;
+    }
+
+    async updatePaymentStatus(orderId: string, paymentStatus: string) {
+        const order: any = await this.prisma.order.findUnique({
+            where: { id: orderId },
+            include: { merchant: true }
+        });
+        if (!order) throw new NotFoundException('Order not found');
+
+        const updatedOrder = await this.prisma.order.update({
+            where: { id: orderId },
+            data: { paymentStatus },
+        });
+
+        const displayId = order.shortId || order.id.substring(0, 4);
+        let message = "";
+
+        if (paymentStatus === 'VERIFIED') {
+            message = `Payment for order ${displayId} has been *VERIFIED*! ✅\n\nWe are now processing your order. Thank you! 🙏`;
+        } else if (paymentStatus === 'REJECTED') {
+            message = `We're sorry, your payment screenshot for order ${displayId} was *REJECTED*. ❌\n\nPlease check your details and send a valid confirmation screenshot to proceed. Thank you!`;
+        }
+
+        if (message) {
+            try {
+                await this.whatsapp.sendWhatsAppMessage(order.customerPhone, message);
+            } catch (err) {
+                console.error(`Failed to send payment update to ${order.customerPhone}: ${err.message}`);
+            }
         }
 
         return updatedOrder;

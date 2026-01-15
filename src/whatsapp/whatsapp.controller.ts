@@ -348,6 +348,33 @@ export class WhatsappController {
 
     // Image analysis logic could go here
     this.logger.log(`[Media] Received ${type} message from ${sender}. URL: ${url}`);
+
+    if (type === 'image') {
+      // Check if user has an active order that needs payment
+      const activeOrder = await this.prismaService.order.findFirst({
+        where: {
+          customerPhone: sender,
+          paymentStatus: 'NONE',
+          status: 'PENDING'
+        },
+        orderBy: { createdAt: 'desc' },
+        include: { merchant: true }
+      });
+
+      if (activeOrder && activeOrder.merchant.tier === 'ENTERPRISE') {
+        this.logger.log(`[Payment] Image from ${sender} linked to order ${activeOrder.id} as payment proof.`);
+        await this.prismaService.order.update({
+          where: { id: activeOrder.id },
+          data: {
+            paymentScreenshotUrl: url,
+            paymentStatus: 'PENDING'
+          }
+        });
+
+        await this.whatsAppService.sendWhatsAppMessage(sender, "Thank you! I've received your payment screenshot. The merchant will verify it shortly. 😊✅");
+      }
+    }
+
     return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
   }
 }

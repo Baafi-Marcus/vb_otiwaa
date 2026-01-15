@@ -27,18 +27,13 @@ export class NudgeService {
         const fortyEightHoursAgo = new Date();
         fortyEightHoursAgo.setHours(fortyEightHoursAgo.getHours() - 48);
 
-        // Find customers who were last seen between 24 and 48 hours ago
-        // AND haven't been nudged in the last 24 hours
-        const idleCustomers = await this.prisma.customer.findMany({
+        // Find customers who were last seen older than 24h
+        // We will filter specific nudge timings inside the loop based on merchant tier
+        const potentialIdleCustomers = await this.prisma.customer.findMany({
             where: {
                 lastSeen: {
                     lte: twentyFourHoursAgo,
-                    gte: fortyEightHoursAgo,
                 },
-                OR: [
-                    { lastNudgedAt: null },
-                    { lastNudgedAt: { lte: twentyFourHoursAgo } },
-                ],
                 botPaused: false, // Don't nudge if the merchant has taken over manually
             },
             include: {
@@ -50,11 +45,23 @@ export class NudgeService {
             },
         });
 
-        this.logger.log(`Found ${idleCustomers.length} idle customers to nudge.`);
+        this.logger.log(`Found ${potentialIdleCustomers.length} potential customers to check for nudges.`);
 
-        for (const customer of idleCustomers) {
+        for (const customer of potentialIdleCustomers) {
             try {
-                await this.sendNudge(customer);
+                const { merchant, lastSeen, lastNudgedAt } = customer;
+                const nudgeDays = (merchant as any).tier === 'ENTERPRISE' ? (merchant as any).nudgeDays : 2;
+                const nudgeThreshold = new Date();
+                nudgeThreshold.setDate(nudgeThreshold.getDate() - nudgeDays);
+
+                // Only nudge if they haven't been seen since the threshold
+                // AND haven't been nudged in the last nudgeDays (or 24h minimum)
+                const lastNudgeLimit = new Date();
+                lastNudgeLimit.setHours(lastNudgeLimit.getHours() - 24);
+
+                if (lastSeen <= nudgeThreshold && (!lastNudgedAt || lastNudgedAt <= lastNudgeLimit)) {
+                    await this.sendNudge(customer);
+                }
             } catch (err: any) {
                 this.logger.error(`Failed to nudge customer ${customer.phoneNumber}: ${err.message}`);
             }
@@ -64,17 +71,20 @@ export class NudgeService {
     private async sendNudge(customer: any) {
         const { phoneNumber, merchant, orders, name } = customer;
 
-        let nudgeMessage = "";
+        let nudgeMessage = (merchant as any).tier === 'ENTERPRISE' && (merchant as any).nudgeMessage
+            ? (merchant as any).nudgeMessage
+            : "";
 
-        if (orders.length > 0) {
-            const lastOrder = orders[0];
-            nudgeMessage = `Hi ${name || 'there'}! 😊 We noticed it's been a while since your last order from ${merchant.name}. 
+        if (!nudgeMessage) {
+            if (orders.length > 0) {
+                nudgeMessage = `Hi ${name || 'there'}! 😊 We noticed it's been a while since your last order from ${merchant.name}. 
 
 Would you like to see our menu again today? We have some fresh items you might love! 🛍️`;
-        } else {
-            nudgeMessage = `Hello from ${merchant.name}! 👋 
+            } else {
+                nudgeMessage = `Hello from ${merchant.name}! 👋 
 
 Just checking in to see if you have any questions or if you'd like to place an order today. We're here to help!`;
+            }
         }
 
         this.logger.log(`Nudging ${phoneNumber} for ${merchant.name}`);

@@ -141,7 +141,13 @@ ${customerOrders.map(o => `- Order ${o.shortId} on ${o.createdAt.toLocaleDateStr
       // 2. Build Industrial Context (Catalog - limited to top 20 items to save tokens)
       const topProducts = merchant.catalog.slice(0, 20);
       const catalogInfo = topProducts
-        .map((p) => `- ${p.name}: ${p.price} GHS (${p.description})`)
+        .map((p) => {
+          let stockStr = "";
+          if ((p as any).trackStock) {
+            stockStr = (p as any).stockQuantity > 0 ? ` [STOCK: ${(p as any).stockQuantity} available]` : " [OUT OF STOCK]";
+          }
+          return `- ${p.name}: ${p.price} GHS (${p.description})${stockStr}`;
+        })
         .join('\n');
 
       const deliveryZoneInfo = (merchant.deliveryZones || [])
@@ -230,8 +236,12 @@ ORDER FLOW
    - Inform them of the specific delivery fee for their location: 
 ${deliveryZoneInfo || '(Base Fee: ' + (merchant.baseDeliveryFee || 0) + ' GHS)'}
 4. Once you have ALL info (Items, Fulfillment, Name, Location, Phone), call the 'place_order' tool.
-5. TRACKING: If the user asks about their order status, you can check it automatically by their phone number. Do NOT ask for an ID unless you can't find anything. Use the 'check_order_status' tool.
-6. AFTER placing a DELIVERY order, tell the client their Order ID (Display ID) and that it's being prepared.
+5. AFTER placing the order:
+   ${(merchant as any).tier === 'ENTERPRISE' ? `- Instruct the user to pay using: ${merchant.paymentMethods}.
+   - CRITICAL: Explicitly share the business payment details (e.g., MoMo number) mentioned in the payment methods above.
+   - CRITICAL: Tell them they MUST SEND A SCREENSHOT of the payment confirmation here in WhatsApp now for manual verification before their order is processed.` : `- Inform them of the payment methods: ${merchant.paymentMethods}.`}
+6. TRACKING: If the user asks about their order status, you can check it automatically by their phone number. Do NOT ask for an ID unless you can't find anything. Use the 'check_order_status' tool.
+7. AFTER placing a DELIVERY order, tell the client their Order ID (Display ID) and that it's being prepared.
 
 ${closedInstruction}
 

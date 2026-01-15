@@ -15,7 +15,8 @@ import {
     X,
     CheckCircle2,
     Printer,
-    Bell
+    Bell,
+    Image as ImageIcon
 } from 'lucide-react';
 import {
     AreaChart,
@@ -56,6 +57,8 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
     const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
     const [receiptOrder, setReceiptOrder] = useState<any>(null);
     const [localPreview, setLocalPreview] = useState<string | null>(null);
+    const [localLogoPreview, setLocalLogoPreview] = useState<string | null>(null);
+    const [logoUploading, setLogoUploading] = useState(false);
     const [reviewImageUrl, setReviewImageUrl] = useState<string | null>(null);
     const [orderFilter, setOrderFilter] = useState<'ALL' | 'PENDING' | 'CONFIRMED' | 'DELIVERED' | 'REJECTED'>('ALL');
     const [orderSearch, setOrderSearch] = useState('');
@@ -120,6 +123,29 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
             console.error(err);
         } finally {
             setUploading(false);
+        }
+    };
+
+    const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const objectUrl = URL.createObjectURL(file);
+        setLocalLogoPreview(objectUrl);
+
+        setLogoUploading(true);
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            const resp = await axios.post(`${API_BASE}/api/merchants/upload`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            setMerchant({ ...merchant, logoUrl: resp.data.url });
+            toast.success('Logo uploaded!');
+        } catch (err) {
+            toast.error('Logo upload failed');
+        } finally {
+            setLogoUploading(false);
         }
     };
 
@@ -194,6 +220,16 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
         }
     };
 
+    const handlePaymentUpdate = async (orderId: string, paymentStatus: string) => {
+        try {
+            await axios.patch(`${API_BASE}/api/orders/${orderId}/payment`, { paymentStatus });
+            toast.success(`Payment ${paymentStatus.toLowerCase()}`);
+            fetchDashboardData();
+        } catch (err) {
+            toast.error('Failed to update payment status');
+        }
+    };
+
     const handleBulkStatusUpdate = async (status: string) => {
         if (selectedOrders.size === 0) return;
         const ids = Array.from(selectedOrders);
@@ -218,10 +254,11 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
     };
 
     const toggleSelectAll = () => {
-        if (selectedOrders.size === orders.length) {
+        const actionableOrders = orders.filter(o => o.status !== 'DELIVERED' && o.status !== 'CANCELLED' && o.status !== 'REJECTED');
+        if (selectedOrders.size === actionableOrders.length && actionableOrders.length > 0) {
             setSelectedOrders(new Set());
         } else {
-            setSelectedOrders(new Set(orders.map(o => o.id)));
+            setSelectedOrders(new Set(actionableOrders.map(o => o.id)));
         }
     };
 
@@ -367,8 +404,8 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
                                                 onClick={handleUpgradeRequest}
                                                 disabled={hasPendingUpgrade}
                                                 className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all active:scale-95 border hidden sm:flex items-center gap-2 ${hasPendingUpgrade
-                                                        ? 'bg-secondary/50 text-muted-foreground border-border cursor-not-allowed'
-                                                        : 'bg-primary/10 hover:bg-primary/20 text-primary border-primary/20 shadow-sm'
+                                                    ? 'bg-secondary/50 text-muted-foreground border-border cursor-not-allowed'
+                                                    : 'bg-primary/10 hover:bg-primary/20 text-primary border-primary/20 shadow-sm'
                                                     }`}
                                             >
                                                 <Sparkles className={`w-3.5 h-3.5 ${hasPendingUpgrade ? 'opacity-30' : ''}`} />
@@ -555,6 +592,7 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
                                                         order={o}
                                                         index={i}
                                                         onStatusUpdate={handleStatusUpdate}
+                                                        onPaymentUpdate={handlePaymentUpdate}
                                                         isSelected={selectedOrders.has(o.id)}
                                                         onSelect={toggleOrderSelection}
                                                         onPrint={() => setReceiptOrder(o)}
@@ -785,6 +823,85 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
                                                             />
                                                         </div>
 
+                                                        {merchant?.tier === 'ENTERPRISE' && (
+                                                            <div className="space-y-6 pt-6 border-t border-border">
+                                                                <h3 className="font-black text-sm text-primary uppercase tracking-tighter">Enterprise Branding & Automation</h3>
+                                                                <div className="space-y-2">
+                                                                    <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Business Logo (For Receipts)</label>
+                                                                    <div className="flex items-center gap-4">
+                                                                        <div className="w-20 h-20 rounded-2xl bg-secondary/30 border border-border overflow-hidden relative group">
+                                                                            {logoUploading ? (
+                                                                                <div className="absolute inset-0 flex items-center justify-center bg-background/50">
+                                                                                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                                                                                </div>
+                                                                            ) : (localLogoPreview || merchant?.logoUrl) ? (
+                                                                                <img src={localLogoPreview || (merchant?.logoUrl?.startsWith('/') ? `${API_BASE}${merchant.logoUrl}` : merchant?.logoUrl)} className="w-full h-full object-contain" />
+                                                                            ) : (
+                                                                                <div className="w-full h-full flex items-center justify-center text-muted-foreground/30">
+                                                                                    Logo
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                        <div className="flex-1 space-y-2">
+                                                                            <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" id="logo-upload" />
+                                                                            <label htmlFor="logo-upload" className="inline-block bg-secondary px-4 py-2 rounded-xl text-xs font-bold cursor-pointer hover:bg-secondary/80 transition-all">
+                                                                                {merchant?.logoUrl ? 'Change Logo' : 'Upload Logo'}
+                                                                            </label>
+                                                                            <p className="text-[10px] text-muted-foreground">High-res PNG or JPG recommended.</p>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                                    <div className="space-y-2">
+                                                                        <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Business Direct Phone</label>
+                                                                        <input
+                                                                            type="text"
+                                                                            className="w-full bg-secondary/20 border border-border rounded-xl px-4 py-2 text-sm font-medium outline-none focus:ring-1 focus:ring-primary transition-all"
+                                                                            value={merchant?.contactPhone || ""}
+                                                                            onChange={(e) => setMerchant({ ...merchant, contactPhone: e.target.value })}
+                                                                            placeholder="+233..."
+                                                                        />
+                                                                    </div>
+                                                                    <div className="space-y-2">
+                                                                        <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Business Email</label>
+                                                                        <input
+                                                                            type="email"
+                                                                            className="w-full bg-secondary/20 border border-border rounded-xl px-4 py-2 text-sm font-medium outline-none focus:ring-1 focus:ring-primary transition-all"
+                                                                            value={merchant?.contactEmail || ""}
+                                                                            onChange={(e) => setMerchant({ ...merchant, contactEmail: e.target.value })}
+                                                                            placeholder="contact@business.com"
+                                                                        />
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                                    <div className="space-y-2">
+                                                                        <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Nudge Window (Days)</label>
+                                                                        <input
+                                                                            type="number"
+                                                                            className="w-full bg-secondary/20 border border-border rounded-xl px-4 py-2 text-sm font-medium outline-none focus:ring-1 focus:ring-primary transition-all"
+                                                                            value={merchant?.nudgeDays || 2}
+                                                                            onChange={(e) => setMerchant({ ...merchant, nudgeDays: parseInt(e.target.value) || 2 })}
+                                                                        />
+                                                                    </div>
+                                                                    <div className="space-y-2 md:col-span-1">
+                                                                        {/* Placeholder for future re-engagement toggle */}
+                                                                    </div>
+                                                                    <div className="space-y-2 col-span-full">
+                                                                        <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Custom Re-engagement Message</label>
+                                                                        <textarea
+                                                                            className="w-full h-24 bg-secondary/20 border border-border rounded-xl p-4 text-xs font-medium resize-none outline-none focus:ring-1 focus:ring-primary transition-all"
+                                                                            value={merchant?.nudgeMessage || ""}
+                                                                            onChange={(e) => setMerchant({ ...merchant, nudgeMessage: e.target.value })}
+                                                                            placeholder="Hi {{name}}! We missed you. Would you like to check out our latest offers?"
+                                                                        />
+                                                                        <p className="text-[10px] text-muted-foreground italic">Leave empty to use AI defaults.</p>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        )}
+
                                                         {/* Custom Delivery Zones Section */}
                                                         <div className="space-y-4 pt-4 border-t border-border">
                                                             <div className="flex items-center justify-between">
@@ -926,7 +1043,12 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
                                                                     location: merchant?.location,
                                                                     operatingHours: merchant?.operatingHours,
                                                                     paymentMethods: merchant?.paymentMethods,
-                                                                    isClosed: merchant?.isClosed
+                                                                    isClosed: merchant?.isClosed,
+                                                                    logoUrl: merchant?.logoUrl,
+                                                                    contactPhone: merchant?.contactPhone,
+                                                                    contactEmail: merchant?.contactEmail,
+                                                                    nudgeDays: merchant?.nudgeDays,
+                                                                    nudgeMessage: merchant?.nudgeMessage
                                                                 });
                                                                 toast.success('Bot profile updated!');
                                                             } catch (err) {
@@ -1015,7 +1137,9 @@ const ProductModal: React.FC<{ merchantId: string | null, product?: any, onClose
     const [formData, setFormData] = useState({
         name: product?.name || '',
         description: product?.description || '',
-        price: product?.price?.toString() || ''
+        price: product?.price?.toString() || '',
+        trackStock: product?.trackStock || false,
+        stockQuantity: product?.stockQuantity?.toString() || '0'
     });
     const [loading, setLoading] = useState(false);
     const [generating, setGenerating] = useState(false);
@@ -1048,6 +1172,7 @@ const ProductModal: React.FC<{ merchantId: string | null, product?: any, onClose
                 await axios.patch(`${API_BASE}/api/merchants/${merchantId}/products/${product.id}`, {
                     ...formData,
                     price: parseFloat(formData.price),
+                    stockQuantity: parseInt(formData.stockQuantity),
                     imageUrl: imageUrl?.replace(API_BASE, '')
                 });
                 toast.success('Product updated!');
@@ -1056,6 +1181,7 @@ const ProductModal: React.FC<{ merchantId: string | null, product?: any, onClose
                 await axios.post(`${API_BASE}/api/merchants/${merchantId}/products`, {
                     ...formData,
                     price: parseFloat(formData.price),
+                    stockQuantity: parseInt(formData.stockQuantity),
                     imageUrl: imageUrl ? imageUrl.replace(API_BASE, '') : undefined
                 });
                 toast.success('Product added!');
@@ -1133,6 +1259,30 @@ const ProductModal: React.FC<{ merchantId: string | null, product?: any, onClose
                                 value={formData.description}
                                 onChange={e => setFormData({ ...formData, description: e.target.value })}
                             />
+                        </div>
+                        <div className="p-4 bg-secondary/10 rounded-2xl border border-border flex items-center justify-between">
+                            <div className="space-y-0.5">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Inventory Tracking</label>
+                                <p className="text-[10px] text-muted-foreground">Decrease stock automatically on orders</p>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                {formData.trackStock && (
+                                    <input
+                                        type="number"
+                                        placeholder="Qty"
+                                        className="w-20 bg-background border border-border rounded-lg px-2 py-1 text-xs font-bold outline-none focus:ring-1 focus:ring-primary"
+                                        value={formData.stockQuantity}
+                                        onChange={e => setFormData({ ...formData, stockQuantity: e.target.value })}
+                                    />
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={() => setFormData({ ...formData, trackStock: !formData.trackStock })}
+                                    className={`px-4 py-1.5 rounded-lg font-black text-[10px] transition-all ${formData.trackStock ? 'bg-primary text-white' : 'bg-secondary text-muted-foreground'}`}
+                                >
+                                    {formData.trackStock ? 'ON' : 'OFF'}
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -1395,7 +1545,16 @@ const StatItem = ({ label, value, change, accent }: any) => (
     </div>
 );
 
-const OrderRow = ({ order, index, onStatusUpdate, isSelected, onSelect, onPrint }: { order: any, index: number, onStatusUpdate: (id: string, s: string) => void, isSelected: boolean, onSelect: (id: string) => void, onPrint?: () => void }) => {
+const OrderRow = ({ order, index, onStatusUpdate, onPaymentUpdate, isSelected, onSelect, onPrint }: {
+    order: any,
+    index: number,
+    onStatusUpdate: (id: string, s: string) => void,
+    onPaymentUpdate: (id: string, s: string) => void,
+    isSelected: boolean,
+    onSelect: (id: string) => void,
+    onPrint?: () => void
+}) => {
+    const [showProof, setShowProof] = useState(false);
     const statusColors: any = {
         PENDING: 'bg-orange-500/10 text-orange-500',
         CONFIRMED: 'bg-blue-500/10 text-blue-500',
@@ -1415,8 +1574,9 @@ const OrderRow = ({ order, index, onStatusUpdate, isSelected, onSelect, onPrint 
                 <input
                     type="checkbox"
                     checked={isSelected}
+                    disabled={order.status === 'DELIVERED' || order.status === 'CANCELLED' || order.status === 'REJECTED'}
                     onChange={() => onSelect(order.id)}
-                    className="w-5 h-5 rounded-md border-border text-primary focus:ring-primary accent-primary cursor-pointer"
+                    className={`w-5 h-5 rounded-md border-border text-primary focus:ring-primary accent-primary cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed`}
                 />
                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black ${statusColors[order.status] || 'bg-secondary text-muted-foreground'}`}>
                     {order.status[0]}
@@ -1456,6 +1616,11 @@ const OrderRow = ({ order, index, onStatusUpdate, isSelected, onSelect, onPrint 
                     <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${statusColors[order.status] || 'bg-secondary'}`}>
                         {order.status}
                     </span>
+                    {order.paymentStatus && order.paymentStatus !== 'NONE' && (
+                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ml-2 ${order.paymentStatus === 'VERIFIED' ? 'bg-emerald-500/10 text-emerald-500' : order.paymentStatus === 'REJECTED' ? 'bg-red-500/10 text-red-500' : 'bg-amber-500/10 text-amber-500'}`}>
+                            Pay: {order.paymentStatus}
+                        </span>
+                    )}
                 </div>
                 <div className="flex gap-2">
                     {order.status === 'PENDING' && (
@@ -1466,6 +1631,36 @@ const OrderRow = ({ order, index, onStatusUpdate, isSelected, onSelect, onPrint 
                             Confirm (Notify)
                         </button>
                     )}
+
+                    {order.paymentScreenshotUrl && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); setShowProof(true); }}
+                            className="p-2 bg-secondary text-foreground rounded-xl hover:bg-secondary/80 transition-all"
+                            title="View Payment Proof"
+                        >
+                            <ImageIcon className="w-4 h-4" />
+                        </button>
+                    )}
+
+                    {order.paymentStatus === 'PENDING' && (
+                        <div className="flex gap-1">
+                            <button
+                                onClick={(e) => { e.stopPropagation(); onPaymentUpdate(order.id, 'VERIFIED'); }}
+                                className="p-2 bg-emerald-500/10 text-emerald-600 rounded-xl hover:bg-emerald-500/20 transition-all"
+                                title="Approve Payment"
+                            >
+                                <CheckCircle2 className="w-4 h-4" />
+                            </button>
+                            <button
+                                onClick={(e) => { e.stopPropagation(); onPaymentUpdate(order.id, 'REJECTED'); }}
+                                className="p-2 bg-red-500/10 text-red-600 rounded-xl hover:bg-red-500/20 transition-all"
+                                title="Reject Payment"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+                    )}
+
                     {order.status === 'CONFIRMED' && order.fulfillmentMode === 'PICKUP' && (
                         <button
                             onClick={() => onStatusUpdate(order.id, 'READY')}
@@ -1502,6 +1697,16 @@ const OrderRow = ({ order, index, onStatusUpdate, isSelected, onSelect, onPrint 
                     </button>
                 </div>
             </div>
+            {showProof && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/90 backdrop-blur-md" onClick={() => setShowProof(false)}>
+                    <div className="relative max-w-4xl max-h-[90vh] bg-white rounded-3xl overflow-hidden" onClick={e => e.stopPropagation()}>
+                        <button onClick={() => setShowProof(false)} className="absolute top-4 right-4 p-2 bg-black/50 hover:bg-black/70 rounded-xl text-white transition-all z-10">
+                            <X className="w-6 h-6" />
+                        </button>
+                        <img src={order.paymentScreenshotUrl} alt="Payment Proof" className="w-full h-full object-contain" />
+                    </div>
+                </div>
+            )}
         </motion.div>
     );
 };
@@ -1517,6 +1722,11 @@ const ProductCard = ({ product, onEdit, onDelete }: { product?: any, onEdit: () 
             <div className="absolute top-4 right-4 bg-background/80 backdrop-blur px-3 py-1 rounded-lg text-xs font-bold shadow-sm text-primary">
                 GHS {product?.price || '0.00'}
             </div>
+            {product?.trackStock && (
+                <div className={`absolute top-4 left-4 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest shadow-lg ${product.stockQuantity > 0 ? 'bg-emerald-500 text-white' : 'bg-destructive text-white'}`}>
+                    {product.stockQuantity > 0 ? `${product.stockQuantity} IN STOCK` : 'OUT OF STOCK'}
+                </div>
+            )}
         </div>
         <div className="p-6 space-y-4">
             <div>
