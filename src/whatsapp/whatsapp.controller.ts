@@ -244,12 +244,11 @@ export class WhatsappController {
           }
         });
 
-        if (merchant?.twilioPhoneNumber) {
+        if (merchant?.contactPhone) {
           const alertMessage = `⚠️ *AI ALERT*: I've encountered an API error while chatting with ${sender}. I've paused the AI and switched to MANUAL mode for this customer. Please check your dashboard!`;
-          // We send to the merchant's absolute number (sender is what we usually use for 'to')
-          // But here 'sender' is the customer. We want to send to the merchant.
-          // Note: Twilio Sandbox only allows verified numbers. For production, this works.
-          await this.whatsAppService.sendWhatsAppMessage(merchant.twilioPhoneNumber, alertMessage);
+          await this.whatsAppService.sendWhatsAppMessage(merchant.contactPhone, alertMessage);
+        } else {
+          this.logger.warn(`Cannot alert merchant ${merchant?.id} about AI failure: contactPhone is missing.`);
         }
       } catch (alertErr) {
         this.logger.warn(`Failed to alert merchant about AI failure: ${alertErr.message}`);
@@ -372,9 +371,11 @@ export class WhatsappController {
           }
         });
 
-        if (merchant?.twilioPhoneNumber) {
+        if (merchant?.contactPhone) {
           const alertMessage = `🤝 *SUPPORT REQUEST*\n\nCustomer ${sender} has requested to speak with a human.\n\nI've paused the AI for this customer. Please check your dashboard to respond manually!`;
-          await this.whatsAppService.sendWhatsAppMessage(merchant.twilioPhoneNumber, alertMessage);
+          await this.whatsAppService.sendWhatsAppMessage(merchant.contactPhone, alertMessage);
+        } else {
+          this.logger.warn(`Cannot alert merchant ${merchant?.id} about support request: contactPhone is missing.`);
         }
       } catch (alertErr) {
         this.logger.warn(`Failed to alert merchant about support request: ${alertErr.message}`);
