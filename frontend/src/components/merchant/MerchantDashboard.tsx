@@ -1580,6 +1580,19 @@ const CustomersView = ({ merchantId, customers, setCustomers }: { merchantId: st
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <button
+                                        onClick={async () => {
+                                            try {
+                                                await axios.post(`${API_BASE}/api/nudge/manual/${customer.id}`);
+                                                toast.success('Nudge sent!');
+                                            } catch (err) {
+                                                toast.error('Failed to send nudge');
+                                            }
+                                        }}
+                                        className="px-3 py-1.5 rounded-lg text-xs font-bold bg-primary/10 text-primary hover:bg-primary/20 transition-all flex items-center gap-1"
+                                    >
+                                        <Bell className="w-3 h-3" /> Nudge
+                                    </button>
+                                    <button
                                         onClick={() => toggleAI(customer.id, customer.botPaused)}
                                         className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${customer.botPaused ? 'bg-emerald-500 text-white hover:bg-emerald-600' : 'bg-amber-500 text-white hover:bg-amber-600'}`}
                                     >
@@ -1662,47 +1675,11 @@ const OrderRow = ({ order, index, merchantId, onStatusUpdate, onPaymentUpdate, i
     onPrint?: () => void
 }) => {
     const [showProof, setShowProof] = useState(false);
-    const [showChat, setShowChat] = useState(false);
-    const [message, setMessage] = useState('');
-    const [sending, setSending] = useState(false);
-
-    const [chatHistory, setChatHistory] = useState<any[]>([]);
-    const [loadingChat, setLoadingChat] = useState(false);
-
-    useEffect(() => {
-        if (showChat && merchantId) {
-            setLoadingChat(true);
-            axios.get(`${API_BASE}/api/merchants/${merchantId}/chat/${order.customerPhone}`)
-                .then(res => setChatHistory(res.data))
-                .catch(err => console.error('Failed to load chat', err))
-                .finally(() => setLoadingChat(false));
-        }
-    }, [showChat, merchantId, order.customerPhone]);
-
-    const handleSend = async () => {
-        if (!message.trim() || !merchantId) return;
-        setSending(true);
-        try {
-            await axios.post(`${API_BASE}/api/merchants/${merchantId}/chat/send`, {
-                customerId: order.customerPhone,
-                message: message.trim()
-            });
-            toast.success('Message sent!');
-            setMessage('');
-            // Refresh history
-            const res = await axios.get(`${API_BASE}/api/merchants/${merchantId}/chat/${order.customerPhone}`);
-            setChatHistory(res.data);
-        } catch (err) {
-            toast.error('Failed to send message');
-        } finally {
-            setSending(false);
-        }
-    };
     const statusColors: any = {
         PENDING: 'bg-orange-500/10 text-orange-500',
         CONFIRMED: 'bg-blue-500/10 text-blue-500',
         READY: 'bg-amber-500/10 text-amber-500',
-        DELIVERED: 'bg-emerald-500/10 text-emerald-500',
+        DELIVERED: 'bg-emerald-500/10 text-emerald-600',
         CANCELLED: 'bg-red-500/10 text-red-500'
     };
 
@@ -1766,14 +1743,6 @@ const OrderRow = ({ order, index, merchantId, onStatusUpdate, onPaymentUpdate, i
                     )}
                 </div>
                 <div className="flex gap-2">
-                    <button
-                        onClick={(e) => { e.stopPropagation(); setShowChat(!showChat); }}
-                        className={`p-2 rounded-xl transition-all ${showChat ? 'bg-primary text-primary-foreground' : 'bg-secondary text-foreground hover:bg-secondary/80'}`}
-                        title="Manual Chat"
-                    >
-                        <MessageSquare className="w-4 h-4" />
-                    </button>
-
                     {order.status === 'PENDING' && (
                         <button
                             onClick={() => onStatusUpdate(order.id, 'CONFIRMED')}
@@ -1848,42 +1817,6 @@ const OrderRow = ({ order, index, merchantId, onStatusUpdate, onPaymentUpdate, i
                     </button>
                 </div>
             </div>
-            {showChat && (
-                <div className="w-full mt-4 bg-secondary/10 border border-border rounded-xl p-3 animate-in slide-in-from-top-2 flex flex-col gap-2" onClick={e => e.stopPropagation()}>
-                    <div className="max-h-60 overflow-y-auto space-y-2 p-2 border border-border/50 rounded-xl bg-background/50 custom-scrollbar">
-                        {loadingChat ? (
-                            <div className="flex justify-center p-4"><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /></div>
-                        ) : chatHistory.length === 0 ? (
-                            <p className="text-xs text-center text-muted-foreground italic p-4">No history yet.</p>
-                        ) : (
-                            chatHistory.map((msg: any) => (
-                                <div key={msg.id} className={`flex ${msg.direction === 'OUTBOUND' ? 'justify-end' : 'justify-start'}`}>
-                                    <div className={`max-w-[85%] px-3 py-2 rounded-xl text-xs ${msg.direction === 'OUTBOUND' ? 'bg-primary text-primary-foreground rounded-br-none' : 'bg-secondary text-foreground rounded-bl-none'}`}>
-                                        <p>{msg.content}</p>
-                                        <p className="text-[9px] opacity-70 mt-1 text-right">{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                    <div className="flex gap-2">
-                        <input
-                            className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-xs outline-none focus:ring-1 focus:ring-primary"
-                            placeholder="Type a manual message to customer..."
-                            value={message}
-                            onChange={e => setMessage(e.target.value)}
-                            onKeyDown={e => e.key === 'Enter' && handleSend()}
-                        />
-                        <button
-                            onClick={handleSend}
-                            disabled={sending || !message.trim()}
-                            className="bg-primary text-primary-foreground px-4 rounded-lg font-bold text-xs disabled:opacity-50"
-                        >
-                            {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                        </button>
-                    </div>
-                </div>
-            )}
             {showProof && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/90 backdrop-blur-md" onClick={() => setShowProof(false)}>
                     <div className="relative max-w-4xl max-h-[90vh] bg-white rounded-3xl overflow-hidden" onClick={e => e.stopPropagation()}>
@@ -2075,68 +2008,7 @@ const MarketingView: React.FC<{ merchantId: string | null }> = ({ merchantId }) 
                 </div>
             </div>
 
-            {/* Customer List */}
-            <div className="space-y-4">
-                <div className="flex items-center gap-2 text-muted-foreground mb-4">
-                    <Users className="w-5 h-5" />
-                    <span className="font-bold text-sm uppercase tracking-widest text-muted-foreground/60">Recent Customers</span>
-                </div>
-                <div className="bg-card border border-border rounded-3xl overflow-hidden overflow-x-auto">
-                    <table className="w-full text-sm text-left min-w-[600px]">
-                        <thead className="bg-secondary/30 text-muted-foreground font-bold uppercase text-xs">
-                            <tr>
-                                <th className="px-6 py-4">Customer</th>
-                                <th className="px-6 py-4">Orders</th>
-                                <th className="px-6 py-4">Last Seen</th>
-                                <th className="px-6 py-4 text-right">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border">
-                            {customers.length === 0 ? (
-                                <tr>
-                                    <td colSpan={4} className="px-6 py-12 text-center text-muted-foreground italic">
-                                        No customers found yet.
-                                    </td>
-                                </tr>
-                            ) : (
-                                customers.map((c: any) => (
-                                    <tr key={c.id} className="hover:bg-secondary/10 transition-colors">
-                                        <td className="px-6 py-4 font-bold">{c.name || 'Unknown'} <span className="block text-xs font-normal text-muted-foreground">{c.phoneNumber}</span></td>
-                                        <td className="px-6 py-4">{c._count?.orders || 0}</td>
-                                        <td className="px-6 py-4 text-muted-foreground">{new Date(c.lastSeen).toLocaleDateString()}</td>
-                                        <td className="px-6 py-4 text-right flex justify-end gap-2">
-                                            <button
-                                                onClick={async () => {
-                                                    try {
-                                                        await axios.post(`${API_BASE}/api/nudge/manual/${c.id}`);
-                                                        toast.success('Nudge sent to ' + (c.name || c.phoneNumber));
-                                                    } catch (err) {
-                                                        toast.error('Failed to send nudge');
-                                                    }
-                                                }}
-                                                className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-primary text-primary-foreground hover:scale-105 transition-all flex items-center gap-1"
-                                            >
-                                                <Bell className="w-3 h-3" /> Nudge
-                                            </button>
-                                            <button
-                                                onClick={async () => {
-                                                    const newState = !c.botPaused;
-                                                    await axios.patch(`${API_BASE}/api/merchants/${merchantId}/customers/${c.id}/toggle-bot`, { paused: newState });
-                                                    setCustomers(customers.map(cust => cust.id === c.id ? { ...cust, botPaused: newState } : cust));
-                                                    toast.success(newState ? 'AI Paused (Manual Mode)' : 'AI Resumed');
-                                                }}
-                                                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${c.botPaused ? 'bg-amber-500 text-white' : 'bg-secondary text-foreground hover:bg-secondary/80'}`}
-                                            >
-                                                {c.botPaused ? 'Resume AI' : 'Pause AI'}
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+            {/* Only campaigns here now - Customers are in their own tab */}
         </motion.div>
     );
 };
