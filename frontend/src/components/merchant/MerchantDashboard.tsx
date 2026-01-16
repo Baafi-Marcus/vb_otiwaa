@@ -39,10 +39,11 @@ import { ChatSandbox } from '../shared/ChatSandbox';
 const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3000' : '';
 
 export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ merchantId }) => {
-    const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'catalog' | 'sandbox' | 'marketing'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'customers' | 'catalog' | 'sandbox' | 'marketing'>('overview');
     const [merchant, setMerchant] = useState<any>(null);
     const [hasPendingUpgrade, setHasPendingUpgrade] = useState(false);
     const [orders, setOrders] = useState<any[]>([]);
+    const [customers, setCustomers] = useState<any[]>([]);
     const [analytics, setAnalytics] = useState<any>(null);
     const [loading, setLoading] = useState(false);
     const [isAddingProduct, setIsAddingProduct] = useState(false);
@@ -295,6 +296,13 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
                         )}
                     </button>
                     <button
+                        onClick={() => setActiveTab('customers')}
+                        className={`w-full flex items-center justify-center lg:justify-start gap-3 p-3 rounded-xl transition-all ${activeTab === 'customers' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-secondary'}`}
+                    >
+                        <Users className="w-5 h-5" />
+                        <span className="font-medium hidden lg:block">Customers</span>
+                    </button>
+                    <button
                         onClick={() => setActiveTab('catalog')}
                         className={`w-full flex items-center justify-center lg:justify-start gap-3 p-3 rounded-xl transition-all ${activeTab === 'catalog' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-secondary'}`}
                     >
@@ -335,6 +343,10 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
                         </span>
                     )}
                 </button>
+                <button onClick={() => setActiveTab('customers')} className={`flex flex-col items-center gap-1 ${activeTab === 'customers' ? 'text-primary' : 'text-muted-foreground'}`}>
+                    <Users className="w-5 h-5" />
+                    <span className="text-[9px] font-bold">Customers</span>
+                </button>
                 <button onClick={() => setActiveTab('catalog')} className={`flex flex-col items-center gap-1 ${activeTab === 'catalog' ? 'text-primary' : 'text-muted-foreground'}`}>
                     <Package className="w-5 h-5" />
                     <span className="text-[9px] font-bold">Catalog</span>
@@ -366,8 +378,9 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
                                     <h1 className="text-4xl font-black tracking-tight text-foreground flex flex-wrap items-center gap-4">
                                         {activeTab === 'overview' ? 'Business Overview' :
                                             activeTab === 'orders' ? 'Live Orders' :
-                                                activeTab === 'catalog' ? 'Smart Catalog' :
-                                                    activeTab === 'sandbox' ? 'AI Sandbox' : 'Marketing CRM'}
+                                                activeTab === 'customers' ? 'Customer Management' :
+                                                    activeTab === 'catalog' ? 'Smart Catalog' :
+                                                        activeTab === 'sandbox' ? 'AI Sandbox' : 'Marketing CRM'}
 
                                         {merchant?.tier && (
                                             <div className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest flex items-center gap-2 shadow-sm ${merchant.tier === 'BASIC' ? 'bg-zinc-100 text-zinc-600 border border-zinc-200' :
@@ -643,6 +656,10 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
                                         )}
                                     </AnimatePresence>
                                 </motion.div>
+                            )}
+
+                            {activeTab === 'customers' && (
+                                <CustomersView merchantId={merchantId!} customers={customers} setCustomers={setCustomers} />
                             )}
 
                             {
@@ -1450,6 +1467,175 @@ const ReviewWorkspaceModal: React.FC<{
                     </button>
                 </div>
             </motion.div>
+        </motion.div>
+    );
+};
+
+const CustomersView = ({ merchantId, customers, setCustomers }: { merchantId: string, customers: any[], setCustomers: (c: any[]) => void }) => {
+    const [expandedCustomer, setExpandedCustomer] = useState<string | null>(null);
+    const [chatHistory, setChatHistory] = useState<any[]>([]);
+    const [loadingChat, setLoadingChat] = useState(false);
+    const [message, setMessage] = useState('');
+    const [sending, setSending] = useState(false);
+
+    useEffect(() => {
+        // Fetch customers on mount
+        axios.get(`${API_BASE}/api/merchants/${merchantId}/customers`)
+            .then(res => setCustomers(res.data))
+            .catch(err => console.error('Failed to load customers', err));
+    }, [merchantId]);
+
+    const loadChatHistory = async (customerPhone: string) => {
+        setLoadingChat(true);
+        try {
+            const res = await axios.get(`${API_BASE}/api/merchants/${merchantId}/chat/${customerPhone}`);
+            setChatHistory(res.data);
+        } catch (err) {
+            console.error('Failed to load chat', err);
+        } finally {
+            setLoadingChat(false);
+        }
+    };
+
+    const toggleCustomer = (customerId: string, customerPhone: string) => {
+        if (expandedCustomer === customerId) {
+            setExpandedCustomer(null);
+            setChatHistory([]);
+        } else {
+            setExpandedCustomer(customerId);
+            loadChatHistory(customerPhone);
+        }
+    };
+
+    const handleSend = async (customerPhone: string) => {
+        if (!message.trim()) return;
+        setSending(true);
+        try {
+            await axios.post(`${API_BASE}/api/merchants/${merchantId}/chat/send`, {
+                customerId: customerPhone,
+                message: message.trim()
+            });
+            toast.success('Message sent!');
+            setMessage('');
+            // Refresh history
+            await loadChatHistory(customerPhone);
+        } catch (err) {
+            toast.error('Failed to send message');
+        } finally {
+            setSending(false);
+        }
+    };
+
+    const toggleAI = async (customerId: string, currentState: boolean) => {
+        try {
+            await axios.patch(`${API_BASE}/api/merchants/${merchantId}/customers/${customerId}/toggle-bot`, { paused: !currentState });
+            setCustomers(customers.map(c => c.id === customerId ? { ...c, botPaused: !currentState } : c));
+            toast.success(!currentState ? 'AI Paused (Manual Mode)' : 'AI Resumed');
+        } catch (err) {
+            toast.error('Failed to toggle AI');
+        }
+    };
+
+    return (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+            {customers.length === 0 ? (
+                <div className="py-20 text-center space-y-4 bg-secondary/10 rounded-3xl border-2 border-dashed border-border">
+                    <Users className="w-12 h-12 mx-auto text-muted-foreground/30" />
+                    <div className="space-y-1">
+                        <p className="font-bold text-foreground">No customers yet</p>
+                        <p className="text-sm text-muted-foreground">Customers will appear here once they message your bot.</p>
+                    </div>
+                </div>
+            ) : (
+                <div className="space-y-3">
+                    {customers.map((customer) => (
+                        <motion.div
+                            key={customer.id}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all"
+                        >
+                            <div className="p-4 flex items-center justify-between">
+                                <div className="flex items-center gap-4 flex-1">
+                                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-black text-lg">
+                                        {customer.name?.[0]?.toUpperCase() || '?'}
+                                    </div>
+                                    <div className="flex-1">
+                                        <h3 className="font-bold text-foreground">{customer.name || 'Guest'}</h3>
+                                        <p className="text-xs text-muted-foreground">{customer.phoneNumber}</p>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${customer.botPaused ? 'bg-amber-500/10 text-amber-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
+                                                {customer.botPaused ? '⏸️ AI Paused' : '🤖 AI Active'}
+                                            </span>
+                                            <span className="text-[10px] text-muted-foreground">
+                                                {customer._count?.orders || 0} orders
+                                            </span>
+                                            {customer.lastSeen && (
+                                                <span className="text-[10px] text-muted-foreground">
+                                                    • {new Date(customer.lastSeen).toLocaleDateString()}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => toggleAI(customer.id, customer.botPaused)}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${customer.botPaused ? 'bg-emerald-500 text-white hover:bg-emerald-600' : 'bg-amber-500 text-white hover:bg-amber-600'}`}
+                                    >
+                                        {customer.botPaused ? '▶️ Resume AI' : '⏸️ Pause AI'}
+                                    </button>
+                                    <button
+                                        onClick={() => toggleCustomer(customer.id, customer.phoneNumber)}
+                                        className={`p-2 rounded-lg transition-all ${expandedCustomer === customer.id ? 'bg-primary text-primary-foreground' : 'bg-secondary hover:bg-secondary/80'}`}
+                                    >
+                                        <MessageSquare className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </div>
+
+                            {expandedCustomer === customer.id && (
+                                <div className="border-t border-border p-4 bg-secondary/5 space-y-3">
+                                    <div className="max-h-80 overflow-y-auto space-y-2 p-3 border border-border/50 rounded-xl bg-background/50 custom-scrollbar">
+                                        {loadingChat ? (
+                                            <div className="flex justify-center p-4"><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /></div>
+                                        ) : chatHistory.length === 0 ? (
+                                            <p className="text-xs text-center text-muted-foreground italic p-4">No conversation history yet.</p>
+                                        ) : (
+                                            chatHistory.map((msg: any) => (
+                                                <div key={msg.id} className={`flex ${msg.direction === 'OUTBOUND' ? 'justify-end' : 'justify-start'}`}>
+                                                    <div className={`max-w-[85%] px-3 py-2 rounded-xl text-xs ${msg.direction === 'OUTBOUND' ? 'bg-primary text-primary-foreground rounded-br-none' : 'bg-secondary text-foreground rounded-bl-none'}`}>
+                                                        <p>{msg.content}</p>
+                                                        <p className="text-[9px] opacity-70 mt-1 text-right">
+                                                            {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <input
+                                            className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-xs outline-none focus:ring-1 focus:ring-primary"
+                                            placeholder="Type a message..."
+                                            value={message}
+                                            onChange={e => setMessage(e.target.value)}
+                                            onKeyDown={e => e.key === 'Enter' && handleSend(customer.phoneNumber)}
+                                        />
+                                        <button
+                                            onClick={() => handleSend(customer.phoneNumber)}
+                                            disabled={sending || !message.trim()}
+                                            className="bg-primary text-primary-foreground px-4 rounded-lg font-bold text-xs disabled:opacity-50 flex items-center gap-2"
+                                        >
+                                            {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </motion.div>
+                    ))}
+                </div>
+            )}
         </motion.div>
     );
 };
