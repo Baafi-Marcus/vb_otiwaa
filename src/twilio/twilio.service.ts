@@ -46,6 +46,18 @@ export class TwilioService {
                 // or we skip if not found to avoid foreign key errors if strictly enforced.
                 // Best effort logging.
                 try {
+                    // Ensure customer exists via UPSERT
+                    await this.prisma.customer.upsert({
+                        where: { phoneNumber: customerPhone },
+                        update: {}, // No update needed if exists
+                        create: {
+                            phoneNumber: customerPhone,
+                            merchantId: merchantId,
+                            name: 'Guest',
+                            lastSeen: new Date()
+                        }
+                    });
+
                     await this.prisma.message.create({
                         data: {
                             merchantId,
