@@ -114,7 +114,7 @@ export const AdminDashboard: React.FC<{ onMerchantSelect: (id: string) => void }
                     <span className="font-bold hidden lg:block text-foreground text-xl tracking-tight">Admin Portal</span>
                 </div>
 
-                <nav className="flex-1 p-6 space-y-2">
+                <nav className="flex-1 p-6 space-y-2 overflow-y-auto">
                     <SidebarLink
                         active={activeView === 'overview'}
                         onClick={() => setActiveView('overview')}
