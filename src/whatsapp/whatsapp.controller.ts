@@ -348,9 +348,38 @@ export class WhatsappController {
     // Check for Human Request trigger
     if (aiResponse.includes('[HUMAN_REQUEST]')) {
       this.logger.log(`[HANDOFF] User ${sender} requested to talk to a human.`);
+
+      // Send clean response to customer
       if (cleanResponse) {
         await this.whatsAppService.sendWhatsAppMessage(sender, cleanResponse);
       }
+
+      // Auto-Pause Bot for this customer
+      await (this.prismaService.customer as any).update({
+        where: { phoneNumber: sender },
+        data: { botPaused: true }
+      }).catch(err => this.logger.warn(`Failed to pause bot for ${sender}: ${err.message}`));
+
+      // Notify Merchant
+      try {
+        const merchant: any = await (this.prismaService.merchant as any).findFirst({
+          where: {
+            OR: [
+              { id: contextId },
+              { whatsappPhoneNumberId: contextId },
+              { twilioPhoneNumber: contextId }
+            ]
+          }
+        });
+
+        if (merchant?.twilioPhoneNumber) {
+          const alertMessage = `🤝 *SUPPORT REQUEST*\n\nCustomer ${sender} has requested to speak with a human.\n\nI've paused the AI for this customer. Please check your dashboard to respond manually!`;
+          await this.whatsAppService.sendWhatsAppMessage(merchant.twilioPhoneNumber, alertMessage);
+        }
+      } catch (alertErr) {
+        this.logger.warn(`Failed to alert merchant about support request: ${alertErr.message}`);
+      }
+
       return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
     }
 
