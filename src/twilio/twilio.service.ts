@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Twilio, validateRequest } from 'twilio';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class TwilioService {
@@ -8,7 +9,10 @@ export class TwilioService {
     private client: Twilio;
     private readonly fromNumber: string;
 
-    constructor(private configService: ConfigService) {
+    constructor(
+        private configService: ConfigService,
+        private prisma: PrismaService
+    ) {
         const accountSid = this.configService.get<string>('TWILIO_ACCOUNT_SID');
         const authToken = this.configService.get<string>('TWILIO_AUTH_TOKEN');
         this.fromNumber = this.configService.get<string>('TWILIO_WHATSAPP_NUMBER') || 'whatsapp:+14155238886';
@@ -21,7 +25,7 @@ export class TwilioService {
         }
     }
 
-    async sendMessage(to: string, body: string) {
+    async sendMessage(to: string, body: string, merchantId?: string) {
         if (!this.client) {
             this.logger.error('Cannot send message: Twilio client not initialized.');
             return null;
@@ -33,6 +37,29 @@ export class TwilioService {
                 from: this.fromNumber,
                 to: to.startsWith('whatsapp:') ? to : `whatsapp:${to}`,
             });
+
+            // Log outbound message if merchantId is provided
+            if (merchantId) {
+                const customerPhone = to.replace('whatsapp:', '');
+                // Ensure customer exists or find them. 
+                // Note: For now, we assume customer exists if we are sending to them, 
+                // or we skip if not found to avoid foreign key errors if strictly enforced.
+                // Best effort logging.
+                try {
+                    await this.prisma.message.create({
+                        data: {
+                            merchantId,
+                            customerPhone,
+                            direction: 'OUTBOUND',
+                            content: body,
+                            status: 'SENT'
+                        }
+                    });
+                } catch (dbErr) {
+                    this.logger.warn(`Failed to log outbound message: ${dbErr.message}`);
+                }
+            }
+
             return response;
         } catch (error) {
             this.logger.error(`Failed to send WhatsApp message: ${error.message}`);

@@ -139,6 +139,35 @@ export class WhatsappController {
     this.logger.log(`Processing message for merchant ID: ${merchant.id}`);
     const contextId = merchant.id;
 
+    // Persist Customer & Message
+    try {
+      await this.prismaService.customer.upsert({
+        where: { phoneNumber: sender },
+        update: { lastSeen: new Date() },
+        create: {
+          phoneNumber: sender,
+          merchantId: merchant.id,
+          name: 'Guest',
+          lastSeen: new Date()
+        }
+      });
+
+      // Log Inbound Message
+      if (messageText || mediaUrl) {
+        await this.prismaService.message.create({
+          data: {
+            merchantId: merchant.id,
+            customerPhone: sender,
+            direction: 'INBOUND',
+            content: messageText || `[Media: ${mediaType || 'file'}]`,
+            status: 'RECEIVED'
+          }
+        });
+      }
+    } catch (dbErr) {
+      this.logger.warn(`Failed to persist inbound message: ${dbErr.message}`);
+    }
+
     if (mediaUrl) {
       if (mediaType?.startsWith('image/')) {
         this.notification.emitToMerchant(merchant.id, 'newMessage', { from: sender, type: 'image', url: mediaUrl });

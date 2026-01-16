@@ -592,6 +592,7 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
                                                         key={o.id}
                                                         order={o}
                                                         index={i}
+                                                        merchantId={merchantId}
                                                         onStatusUpdate={handleStatusUpdate}
                                                         onPaymentUpdate={handlePaymentUpdate}
                                                         isSelected={selectedOrders.has(o.id)}
@@ -1464,9 +1465,10 @@ const StatItem = ({ label, value, change, accent }: any) => (
     </div>
 );
 
-const OrderRow = ({ order, index, onStatusUpdate, onPaymentUpdate, isSelected, onSelect, onPrint }: {
+const OrderRow = ({ order, index, merchantId, onStatusUpdate, onPaymentUpdate, isSelected, onSelect, onPrint }: {
     order: any,
     index: number,
+    merchantId: string | null,
     onStatusUpdate: (id: string, s: string) => void,
     onPaymentUpdate: (id: string, s: string) => void,
     isSelected: boolean,
@@ -1474,6 +1476,42 @@ const OrderRow = ({ order, index, onStatusUpdate, onPaymentUpdate, isSelected, o
     onPrint?: () => void
 }) => {
     const [showProof, setShowProof] = useState(false);
+    const [showChat, setShowChat] = useState(false);
+    const [message, setMessage] = useState('');
+    const [sending, setSending] = useState(false);
+
+    const [chatHistory, setChatHistory] = useState<any[]>([]);
+    const [loadingChat, setLoadingChat] = useState(false);
+
+    useEffect(() => {
+        if (showChat && merchantId) {
+            setLoadingChat(true);
+            axios.get(`${API_BASE}/api/merchants/${merchantId}/chat/${order.customerPhone}`)
+                .then(res => setChatHistory(res.data))
+                .catch(err => console.error('Failed to load chat', err))
+                .finally(() => setLoadingChat(false));
+        }
+    }, [showChat, merchantId, order.customerPhone]);
+
+    const handleSend = async () => {
+        if (!message.trim() || !merchantId) return;
+        setSending(true);
+        try {
+            await axios.post(`${API_BASE}/api/merchants/${merchantId}/chat/send`, {
+                customerId: order.customerPhone,
+                message: message.trim()
+            });
+            toast.success('Message sent!');
+            setMessage('');
+            // Refresh history
+            const res = await axios.get(`${API_BASE}/api/merchants/${merchantId}/chat/${order.customerPhone}`);
+            setChatHistory(res.data);
+        } catch (err) {
+            toast.error('Failed to send message');
+        } finally {
+            setSending(false);
+        }
+    };
     const statusColors: any = {
         PENDING: 'bg-orange-500/10 text-orange-500',
         CONFIRMED: 'bg-blue-500/10 text-blue-500',
@@ -1542,6 +1580,14 @@ const OrderRow = ({ order, index, onStatusUpdate, onPaymentUpdate, isSelected, o
                     )}
                 </div>
                 <div className="flex gap-2">
+                    <button
+                        onClick={(e) => { e.stopPropagation(); setShowChat(!showChat); }}
+                        className={`p-2 rounded-xl transition-all ${showChat ? 'bg-primary text-primary-foreground' : 'bg-secondary text-foreground hover:bg-secondary/80'}`}
+                        title="Manual Chat"
+                    >
+                        <MessageSquare className="w-4 h-4" />
+                    </button>
+
                     {order.status === 'PENDING' && (
                         <button
                             onClick={() => onStatusUpdate(order.id, 'CONFIRMED')}
@@ -1616,6 +1662,42 @@ const OrderRow = ({ order, index, onStatusUpdate, onPaymentUpdate, isSelected, o
                     </button>
                 </div>
             </div>
+            {showChat && (
+                <div className="w-full mt-4 bg-secondary/10 border border-border rounded-xl p-3 animate-in slide-in-from-top-2 flex flex-col gap-2" onClick={e => e.stopPropagation()}>
+                    <div className="max-h-60 overflow-y-auto space-y-2 p-2 border border-border/50 rounded-xl bg-background/50 custom-scrollbar">
+                        {loadingChat ? (
+                            <div className="flex justify-center p-4"><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /></div>
+                        ) : chatHistory.length === 0 ? (
+                            <p className="text-xs text-center text-muted-foreground italic p-4">No history yet.</p>
+                        ) : (
+                            chatHistory.map((msg: any) => (
+                                <div key={msg.id} className={`flex ${msg.direction === 'OUTBOUND' ? 'justify-end' : 'justify-start'}`}>
+                                    <div className={`max-w-[85%] px-3 py-2 rounded-xl text-xs ${msg.direction === 'OUTBOUND' ? 'bg-primary text-primary-foreground rounded-br-none' : 'bg-secondary text-foreground rounded-bl-none'}`}>
+                                        <p>{msg.content}</p>
+                                        <p className="text-[9px] opacity-70 mt-1 text-right">{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                    <div className="flex gap-2">
+                        <input
+                            className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-xs outline-none focus:ring-1 focus:ring-primary"
+                            placeholder="Type a manual message to customer..."
+                            value={message}
+                            onChange={e => setMessage(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && handleSend()}
+                        />
+                        <button
+                            onClick={handleSend}
+                            disabled={sending || !message.trim()}
+                            className="bg-primary text-primary-foreground px-4 rounded-lg font-bold text-xs disabled:opacity-50"
+                        >
+                            {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                        </button>
+                    </div>
+                </div>
+            )}
             {showProof && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/90 backdrop-blur-md" onClick={() => setShowProof(false)}>
                     <div className="relative max-w-4xl max-h-[90vh] bg-white rounded-3xl overflow-hidden" onClick={e => e.stopPropagation()}>

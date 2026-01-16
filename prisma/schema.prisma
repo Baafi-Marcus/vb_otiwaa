@@ -39,6 +39,7 @@ model Merchant {
   orders                Order[]
   catalog               Product[]
   upgradeRequests       UpgradeRequest[]
+  messages              Message[]
 }
 
 model Campaign {
@@ -147,6 +148,7 @@ model Customer {
   lastNudgedAt DateTime?
   merchant     Merchant  @relation(fields: [merchantId], references: [id])
   orders       Order[]
+  messages     Message[]
 }
 
 model StoredImage {
@@ -197,4 +199,19 @@ model UpgradeRequest {
   status        String   @default("PENDING")
   createdAt     DateTime @default(now())
   merchant      Merchant @relation(fields: [merchantId], references: [id])
+}
+
+model Message {
+  id            String   @id @default(uuid())
+  merchantId    String
+  customerPhone String
+  direction     String   // INBOUND, OUTBOUND
+  content       String
+  status        String   @default("SENT") // SENT, RECEIVED, FAILED
+  createdAt     DateTime @default(now())
+  
+  merchant      Merchant @relation(fields: [merchantId], references: [id])
+  customer      Customer @relation(fields: [customerPhone], references: [phoneNumber])
+
+  @@index([merchantId, customerPhone])
 }

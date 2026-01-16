@@ -16,6 +16,8 @@ import { CreateUpgradeRequestDto } from './dto/create-upgrade-request.dto';
 
 import { RolesGuard } from '../auth/roles.guard';
 
+import { TwilioService } from '../twilio/twilio.service';
+
 @Controller('merchants')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class MerchantController {
@@ -23,6 +25,7 @@ export class MerchantController {
         private readonly merchantService: MerchantService,
         private readonly openai: OpenaiService,
         private readonly orderService: OrderService,
+        private readonly twilioService: TwilioService,
     ) { }
 
     @Post('upload')
@@ -261,14 +264,33 @@ export class MerchantController {
         return this.merchantService.deleteMerchant(id);
     }
 
-    @Patch(':id/toggle-status')
+
+    @Post(':id/chat/send')
     @Roles('merchant', 'admin')
-    async toggleStatus(
+    async sendMessage(
         @Param('id') id: string,
-        @Body() data: { isPaused: boolean },
+        @Body() data: { customerId: string; message: string },
         @Request() req: any
     ) {
         if (req.user.type === 'merchant' && req.user.sub !== id) throw new ForbiddenException('Not owner');
-        return this.merchantService.toggleMerchantStatus(id, data.isPaused);
+
+        // Ensure customerId starts with 'whatsapp:' if not already
+        const to = data.customerId.startsWith('whatsapp:') ? data.customerId : `whatsapp:${data.customerId.replace('+', '')}`;
+
+        // Use TwilioService to send the message
+        await this.twilioService.sendMessage(to, data.message, id);
+        return { status: 'success' };
+    }
+
+    @Get(':id/chat/:customerId')
+    @Roles('merchant', 'admin')
+    async getChatHistory(
+        @Param('id') id: string,
+        @Param('customerId') customerId: string,
+        @Request() req: any
+    ) {
+        if (req.user.type === 'merchant' && req.user.sub !== id) throw new ForbiddenException('Not owner');
+        const phone = customerId.replace('whatsapp:', '');
+        return this.merchantService.getChatHistory(id, phone);
     }
 }
