@@ -8,21 +8,25 @@
     "orientation": "portrait",
     "start_url": "/?source=pwa",
     "scope": "/",
+    "id": "/",
     "icons": [
         {
             "src": "/logo-black.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/logo-black.png",
             "sizes": "512x512",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "any maskable"
         },
         {
             "src": "/logo-white.png",
             "sizes": "512x512",
-            "type": "image/png"
-        },
-        {
-            "src": "/logo-black.png",
-            "sizes": "192x192",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "any maskable"
         }
     ]
 }
