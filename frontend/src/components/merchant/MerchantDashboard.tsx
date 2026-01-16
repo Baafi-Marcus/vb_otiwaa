@@ -34,7 +34,6 @@ import { toast } from 'react-hot-toast';
 import { DashboardStats } from './DashboardStats';
 import { ReceiptView } from './ReceiptView';
 import { useSocket } from '../../context/SocketContext';
-import { ChatSandbox } from '../shared/ChatSandbox';
 
 const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3000' : '';
 
@@ -313,8 +312,8 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
                         onClick={() => setActiveTab('sandbox')}
                         className={`w-full flex items-center justify-center lg:justify-start gap-3 p-3 rounded-xl transition-all ${activeTab === 'sandbox' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-secondary'}`}
                     >
-                        <MessageSquare className="w-5 h-5" />
-                        <span className="font-medium hidden lg:block">AI Sandbox</span>
+                        <Bot className="w-5 h-5" />
+                        <span className="font-medium hidden lg:block">AI Profile</span>
                     </button>
                     {merchant?.tier !== 'BASIC' && (
                         <button
@@ -352,8 +351,8 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
                     <span className="text-[9px] font-bold">Catalog</span>
                 </button>
                 <button onClick={() => setActiveTab('sandbox')} className={`flex flex-col items-center gap-1 ${activeTab === 'sandbox' ? 'text-primary' : 'text-muted-foreground'}`}>
-                    <MessageSquare className="w-5 h-5" />
-                    <span className="text-[9px] font-bold">Chat</span>
+                    <Bot className="w-5 h-5" />
+                    <span className="text-[9px] font-bold">AI Profile</span>
                 </button>
                 {merchant?.tier !== 'BASIC' && (
                     <button onClick={() => setActiveTab('marketing')} className={`flex flex-col items-center gap-1 ${activeTab === 'marketing' ? 'text-primary' : 'text-muted-foreground'}`}>
@@ -380,7 +379,7 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
                                             activeTab === 'orders' ? 'Live Orders' :
                                                 activeTab === 'customers' ? 'Customer Management' :
                                                     activeTab === 'catalog' ? 'Smart Catalog' :
-                                                        activeTab === 'sandbox' ? 'AI Sandbox' : 'Marketing CRM'}
+                                                        activeTab === 'sandbox' ? 'AI Profile' : 'Marketing CRM'}
 
                                         {merchant?.tier && (
                                             <div className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest flex items-center gap-2 shadow-sm ${merchant.tier === 'BASIC' ? 'bg-zinc-100 text-zinc-600 border border-zinc-200' :
@@ -605,7 +604,6 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
                                                         key={o.id}
                                                         order={o}
                                                         index={i}
-                                                        merchantId={merchantId}
                                                         onStatusUpdate={handleStatusUpdate}
                                                         onPaymentUpdate={handlePaymentUpdate}
                                                         isSelected={selectedOrders.has(o.id)}
@@ -708,388 +706,384 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
 
                             {
                                 activeTab === 'sandbox' && (
-                                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="h-full max-w-4xl mx-auto flex flex-col gap-6">
-                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-[600px]">
-                                            {/* Prompt Workshop */}
-                                            <div className="bg-card border border-border rounded-3xl p-8 flex flex-col space-y-6 shadow-sm overflow-hidden">
-                                                <div className="flex items-center gap-2">
-                                                    <Bot className="w-6 h-6 text-primary" />
-                                                    <h3 className="font-bold text-xl">Prompt Workshop</h3>
-                                                </div>
-                                                <div className="flex-1 flex flex-col space-y-4 overflow-y-auto pr-2 custom-scrollbar">
-                                                    <div className="space-y-4">
-                                                        <div className="space-y-2">
-                                                            <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Bot Name</label>
+                                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="max-w-4xl mx-auto space-y-6 pb-20">
+                                        {/* Prompt Workshop */}
+                                        <div className="bg-card border border-border rounded-3xl p-8 flex flex-col space-y-6 shadow-sm">
+                                            <div className="flex items-center gap-2">
+                                                <Bot className="w-6 h-6 text-primary" />
+                                                <h3 className="font-bold text-xl">Prompt Workshop</h3>
+                                            </div>
+                                            <div className="space-y-8">
+                                                <div className="space-y-4">
+                                                    <div className="space-y-2">
+                                                        <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Bot Name</label>
+                                                        <input
+                                                            className="w-full bg-secondary/20 border border-border rounded-xl px-4 py-2 text-sm font-medium outline-none focus:ring-1 focus:ring-primary transition-all"
+                                                            value={merchant?.name || ""}
+                                                            onChange={(e) => setMerchant({ ...merchant, name: e.target.value })}
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Menu Image (Upload from Device)</label>
+                                                        <div className="relative group">
                                                             <input
-                                                                className="w-full bg-secondary/20 border border-border rounded-xl px-4 py-2 text-sm font-medium outline-none focus:ring-1 focus:ring-primary transition-all"
-                                                                value={merchant?.name || ""}
-                                                                onChange={(e) => setMerchant({ ...merchant, name: e.target.value })}
+                                                                type="file"
+                                                                accept="image/*"
+                                                                onChange={handleFileUpload}
+                                                                className="hidden"
+                                                                id="merchant-menu-upload"
                                                             />
-                                                        </div>
-                                                        <div className="space-y-2">
-                                                            <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Menu Image (Upload from Device)</label>
-                                                            <div className="relative group">
-                                                                <input
-                                                                    type="file"
-                                                                    accept="image/*"
-                                                                    onChange={handleFileUpload}
-                                                                    className="hidden"
-                                                                    id="merchant-menu-upload"
-                                                                />
-                                                                <label
-                                                                    htmlFor="merchant-menu-upload"
-                                                                    className={`flex items-center justify-center gap-3 w-full h-48 border-2 border-dashed rounded-2xl cursor-pointer transition-all overflow-hidden relative
+                                                            <label
+                                                                htmlFor="merchant-menu-upload"
+                                                                className={`flex items-center justify-center gap-3 w-full h-48 border-2 border-dashed rounded-2xl cursor-pointer transition-all overflow-hidden relative
                                                                         ${(localPreview || merchant?.menuImageUrl)
-                                                                            ? 'border-emerald-500/30 bg-emerald-500/5'
-                                                                            : 'border-border bg-secondary/20 hover:border-primary/50'}`}
-                                                                >
-                                                                    {uploading ? (
-                                                                        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                                                                    ) : (localPreview || merchant?.menuImageUrl) ? (
-                                                                        <div className="relative w-full h-full group">
-                                                                            <img
-                                                                                src={localPreview || (merchant?.menuImageUrl?.startsWith('/') ? `${API_BASE}${merchant.menuImageUrl}` : merchant?.menuImageUrl) || ""}
-                                                                                alt="Menu Preview"
-                                                                                className="w-full h-full object-cover"
-                                                                            />
-                                                                            <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                                                                <RefreshCw className="w-8 h-8 text-white mb-2" />
-                                                                                <span className="text-xs font-bold text-white uppercase tracking-widest">Click to Change</span>
-                                                                            </div>
-                                                                            <div className="absolute top-2 right-2 bg-emerald-500 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-lg">
-                                                                                SAVED
-                                                                            </div>
+                                                                        ? 'border-emerald-500/30 bg-emerald-500/5'
+                                                                        : 'border-border bg-secondary/20 hover:border-primary/50'}`}
+                                                            >
+                                                                {uploading ? (
+                                                                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                                                                ) : (localPreview || merchant?.menuImageUrl) ? (
+                                                                    <div className="relative w-full h-full group">
+                                                                        <img
+                                                                            src={localPreview || (merchant?.menuImageUrl?.startsWith('/') ? `${API_BASE}${merchant.menuImageUrl}` : merchant?.menuImageUrl) || ""}
+                                                                            alt="Menu Preview"
+                                                                            className="w-full h-full object-cover"
+                                                                        />
+                                                                        <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                            <RefreshCw className="w-8 h-8 text-white mb-2" />
+                                                                            <span className="text-xs font-bold text-white uppercase tracking-widest">Click to Change</span>
                                                                         </div>
-                                                                    ) : (
-                                                                        <div className="flex flex-col items-center gap-1">
-                                                                            <Upload className="w-8 h-8 text-muted-foreground opacity-50 group-hover:scale-110 transition-transform" />
-                                                                            <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Pick Menu Image</span>
+                                                                        <div className="absolute top-2 right-2 bg-emerald-500 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-lg">
+                                                                            SAVED
                                                                         </div>
-                                                                    )}
-                                                                </label>
-                                                            </div>
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="flex flex-col items-center gap-1">
+                                                                        <Upload className="w-8 h-8 text-muted-foreground opacity-50 group-hover:scale-110 transition-transform" />
+                                                                        <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Pick Menu Image</span>
+                                                                    </div>
+                                                                )}
+                                                            </label>
                                                         </div>
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">OR Manual Menu URL</label>
+                                                        <input
+                                                            className="w-full bg-secondary/20 border border-border rounded-xl px-4 py-2 text-sm font-medium outline-none focus:ring-1 focus:ring-primary transition-all"
+                                                            value={merchant?.menuImageUrl || ""}
+                                                            onChange={(e) => merchant && setMerchant({ ...merchant, menuImageUrl: e.target.value })}
+                                                            placeholder="https://example.com/menu.jpg"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">System Prompt (Personality)</label>
+                                                        <textarea
+                                                            className="w-full h-48 bg-secondary/20 border border-border rounded-2xl p-4 text-sm font-medium resize-none outline-none focus:ring-1 focus:ring-primary transition-all"
+                                                            value={merchant?.systemPrompt || ""}
+                                                            onChange={(e) => merchant && setMerchant({ ...merchant, systemPrompt: e.target.value })}
+                                                            placeholder="Define how your bot should behave here..."
+                                                        />
+                                                    </div>
+                                                    <div className="flex items-center justify-between p-4 bg-secondary/10 rounded-2xl border border-border">
+                                                        <div className="space-y-0.5">
+                                                            <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Store Status</label>
+                                                            <p className="text-[10px] text-muted-foreground">When closed, AI will reject immediate orders</p>
+                                                        </div>
+                                                        <button
+                                                            onClick={() => merchant && setMerchant({ ...merchant, isClosed: !merchant?.isClosed })}
+                                                            className={`px-4 py-2 rounded-xl font-bold text-xs transition-all ${merchant?.isClosed ? 'bg-destructive text-destructive-foreground' : 'bg-emerald-500 text-white'}`}
+                                                        >
+                                                            {merchant?.isClosed ? '🔴 CLOSED' : '🟢 OPEN'}
+                                                        </button>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-2 gap-4">
                                                         <div className="space-y-2">
-                                                            <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">OR Manual Menu URL</label>
+                                                            <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Location</label>
                                                             <input
                                                                 className="w-full bg-secondary/20 border border-border rounded-xl px-4 py-2 text-sm font-medium outline-none focus:ring-1 focus:ring-primary transition-all"
-                                                                value={merchant?.menuImageUrl || ""}
-                                                                onChange={(e) => merchant && setMerchant({ ...merchant, menuImageUrl: e.target.value })}
-                                                                placeholder="https://example.com/menu.jpg"
+                                                                value={merchant?.location || ""}
+                                                                onChange={(e) => merchant && setMerchant({ ...merchant, location: e.target.value })}
+                                                                placeholder="Accra, Ghana"
                                                             />
                                                         </div>
                                                         <div className="space-y-2">
-                                                            <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">System Prompt (Personality)</label>
-                                                            <textarea
-                                                                className="w-full h-48 bg-secondary/20 border border-border rounded-2xl p-4 text-sm font-medium resize-none outline-none focus:ring-1 focus:ring-primary transition-all"
-                                                                value={merchant?.systemPrompt || ""}
-                                                                onChange={(e) => merchant && setMerchant({ ...merchant, systemPrompt: e.target.value })}
-                                                                placeholder="Define how your bot should behave here..."
+                                                            <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Operating Hours</label>
+                                                            <input
+                                                                className="w-full bg-secondary/20 border border-border rounded-xl px-4 py-2 text-sm font-medium outline-none focus:ring-1 focus:ring-primary transition-all"
+                                                                value={merchant?.operatingHours || ""}
+                                                                onChange={(e) => merchant && setMerchant({ ...merchant, operatingHours: e.target.value })}
+                                                                placeholder="Mon-Sat 9am-9pm"
                                                             />
                                                         </div>
-                                                        <div className="flex items-center justify-between p-4 bg-secondary/10 rounded-2xl border border-border">
-                                                            <div className="space-y-0.5">
-                                                                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Store Status</label>
-                                                                <p className="text-[10px] text-muted-foreground">When closed, AI will reject immediate orders</p>
+                                                    </div>
+
+                                                    <div className="space-y-2">
+                                                        <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Payment Methods</label>
+                                                        <input
+                                                            className="w-full bg-secondary/20 border border-border rounded-xl px-4 py-2 text-sm font-medium outline-none focus:ring-1 focus:ring-primary transition-all"
+                                                            value={merchant?.paymentMethods || ""}
+                                                            onChange={(e) => merchant && setMerchant({ ...merchant, paymentMethods: e.target.value })}
+                                                            placeholder="MTN MoMo, Cash"
+                                                        />
+                                                    </div>
+
+                                                    <div className="space-y-2">
+                                                        <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Base Delivery Fee (GHS)</label>
+                                                        <input
+                                                            type="number"
+                                                            step="0.01"
+                                                            className="w-full bg-secondary/20 border border-border rounded-xl px-4 py-2 text-sm font-medium outline-none focus:ring-1 focus:ring-primary transition-all"
+                                                            value={merchant?.baseDeliveryFee || 0}
+                                                            onChange={(e) => merchant && setMerchant({ ...merchant, baseDeliveryFee: parseFloat(e.target.value) || 0 })}
+                                                        />
+                                                    </div>
+
+                                                    {merchant?.tier === 'ENTERPRISE' && (
+                                                        <div className="space-y-6 pt-6 border-t border-border">
+                                                            <h3 className="font-black text-sm text-primary uppercase tracking-tighter">Enterprise Branding & Automation</h3>
+                                                            <div className="space-y-2">
+                                                                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Business Logo (For Receipts)</label>
+                                                                <div className="flex items-center gap-4">
+                                                                    <div className="w-20 h-20 rounded-2xl bg-secondary/30 border border-border overflow-hidden relative group">
+                                                                        {logoUploading ? (
+                                                                            <div className="absolute inset-0 flex items-center justify-center bg-background/50">
+                                                                                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                                                                            </div>
+                                                                        ) : (localLogoPreview || merchant?.logoUrl) ? (
+                                                                            <img src={localLogoPreview || (merchant?.logoUrl?.startsWith('/') ? `${API_BASE}${merchant.logoUrl}` : merchant?.logoUrl)} className="w-full h-full object-contain" />
+                                                                        ) : (
+                                                                            <div className="w-full h-full flex items-center justify-center text-muted-foreground/30">
+                                                                                Logo
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="flex-1 space-y-2">
+                                                                        <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" id="logo-upload" />
+                                                                        <label htmlFor="logo-upload" className="inline-block bg-secondary px-4 py-2 rounded-xl text-xs font-bold cursor-pointer hover:bg-secondary/80 transition-all">
+                                                                            {merchant?.logoUrl ? 'Change Logo' : 'Upload Logo'}
+                                                                        </label>
+                                                                        <p className="text-[10px] text-muted-foreground">High-res PNG or JPG recommended.</p>
+                                                                    </div>
+                                                                </div>
                                                             </div>
+
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                                <div className="space-y-2">
+                                                                    <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Business Direct Phone</label>
+                                                                    <input
+                                                                        type="text"
+                                                                        className="w-full bg-secondary/20 border border-border rounded-xl px-4 py-2 text-sm font-medium outline-none focus:ring-1 focus:ring-primary transition-all"
+                                                                        value={merchant?.contactPhone || ""}
+                                                                        onChange={(e) => setMerchant({ ...merchant, contactPhone: e.target.value })}
+                                                                        placeholder="+233..."
+                                                                    />
+                                                                </div>
+                                                                <div className="space-y-2">
+                                                                    <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Business Email</label>
+                                                                    <input
+                                                                        type="email"
+                                                                        className="w-full bg-secondary/20 border border-border rounded-xl px-4 py-2 text-sm font-medium outline-none focus:ring-1 focus:ring-primary transition-all"
+                                                                        value={merchant?.contactEmail || ""}
+                                                                        onChange={(e) => setMerchant({ ...merchant, contactEmail: e.target.value })}
+                                                                        placeholder="contact@business.com"
+                                                                    />
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                                <div className="space-y-2">
+                                                                    <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Nudge Window (Days)</label>
+                                                                    <input
+                                                                        type="number"
+                                                                        className="w-full bg-secondary/20 border border-border rounded-xl px-4 py-2 text-sm font-medium outline-none focus:ring-1 focus:ring-primary transition-all"
+                                                                        value={merchant?.nudgeDays || 2}
+                                                                        onChange={(e) => setMerchant({ ...merchant, nudgeDays: parseInt(e.target.value) || 2 })}
+                                                                    />
+                                                                </div>
+                                                                <div className="space-y-2 md:col-span-1">
+                                                                    {/* Placeholder for future re-engagement toggle */}
+                                                                </div>
+                                                                <div className="space-y-2 col-span-full">
+                                                                    <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Custom Re-engagement Message</label>
+                                                                    <textarea
+                                                                        className="w-full h-24 bg-secondary/20 border border-border rounded-xl p-4 text-xs font-medium resize-none outline-none focus:ring-1 focus:ring-primary transition-all"
+                                                                        value={merchant?.nudgeMessage || ""}
+                                                                        onChange={(e) => setMerchant({ ...merchant, nudgeMessage: e.target.value })}
+                                                                        placeholder="Hi {{name}}! We missed you. Would you like to check out our latest offers?"
+                                                                    />
+                                                                    <p className="text-[10px] text-muted-foreground italic">Leave empty to use AI defaults.</p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Custom Delivery Zones Section */}
+                                                    <div className="space-y-4 pt-4 border-t border-border">
+                                                        <div className="flex items-center justify-between">
+                                                            <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Custom Delivery Zones</label>
                                                             <button
-                                                                onClick={() => merchant && setMerchant({ ...merchant, isClosed: !merchant?.isClosed })}
-                                                                className={`px-4 py-2 rounded-xl font-bold text-xs transition-all ${merchant?.isClosed ? 'bg-destructive text-destructive-foreground' : 'bg-emerald-500 text-white'}`}
+                                                                onClick={() => setIsAddingZone(true)}
+                                                                className="text-[10px] font-black bg-primary/10 text-primary px-3 py-1 rounded-lg hover:bg-primary/20 transition-all"
                                                             >
-                                                                {merchant?.isClosed ? '🔴 CLOSED' : '🟢 OPEN'}
+                                                                + ADD ZONE
                                                             </button>
                                                         </div>
 
-                                                        <div className="grid grid-cols-2 gap-4">
-                                                            <div className="space-y-2">
-                                                                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Location</label>
-                                                                <input
-                                                                    className="w-full bg-secondary/20 border border-border rounded-xl px-4 py-2 text-sm font-medium outline-none focus:ring-1 focus:ring-primary transition-all"
-                                                                    value={merchant?.location || ""}
-                                                                    onChange={(e) => merchant && setMerchant({ ...merchant, location: e.target.value })}
-                                                                    placeholder="Accra, Ghana"
-                                                                />
-                                                            </div>
-                                                            <div className="space-y-2">
-                                                                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Operating Hours</label>
-                                                                <input
-                                                                    className="w-full bg-secondary/20 border border-border rounded-xl px-4 py-2 text-sm font-medium outline-none focus:ring-1 focus:ring-primary transition-all"
-                                                                    value={merchant?.operatingHours || ""}
-                                                                    onChange={(e) => merchant && setMerchant({ ...merchant, operatingHours: e.target.value })}
-                                                                    placeholder="Mon-Sat 9am-9pm"
-                                                                />
-                                                            </div>
-                                                        </div>
-
                                                         <div className="space-y-2">
-                                                            <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Payment Methods</label>
-                                                            <input
-                                                                className="w-full bg-secondary/20 border border-border rounded-xl px-4 py-2 text-sm font-medium outline-none focus:ring-1 focus:ring-primary transition-all"
-                                                                value={merchant?.paymentMethods || ""}
-                                                                onChange={(e) => merchant && setMerchant({ ...merchant, paymentMethods: e.target.value })}
-                                                                placeholder="MTN MoMo, Cash"
-                                                            />
-                                                        </div>
-
-                                                        <div className="space-y-2">
-                                                            <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Base Delivery Fee (GHS)</label>
-                                                            <input
-                                                                type="number"
-                                                                step="0.01"
-                                                                className="w-full bg-secondary/20 border border-border rounded-xl px-4 py-2 text-sm font-medium outline-none focus:ring-1 focus:ring-primary transition-all"
-                                                                value={merchant?.baseDeliveryFee || 0}
-                                                                onChange={(e) => merchant && setMerchant({ ...merchant, baseDeliveryFee: parseFloat(e.target.value) || 0 })}
-                                                            />
-                                                        </div>
-
-                                                        {merchant?.tier === 'ENTERPRISE' && (
-                                                            <div className="space-y-6 pt-6 border-t border-border">
-                                                                <h3 className="font-black text-sm text-primary uppercase tracking-tighter">Enterprise Branding & Automation</h3>
-                                                                <div className="space-y-2">
-                                                                    <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Business Logo (For Receipts)</label>
-                                                                    <div className="flex items-center gap-4">
-                                                                        <div className="w-20 h-20 rounded-2xl bg-secondary/30 border border-border overflow-hidden relative group">
-                                                                            {logoUploading ? (
-                                                                                <div className="absolute inset-0 flex items-center justify-center bg-background/50">
-                                                                                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                                                                                </div>
-                                                                            ) : (localLogoPreview || merchant?.logoUrl) ? (
-                                                                                <img src={localLogoPreview || (merchant?.logoUrl?.startsWith('/') ? `${API_BASE}${merchant.logoUrl}` : merchant?.logoUrl)} className="w-full h-full object-contain" />
-                                                                            ) : (
-                                                                                <div className="w-full h-full flex items-center justify-center text-muted-foreground/30">
-                                                                                    Logo
-                                                                                </div>
-                                                                            )}
-                                                                        </div>
-                                                                        <div className="flex-1 space-y-2">
-                                                                            <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" id="logo-upload" />
-                                                                            <label htmlFor="logo-upload" className="inline-block bg-secondary px-4 py-2 rounded-xl text-xs font-bold cursor-pointer hover:bg-secondary/80 transition-all">
-                                                                                {merchant?.logoUrl ? 'Change Logo' : 'Upload Logo'}
-                                                                            </label>
-                                                                            <p className="text-[10px] text-muted-foreground">High-res PNG or JPG recommended.</p>
-                                                                        </div>
+                                                            {deliveryZones.map((zone) => (
+                                                                <div key={zone.id} className="flex items-center justify-between p-3 bg-secondary/10 rounded-xl border border-border group">
+                                                                    <div>
+                                                                        <p className="text-sm font-bold">{zone.name}</p>
+                                                                        <p className="text-[10px] text-muted-foreground">GHS {zone.price}</p>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <button
+                                                                            onClick={() => setEditingZone(zone)}
+                                                                            className="opacity-0 group-hover:opacity-100 p-1 hover:text-primary transition-all"
+                                                                        >
+                                                                            <Sparkles className="w-4 h-4" />
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={async () => {
+                                                                                if (!confirm(`Delete zone "${zone.name}"?`)) return;
+                                                                                await axios.delete(`${API_BASE}/api/merchants/${merchantId}/delivery-zones/${zone.id}`);
+                                                                                setDeliveryZones(deliveryZones.filter(z => z.id !== zone.id));
+                                                                                toast.success('Zone deleted');
+                                                                            }}
+                                                                            className="p-2 opacity-0 group-hover:opacity-100 text-destructive hover:bg-destructive/10 rounded-lg transition-all"
+                                                                        >
+                                                                            <X className="w-4 h-4" />
+                                                                        </button>
                                                                     </div>
                                                                 </div>
+                                                            ))}
 
-                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                                    <div className="space-y-2">
-                                                                        <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Business Direct Phone</label>
-                                                                        <input
-                                                                            type="text"
-                                                                            className="w-full bg-secondary/20 border border-border rounded-xl px-4 py-2 text-sm font-medium outline-none focus:ring-1 focus:ring-primary transition-all"
-                                                                            value={merchant?.contactPhone || ""}
-                                                                            onChange={(e) => setMerchant({ ...merchant, contactPhone: e.target.value })}
-                                                                            placeholder="+233..."
-                                                                        />
+                                                            {isAddingZone && (
+                                                                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="p-4 bg-primary/5 border border-primary/20 rounded-xl space-y-3">
+                                                                    <h4 className="text-[10px] font-bold uppercase tracking-widest text-primary">New Zone</h4>
+                                                                    <input
+                                                                        className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-xs outline-none"
+                                                                        placeholder="Zone Name (e.g. East Legon)"
+                                                                        value={newZone.name}
+                                                                        onChange={e => setNewZone({ ...newZone, name: e.target.value })}
+                                                                    />
+                                                                    <input
+                                                                        type="number"
+                                                                        className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-xs outline-none"
+                                                                        placeholder="Price (GHS)"
+                                                                        value={newZone.price}
+                                                                        onChange={e => setNewZone({ ...newZone, price: e.target.value })}
+                                                                    />
+                                                                    <div className="flex gap-2">
+                                                                        <button
+                                                                            onClick={() => setIsAddingZone(false)}
+                                                                            className="flex-1 bg-secondary text-foreground py-2 rounded-lg text-[10px] font-bold"
+                                                                        >
+                                                                            CANCEL
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={async () => {
+                                                                                if (!newZone.name || !newZone.price) return;
+                                                                                const resp = await axios.post(`${API_BASE}/api/merchants/${merchantId}/delivery-zones`, {
+                                                                                    name: newZone.name,
+                                                                                    price: parseFloat(newZone.price)
+                                                                                });
+                                                                                setDeliveryZones([...deliveryZones, resp.data]);
+                                                                                setIsAddingZone(false);
+                                                                                setNewZone({ name: '', price: '' });
+                                                                                toast.success('Zone added');
+                                                                            }}
+                                                                            className="flex-1 bg-primary text-white py-2 rounded-lg text-[10px] font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                                                                        >
+                                                                            ADD ZONE
+                                                                        </button>
                                                                     </div>
-                                                                    <div className="space-y-2">
-                                                                        <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Business Email</label>
-                                                                        <input
-                                                                            type="email"
-                                                                            className="w-full bg-secondary/20 border border-border rounded-xl px-4 py-2 text-sm font-medium outline-none focus:ring-1 focus:ring-primary transition-all"
-                                                                            value={merchant?.contactEmail || ""}
-                                                                            onChange={(e) => setMerchant({ ...merchant, contactEmail: e.target.value })}
-                                                                            placeholder="contact@business.com"
-                                                                        />
-                                                                    </div>
-                                                                </div>
+                                                                </motion.div>
+                                                            )}
 
-                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                                    <div className="space-y-2">
-                                                                        <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Nudge Window (Days)</label>
-                                                                        <input
-                                                                            type="number"
-                                                                            className="w-full bg-secondary/20 border border-border rounded-xl px-4 py-2 text-sm font-medium outline-none focus:ring-1 focus:ring-primary transition-all"
-                                                                            value={merchant?.nudgeDays || 2}
-                                                                            onChange={(e) => setMerchant({ ...merchant, nudgeDays: parseInt(e.target.value) || 2 })}
-                                                                        />
-                                                                    </div>
-                                                                    <div className="space-y-2 md:col-span-1">
-                                                                        {/* Placeholder for future re-engagement toggle */}
-                                                                    </div>
-                                                                    <div className="space-y-2 col-span-full">
-                                                                        <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Custom Re-engagement Message</label>
-                                                                        <textarea
-                                                                            className="w-full h-24 bg-secondary/20 border border-border rounded-xl p-4 text-xs font-medium resize-none outline-none focus:ring-1 focus:ring-primary transition-all"
-                                                                            value={merchant?.nudgeMessage || ""}
-                                                                            onChange={(e) => setMerchant({ ...merchant, nudgeMessage: e.target.value })}
-                                                                            placeholder="Hi {{name}}! We missed you. Would you like to check out our latest offers?"
-                                                                        />
-                                                                        <p className="text-[10px] text-muted-foreground italic">Leave empty to use AI defaults.</p>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        )}
-
-                                                        {/* Custom Delivery Zones Section */}
-                                                        <div className="space-y-4 pt-4 border-t border-border">
-                                                            <div className="flex items-center justify-between">
-                                                                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Custom Delivery Zones</label>
-                                                                <button
-                                                                    onClick={() => setIsAddingZone(true)}
-                                                                    className="text-[10px] font-black bg-primary/10 text-primary px-3 py-1 rounded-lg hover:bg-primary/20 transition-all"
-                                                                >
-                                                                    + ADD ZONE
-                                                                </button>
-                                                            </div>
-
-                                                            <div className="space-y-2">
-                                                                {deliveryZones.map((zone) => (
-                                                                    <div key={zone.id} className="flex items-center justify-between p-3 bg-secondary/10 rounded-xl border border-border group">
-                                                                        <div>
-                                                                            <p className="text-sm font-bold">{zone.name}</p>
-                                                                            <p className="text-[10px] text-muted-foreground">GHS {zone.price}</p>
-                                                                        </div>
-                                                                        <div className="flex items-center gap-2">
-                                                                            <button
-                                                                                onClick={() => setEditingZone(zone)}
-                                                                                className="opacity-0 group-hover:opacity-100 p-1 hover:text-primary transition-all"
-                                                                            >
-                                                                                <Sparkles className="w-4 h-4" />
-                                                                            </button>
-                                                                            <button
-                                                                                onClick={async () => {
-                                                                                    if (!confirm(`Delete zone "${zone.name}"?`)) return;
-                                                                                    await axios.delete(`${API_BASE}/api/merchants/${merchantId}/delivery-zones/${zone.id}`);
-                                                                                    setDeliveryZones(deliveryZones.filter(z => z.id !== zone.id));
-                                                                                    toast.success('Zone deleted');
-                                                                                }}
-                                                                                className="p-2 opacity-0 group-hover:opacity-100 text-destructive hover:bg-destructive/10 rounded-lg transition-all"
-                                                                            >
-                                                                                <X className="w-4 h-4" />
-                                                                            </button>
-                                                                        </div>
-                                                                    </div>
-                                                                ))}
-
-                                                                {isAddingZone && (
-                                                                    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="p-4 bg-primary/5 border border-primary/20 rounded-xl space-y-3">
-                                                                        <h4 className="text-[10px] font-bold uppercase tracking-widest text-primary">New Zone</h4>
-                                                                        <input
-                                                                            className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-xs outline-none"
-                                                                            placeholder="Zone Name (e.g. East Legon)"
-                                                                            value={newZone.name}
-                                                                            onChange={e => setNewZone({ ...newZone, name: e.target.value })}
-                                                                        />
-                                                                        <input
-                                                                            type="number"
-                                                                            className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-xs outline-none"
-                                                                            placeholder="Price (GHS)"
-                                                                            value={newZone.price}
-                                                                            onChange={e => setNewZone({ ...newZone, price: e.target.value })}
-                                                                        />
-                                                                        <div className="flex gap-2">
-                                                                            <button
-                                                                                onClick={() => setIsAddingZone(false)}
-                                                                                className="flex-1 bg-secondary text-foreground py-2 rounded-lg text-[10px] font-bold"
-                                                                            >
-                                                                                CANCEL
-                                                                            </button>
-                                                                            <button
-                                                                                onClick={async () => {
-                                                                                    if (!newZone.name || !newZone.price) return;
-                                                                                    const resp = await axios.post(`${API_BASE}/api/merchants/${merchantId}/delivery-zones`, {
-                                                                                        name: newZone.name,
-                                                                                        price: parseFloat(newZone.price)
+                                                            {editingZone && (
+                                                                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="p-4 bg-primary/5 border border-primary/20 rounded-xl space-y-3">
+                                                                    <h4 className="text-[10px] font-bold uppercase tracking-widest text-primary">Edit Zone</h4>
+                                                                    <input
+                                                                        className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-xs outline-none"
+                                                                        value={editingZone.name}
+                                                                        onChange={e => setEditingZone({ ...editingZone, name: e.target.value })}
+                                                                    />
+                                                                    <input
+                                                                        type="number"
+                                                                        className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-xs outline-none"
+                                                                        value={editingZone.price}
+                                                                        onChange={e => setEditingZone({ ...editingZone, price: e.target.value })}
+                                                                    />
+                                                                    <div className="flex gap-2">
+                                                                        <button
+                                                                            onClick={() => setEditingZone(null)}
+                                                                            className="flex-1 bg-secondary text-foreground py-2 rounded-lg text-[10px] font-bold"
+                                                                        >
+                                                                            CANCEL
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={async () => {
+                                                                                try {
+                                                                                    await axios.patch(`${API_BASE}/api/merchants/${merchantId}/delivery-zones/${editingZone.id}`, {
+                                                                                        name: editingZone.name,
+                                                                                        price: parseFloat(editingZone.price)
                                                                                     });
-                                                                                    setDeliveryZones([...deliveryZones, resp.data]);
-                                                                                    setIsAddingZone(false);
-                                                                                    setNewZone({ name: '', price: '' });
-                                                                                    toast.success('Zone added');
-                                                                                }}
-                                                                                className="flex-1 bg-primary text-white py-2 rounded-lg text-[10px] font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
-                                                                            >
-                                                                                ADD ZONE
-                                                                            </button>
-                                                                        </div>
-                                                                    </motion.div>
-                                                                )}
-
-                                                                {editingZone && (
-                                                                    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="p-4 bg-primary/5 border border-primary/20 rounded-xl space-y-3">
-                                                                        <h4 className="text-[10px] font-bold uppercase tracking-widest text-primary">Edit Zone</h4>
-                                                                        <input
-                                                                            className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-xs outline-none"
-                                                                            value={editingZone.name}
-                                                                            onChange={e => setEditingZone({ ...editingZone, name: e.target.value })}
-                                                                        />
-                                                                        <input
-                                                                            type="number"
-                                                                            className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-xs outline-none"
-                                                                            value={editingZone.price}
-                                                                            onChange={e => setEditingZone({ ...editingZone, price: e.target.value })}
-                                                                        />
-                                                                        <div className="flex gap-2">
-                                                                            <button
-                                                                                onClick={() => setEditingZone(null)}
-                                                                                className="flex-1 bg-secondary text-foreground py-2 rounded-lg text-[10px] font-bold"
-                                                                            >
-                                                                                CANCEL
-                                                                            </button>
-                                                                            <button
-                                                                                onClick={async () => {
-                                                                                    try {
-                                                                                        await axios.patch(`${API_BASE}/api/merchants/${merchantId}/delivery-zones/${editingZone.id}`, {
-                                                                                            name: editingZone.name,
-                                                                                            price: parseFloat(editingZone.price)
-                                                                                        });
-                                                                                        setDeliveryZones(deliveryZones.map(z => z.id === editingZone.id ? editingZone : z));
-                                                                                        setEditingZone(null);
-                                                                                        toast.success('Zone updated');
-                                                                                    } catch (err) {
-                                                                                        toast.error('Failed to update zone');
-                                                                                    }
-                                                                                }}
-                                                                                className="flex-1 bg-primary text-white py-2 rounded-lg text-[10px] font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
-                                                                            >
-                                                                                SAVE CHANGES
-                                                                            </button>
-                                                                        </div>
-                                                                    </motion.div>
-                                                                )}
-                                                            </div>
+                                                                                    setDeliveryZones(deliveryZones.map(z => z.id === editingZone.id ? editingZone : z));
+                                                                                    setEditingZone(null);
+                                                                                    toast.success('Zone updated');
+                                                                                } catch (err) {
+                                                                                    toast.error('Failed to update zone');
+                                                                                }
+                                                                            }}
+                                                                            className="flex-1 bg-primary text-white py-2 rounded-lg text-[10px] font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                                                                        >
+                                                                            SAVE CHANGES
+                                                                        </button>
+                                                                    </div>
+                                                                </motion.div>
+                                                            )}
                                                         </div>
                                                     </div>
-                                                    <button
-                                                        onClick={async () => {
-                                                            if (!merchant) return;
-                                                            try {
-                                                                await axios.patch(`${API_BASE}/api/merchants/${merchantId}`, {
-                                                                    name: merchant?.name,
-                                                                    systemPrompt: merchant?.systemPrompt,
-                                                                    menuImageUrl: merchant?.menuImageUrl,
-                                                                    baseDeliveryFee: merchant?.baseDeliveryFee,
-                                                                    location: merchant?.location,
-                                                                    operatingHours: merchant?.operatingHours,
-                                                                    paymentMethods: merchant?.paymentMethods,
-                                                                    isClosed: merchant?.isClosed,
-                                                                    logoUrl: merchant?.logoUrl,
-                                                                    contactPhone: merchant?.contactPhone,
-                                                                    contactEmail: merchant?.contactEmail,
-                                                                    nudgeDays: merchant?.nudgeDays,
-                                                                    nudgeMessage: merchant?.nudgeMessage
-                                                                });
-                                                                toast.success('Bot profile updated!');
-                                                            } catch (err) {
-                                                                toast.error('Failed to save changes');
-                                                            }
-                                                        }}
-                                                        className="w-full bg-primary text-primary-foreground py-4 rounded-2xl font-black shadow-lg shadow-primary/20 hover:opacity-90 active:scale-95 transition-all"
-                                                    >
-                                                        Save Bot Profile
-                                                    </button>
                                                 </div>
                                                 <button
-                                                    className="w-full bg-secondary py-3 rounded-2xl font-bold text-sm hover:scale-[1.01] transition-all flex items-center justify-center gap-2"
-                                                    onClick={() => fetchDashboardData()}
+                                                    onClick={async () => {
+                                                        if (!merchant) return;
+                                                        try {
+                                                            await axios.patch(`${API_BASE}/api/merchants/${merchantId}`, {
+                                                                name: merchant?.name,
+                                                                systemPrompt: merchant?.systemPrompt,
+                                                                menuImageUrl: merchant?.menuImageUrl,
+                                                                baseDeliveryFee: merchant?.baseDeliveryFee,
+                                                                location: merchant?.location,
+                                                                operatingHours: merchant?.operatingHours,
+                                                                paymentMethods: merchant?.paymentMethods,
+                                                                isClosed: merchant?.isClosed,
+                                                                logoUrl: merchant?.logoUrl,
+                                                                contactPhone: merchant?.contactPhone,
+                                                                contactEmail: merchant?.contactEmail,
+                                                                nudgeDays: merchant?.nudgeDays,
+                                                                nudgeMessage: merchant?.nudgeMessage
+                                                            });
+                                                            toast.success('Bot profile updated!');
+                                                        } catch (err) {
+                                                            toast.error('Failed to save changes');
+                                                        }
+                                                    }}
+                                                    className="w-full bg-primary text-primary-foreground py-4 rounded-2xl font-black shadow-lg shadow-primary/20 hover:opacity-90 active:scale-95 transition-all"
                                                 >
-                                                    <RefreshCw className="w-4 h-4" /> Reset to Live
+                                                    Save Bot Profile
                                                 </button>
                                             </div>
-
-                                            {/* Chat Interface */}
-                                            <ChatSandbox merchantId={merchantId} systemPrompt={merchant?.systemPrompt} />
+                                            <button
+                                                className="w-full bg-secondary py-3 rounded-2xl font-bold text-sm hover:scale-[1.01] transition-all flex items-center justify-center gap-2"
+                                                onClick={() => fetchDashboardData()}
+                                            >
+                                                <RefreshCw className="w-4 h-4" /> Reset to Live
+                                            </button>
                                         </div>
+
                                     </motion.div>
                                 )
                             }
@@ -1101,8 +1095,8 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
                             }
                         </>
                     )}
-                </div >
-            </main >
+                </div>
+            </main>
 
             <AnimatePresence>
                 {isAddingProduct && (
@@ -1664,10 +1658,9 @@ const StatItem = ({ label, value, change, accent }: any) => (
     </div>
 );
 
-const OrderRow = ({ order, index, merchantId, onStatusUpdate, onPaymentUpdate, isSelected, onSelect, onPrint }: {
+const OrderRow = ({ order, index, onStatusUpdate, onPaymentUpdate, isSelected, onSelect, onPrint }: {
     order: any,
     index: number,
-    merchantId: string | null,
     onStatusUpdate: (id: string, s: string) => void,
     onPaymentUpdate: (id: string, s: string) => void,
     isSelected: boolean,
