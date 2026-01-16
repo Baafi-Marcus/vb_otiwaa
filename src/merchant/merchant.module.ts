@@ -9,9 +9,10 @@ import { OrderModule } from '../order/order.module';
 import { AnalyticsModule } from '../analytics/analytics.module';
 import { TierScheduler } from './tier.scheduler';
 import { NotificationModule } from '../notification/notification.module';
+import { TwilioModule } from '../twilio/twilio.module';
 
 @Module({
-    imports: [PrismaModule, OpenaiModule, StabilityaiModule, WhatsappModule, OrderModule, AnalyticsModule, NotificationModule],
+    imports: [PrismaModule, OpenaiModule, StabilityaiModule, WhatsappModule, OrderModule, AnalyticsModule, NotificationModule, TwilioModule],
     controllers: [MerchantController],
     providers: [MerchantService, TierScheduler],
     exports: [MerchantService],
