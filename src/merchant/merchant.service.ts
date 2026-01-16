@@ -512,4 +512,16 @@ export class MerchantService {
             data: { status: 'REJECTED' }
         });
     }
+
+    async getChatHistory(merchantId: string, customerPhone: string) {
+        return this.prisma.message.findMany({
+            where: {
+                merchantId,
+                customerPhone
+            },
+            orderBy: {
+                createdAt: 'asc'
+            }
+        });
+    }
 }
