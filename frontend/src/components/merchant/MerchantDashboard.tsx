@@ -35,7 +35,7 @@ import { DashboardStats } from './DashboardStats';
 import { ReceiptView } from './ReceiptView';
 import { useSocket } from '../../context/SocketContext';
 
-const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3000' : '';
+const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:3001' : '';
 
 export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ merchantId }) => {
     const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'customers' | 'catalog' | 'sandbox' | 'marketing'>('overview');

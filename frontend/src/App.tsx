@@ -18,7 +18,7 @@ import { SocketProvider } from './context/SocketContext';
 
 type UserRole = 'guest' | 'admin' | 'merchant';
 
-const API_BASE = import.meta.env.VITE_API_BASE || '';
+const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3001' : (import.meta.env.VITE_API_BASE || '');
 
 /* ----------------------------------------------------------------------------------
    MAIN APP COMPONENT (Router Wrapper)

@@ -37,7 +37,8 @@ async function bootstrap() {
 
   app.useStaticAssets(join(__dirname, '..', 'generatedImages'));
   app.useStaticAssets(join(__dirname, '..', 'audioFile'));
-  app.use(require('body-parser').urlencoded({ extended: true }));
+  app.use(require('express').json({ limit: '50mb' }));
+  app.use(require('express').urlencoded({ limit: '50mb', extended: true }));
 
   // Global request logger for debugging
   app.use((req, res, next) => {
