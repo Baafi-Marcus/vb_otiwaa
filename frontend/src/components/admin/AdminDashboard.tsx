@@ -322,8 +322,7 @@ const AdminOverview = ({ merchants, setView }: any) => {
 const MerchantRegistration = ({ onComplete }: any) => {
     const [formData, setFormData] = useState({
         name: '',
-        phoneId: '',
-        twilioPhoneNumber: '',
+        contactPhone: '',
         category: 'Restaurant',
         vision: '',
         location: '',
@@ -402,8 +401,7 @@ const MerchantRegistration = ({ onComplete }: any) => {
         try {
             const resp = await axios.post(`${API_BASE}/api/merchants/register`, {
                 name: formData.name,
-                whatsappPhoneNumberId: formData.phoneId,
-                twilioPhoneNumber: formData.twilioPhoneNumber,
+                contactPhone: formData.contactPhone, // New Mandatory Field
                 category: formData.category,
                 clientVision: formData.vision,
                 location: formData.location || undefined,
@@ -430,7 +428,7 @@ const MerchantRegistration = ({ onComplete }: any) => {
                 setIsReviewingMenu(true);
             } else {
                 // Clear form data so if they click "Register Another" it's clean
-                setFormData({ name: '', phoneId: '', twilioPhoneNumber: '', category: 'Restaurant', vision: '', location: '', operatingHours: '', paymentMethods: '', menuImageUrl: '', tier: 'BASIC', tierDurationMonths: 1 });
+                setFormData({ name: '', contactPhone: '', category: 'Restaurant', vision: '', location: '', operatingHours: '', paymentMethods: '', menuImageUrl: '', tier: 'BASIC', tierDurationMonths: 1 });
                 setExpandedPrompt(null);
             }
 
@@ -493,7 +491,7 @@ const MerchantRegistration = ({ onComplete }: any) => {
                                 onClick={() => {
                                     setSuccess(false);
                                     setRegisteredId(null);
-                                    setFormData({ name: '', phoneId: '', twilioPhoneNumber: '', category: 'Restaurant', vision: '', location: '', operatingHours: '', paymentMethods: '', menuImageUrl: '', tier: 'BASIC', tierDurationMonths: 1 });
+                                    setFormData({ name: '', contactPhone: '', category: 'Restaurant', vision: '', location: '', operatingHours: '', paymentMethods: '', menuImageUrl: '', tier: 'BASIC', tierDurationMonths: 1 });
                                     setExpandedPrompt(null);
                                 }}
                                 className="px-6 py-3 font-bold text-muted-foreground hover:text-foreground transition-colors"
@@ -513,7 +511,7 @@ const MerchantRegistration = ({ onComplete }: any) => {
                     <>
                         <div className="space-y-2 pt-4">
                             <h2 className="text-2xl font-bold text-foreground">Register New Merchant</h2>
-                            <p className="text-muted-foreground">Create a fresh profile for a business wanting a WhatsApp Chatbot.</p>
+                            <p className="text-muted-foreground">Create a fresh profile for a business using the Centralized Bot Platform.</p>
                         </div>
 
                         {error && (
@@ -562,45 +560,19 @@ const MerchantRegistration = ({ onComplete }: any) => {
                                         onChange={(e) => setFormData({ ...formData, tier: e.target.value })}
                                         disabled={loading}
                                     >
-                                        <option value="BASIC">💼 Basic (150 GHS/mo - 100 orders)</option>
-                                        <option value="PRO">🚀 Pro (450 GHS/mo - Unlimited)</option>
-                                        <option value="ENTERPRISE">💎 Enterprise (Custom Pricing)</option>
+                                        <option value="LISTING">📋 Listing (Free - Display & Link only)</option>
+                                        <option value="PRO">🚀 Pro (AI + Orders + MoMo)</option>
                                     </select>
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Duration (Months)</label>
-                                    <input
-                                        type="number"
-                                        min="1"
-                                        placeholder="e.g. 12"
-                                        className="w-full bg-secondary/30 border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all text-sm"
-                                        value={formData.tierDurationMonths}
-                                        onChange={(e) => setFormData({ ...formData, tierDurationMonths: parseInt(e.target.value) || 1 })}
-                                        disabled={loading}
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">WhatsApp Phone ID</label>
+                                    <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Personal WhatsApp Number for Alerts</label>
                                     <input
                                         type="text"
-                                        placeholder="e.g. 991984..."
-                                        className="w-full bg-secondary/30 border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all font-mono text-sm"
-                                        value={formData.phoneId}
-                                        onChange={(e) => setFormData({ ...formData, phoneId: e.target.value })}
-                                        disabled={loading}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Twilio Sandbox Num</label>
-                                    <input
-                                        type="text"
-                                        placeholder="+14155238886"
-                                        className="w-full bg-secondary/30 border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all font-mono text-sm"
-                                        value={formData.twilioPhoneNumber}
-                                        onChange={(e) => setFormData({ ...formData, twilioPhoneNumber: e.target.value })}
+                                        required
+                                        placeholder="+233..."
+                                        className="w-full bg-emerald-500/10 border-emerald-500/20 text-emerald-600 rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none transition-all font-mono text-sm"
+                                        value={formData.contactPhone}
+                                        onChange={(e) => setFormData({ ...formData, contactPhone: e.target.value })}
                                         disabled={loading}
                                     />
                                 </div>

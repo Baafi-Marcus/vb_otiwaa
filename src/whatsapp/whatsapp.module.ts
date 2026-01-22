@@ -8,6 +8,7 @@ import { OpenaiModule } from 'src/openai/openai.module';
 import { UserContextModule } from 'src/user-context/user-context.module';
 import { AudioModule } from 'src/audio/audio.module';
 import { StabilityaiModule } from 'src/stabilityai/stabilityai.module';
+import { DirectoryService } from './directory.service';
 
 @Module({
   imports: [
@@ -20,7 +21,7 @@ import { StabilityaiModule } from 'src/stabilityai/stabilityai.module';
     StabilityaiModule,
   ],
   controllers: [WhatsappController],
-  providers: [WhatsappService],
-  exports: [WhatsappService],
+  providers: [WhatsappService, DirectoryService],
+  exports: [WhatsappService, DirectoryService],
 })
 export class WhatsappModule { }

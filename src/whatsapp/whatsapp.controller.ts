@@ -7,6 +7,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { TwilioService } from 'src/twilio/twilio.service';
 import { UserContextService } from 'src/user-context/user-context.service';
 import { NotificationGateway } from 'src/notification/notification.gateway';
+import { DirectoryService } from './directory.service';
 
 @Controller('whatsapp')
 export class WhatsappController {
@@ -21,6 +22,7 @@ export class WhatsappController {
     private readonly twilioService: TwilioService,
     private readonly context: UserContextService,
     private readonly notification: NotificationGateway,
+    private readonly directory: DirectoryService,
   ) { }
 
   @Get('webhook')
@@ -64,95 +66,160 @@ export class WhatsappController {
   async handleIncomingTwilioMessage(@Body() body: any, @Req() req: Request) {
     const host = req.headers['x-forwarded-host'] as string || req.get('host');
     this.logger.log(`[Twilio Webhook] Received request from host: ${host}`);
+
     // Log to DB for debugging
     try {
       await this.prismaService.webhookLog.create({
-        data: {
-          provider: 'TWILIO',
-          payload: body
-        }
+        data: { provider: 'TWILIO', payload: body }
       });
     } catch (e) {
       this.logger.error('Failed to log webhook', e);
     }
 
-    this.logger.log(`[Twilio Webhook] Payload: ${JSON.stringify(body)}`);
-
     const sender = body.From?.replace('whatsapp:', '') || 'Unknown';
     const recipient = body.To?.replace('whatsapp:', '') || 'Unknown';
-    const messageText = body.Body;
+    const messageText = body.Body?.trim();
     const messageSid = body.MessageSid;
     const mediaUrl = body.MediaUrl0;
     const mediaType = body.MediaContentType0;
 
     this.logger.log(`[Twilio Webhook] From: ${sender}, To: ${recipient}, Text: ${messageText}`);
 
-    // Mark as read immediately for blue ticks
+    // Mark as read immediately
     if (messageSid && this.whatsAppService.markRead) {
       this.whatsAppService.markRead(messageSid).catch(err =>
         this.logger.warn(`Failed to mark SID ${messageSid} as read: ${err.message}`)
       );
     }
 
-    // Ignore status callbacks (sent, delivered, read) to avoid double processing
+    // Ignore status callbacks
     if (body.SmsStatus && !body.Body && !mediaUrl) {
-      if (body.SmsStatus === 'failed' || body.ErrorCode) {
-        this.logger.error(`[Twilio Status] FAILURE: ${body.SmsStatus} for ${body.MessageSid}. Error: ${body.ErrorCode} - ${body.ErrorMessage}`);
-      } else {
-        this.logger.log(`[Twilio Status] Update: ${body.SmsStatus} for ${body.MessageSid}`);
-      }
       return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
     }
 
-    // For Twilio Sandbox, we use the recipient number (Twilio Number) to identify the merchant
-    // Identify by recipient (the bot's number)
-    const twilioNumber = recipient; // Renamed for clarity based on new logic
-    const merchant: any = await (this.prismaService.merchant as any).findFirst({
-      where: {
-        OR: [
-          { twilioPhoneNumber: twilioNumber },
-          { twilioPhoneNumber: `+${twilioNumber.replace('+', '')}` }
-        ]
-      },
-      include: {
-        catalog: true,
-        deliveryZones: true
-      },
-      orderBy: { createdAt: 'desc' },
+    // --- CENTRALIZED ROUTING LOGIC ---
+
+    // 1. Get Customer Session
+    let customer = await this.prismaService.customer.findUnique({
+      where: { phoneNumber: sender },
+      include: { merchant: true }
     });
 
-    if (!merchant) {
-      this.logger.warn(`No merchant found for number: ${twilioNumber}`);
-      return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
-    }
-
-    // 3. Check if Bot is Paused for this Customer
-    const customer = await this.prismaService.customer.findUnique({
-      where: { phoneNumber: sender }
-    });
-
-    if ((customer as any)?.botPaused) {
-      this.logger.log(`[Handoff] Bot is PAUSED for ${sender}. Skipping AI response.`);
-      return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
-    }
-
-    this.logger.log(`Processing message for merchant ID: ${merchant.id}`);
-    const contextId = merchant.id;
-
-    // Persist Customer & Message
-    try {
-      await this.prismaService.customer.upsert({
+    // 2. Global Commands (Reset/Home)
+    const lowerText = messageText?.toLowerCase() || '';
+    if (['home', 'menu', 'reset', 'exit', 'main menu'].includes(lowerText)) {
+      await this.prismaService.customer.update({
         where: { phoneNumber: sender },
-        update: { lastSeen: new Date() },
-        create: {
-          phoneNumber: sender,
-          merchantId: merchant.id,
-          name: 'Guest',
-          lastSeen: new Date()
-        }
+        data: { currentMerchantId: null, merchantId: null } // Clear session
+      });
+      const list = await this.directory.listMerchants();
+      const message = this.directory.formatMerchantList(list.merchants);
+      await this.whatsAppService.sendWhatsAppMessage(sender, message);
+      return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
+    }
+
+    // 3. Routing
+    if (customer?.currentMerchantId) {
+      // --- ACTIVE SESSION: Route to Merchant AI ---
+      const merchant = await this.prismaService.merchant.findUnique({
+        where: { id: customer.currentMerchantId }
       });
 
-      // Log Inbound Message
+      if (!merchant) {
+        // Merchant gone? Reset session.
+        await this.prismaService.customer.update({
+          where: { phoneNumber: sender },
+          data: { currentMerchantId: null, merchantId: null }
+        });
+        await this.whatsAppService.sendWhatsAppMessage(sender, "This store is no longer available. Returning to main menu...");
+        const list = await this.directory.listMerchants();
+        const message = this.directory.formatMerchantList(list.merchants);
+        await this.whatsAppService.sendWhatsAppMessage(sender, message);
+        return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
+      }
+
+      // Proceed with existing AI logic (using merchant.id as context)
+      // We must ensure the message is logged and processed as if it went to that merchant
+      return this.executeMerchantFlow(merchant, customer, sender, messageText, mediaUrl, mediaType, messageSid, host);
+
+    } else {
+      // --- NO SESSION: Directory / Lobby ---
+
+      // Handle Selection (Number)
+      const selection = parseInt(messageText);
+      if (!isNaN(selection) && selection > 0) {
+        const list = await this.directory.listMerchants(1, 100); // Fetch all to map index
+        const selectedMerchant = list.merchants[selection - 1];
+
+        if (selectedMerchant) {
+          // --- TIER CHECK: LISTING vs PRO ---
+          if (selectedMerchant.tier === 'LISTING') {
+            // Listing Mode: Send info + Link defined (No Session)
+            const phone = selectedMerchant.contactPhone ? selectedMerchant.contactPhone.replace(/\+/g, '') : '';
+            const link = phone ? `https://wa.me/${phone}` : 'No contact info available.';
+
+            let msg = `📍 *${selectedMerchant.name}*\n`;
+            msg += `ℹ️ ${selectedMerchant.category || 'Business'} • ${selectedMerchant.location || 'Online'}\n\n`;
+
+            if (selectedMerchant.isClosed) {
+              msg += `🔴 *Currently Closed*\n`;
+            }
+
+            if (phone) {
+              msg += `🔗 *Chat Directly:* ${link}\n\n`;
+              msg += `_Click the link above to message them directly! You are still in the main directory._`;
+            } else {
+              msg += `_No direct contact number available._`;
+            }
+
+            await this.whatsAppService.sendWhatsAppMessage(sender, msg);
+            // Return early - DO NOT start session
+            return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
+          }
+
+          // --- PRO TIER: Start Session ---
+          await this.prismaService.customer.upsert({
+            where: { phoneNumber: sender },
+            update: {
+              currentMerchantId: selectedMerchant.id,
+              merchantId: selectedMerchant.id, // Update legacy field too for compatibility
+              lastSeen: new Date()
+            },
+            create: {
+              phoneNumber: sender,
+              currentMerchantId: selectedMerchant.id,
+              merchantId: selectedMerchant.id,
+              name: 'Guest'
+            }
+          });
+
+          // Send Welcome
+          const welcomeMsg = `Welcome to *${selectedMerchant.name}*! 👋\n\n${selectedMerchant.category ? `_${selectedMerchant.category}_\n` : ''}How can I help you today?`;
+          await this.whatsAppService.sendWhatsAppMessage(sender, welcomeMsg);
+          return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
+        }
+      }
+
+      // Default: Show Directory
+      const list = await this.directory.listMerchants();
+      const message = this.directory.formatMerchantList(list.merchants);
+      await this.whatsAppService.sendWhatsAppMessage(sender, message);
+      return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
+    }
+  }
+
+  // Extracted flow for existing merchant logic to keep the main handler clean
+  private async executeMerchantFlow(merchant: any, customer: any, sender: string, messageText: string, mediaUrl: string, mediaType: string, messageSid: string, host: string) {
+    const contextId = merchant.id;
+
+    // Check if Bot is Paused
+    if (customer?.botPaused) {
+      this.logger.log(`[Handoff] Bot is PAUSED for ${sender} in store ${merchant.name}.`);
+      return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
+    }
+
+    // Persist Message
+    try {
       if (messageText || mediaUrl) {
         await this.prismaService.message.create({
           data: {

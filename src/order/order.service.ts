@@ -105,6 +105,26 @@ export class OrderService {
                 data: { monthlyOrderCount: newCount }
             });
 
+            // --- ALL TIERS: Send WhatsApp Alert to Merchant (Centralized Flow) ---
+            if (merchant.contactPhone) {
+                const itemsList = data.items.map(i => `${i.quantity}x ${i.productId}`).join(', '); // Ideally product name, but ID for now or fetch it
+                // We have items with product data in 'data.items' but only ID. 
+                // However, the `order` object returned by create has items included.
+
+                const shortId = order.shortId || order.id.substring(0, 4);
+                const alertMsg = `🔔 *NEW ORDER ${shortId}*\n\n` +
+                    `👤 Customer: ${data.customerName}\n` +
+                    `💰 Total: GHS ${totalAmount}\n` +
+                    `🚚 Mode: ${data.fulfillmentMode}\n\n` +
+                    `Login to your dashboard to view details and accept!`;
+
+                try {
+                    await this.whatsapp.sendWhatsAppMessage(merchant.contactPhone, alertMsg);
+                } catch (err) {
+                    console.error(`Failed to send merchant alert to ${merchant.contactPhone}: ${err.message}`);
+                }
+            }
+
             // Soft limit warning for Basic tier
             if ((merchant as any).tier === 'BASIC' && newCount > 100) {
                 console.log(`[Tier Warning] Basic tier merchant ${data.merchantId} has exceeded 100 orders (${newCount}/100). Consider upgrading.`);

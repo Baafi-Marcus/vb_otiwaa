@@ -37,6 +37,7 @@ export class MerchantService {
         name: string;
         whatsappPhoneNumberId?: string;
         twilioPhoneNumber?: string;
+        contactPhone?: string;
         category: string;
         clientVision: string;
         location?: string;
@@ -71,6 +72,7 @@ export class MerchantService {
                     name: data.name,
                     whatsappPhoneNumberId: data.whatsappPhoneNumberId,
                     twilioPhoneNumber: data.twilioPhoneNumber,
+                    contactPhone: data.contactPhone,
                     category: data.category,
                     clientVision: data.clientVision,
                     location: data.location,

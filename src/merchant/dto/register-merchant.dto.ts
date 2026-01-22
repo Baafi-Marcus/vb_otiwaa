@@ -12,6 +12,10 @@ export class RegisterMerchantDto {
     @IsString()
     twilioPhoneNumber?: string;
 
+    @IsOptional()
+    @IsString()
+    contactPhone?: string;
+
     @IsString()
     category: string;
 

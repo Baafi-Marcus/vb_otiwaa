@@ -10,7 +10,7 @@ datasource db {
 model Merchant {
   id                    String         @id @default(uuid())
   name                  String
-  whatsappPhoneNumberId String         @unique
+  whatsappPhoneNumberId String?        // Made Optional for Centralized Pivot
   systemPrompt          String?
   createdAt             DateTime       @default(now())
   updatedAt             DateTime       @updatedAt
@@ -22,14 +22,14 @@ model Merchant {
   menuImageUrl          String?
   operatingHours        String?
   paymentMethods        String?
-  twilioPhoneNumber     String?
+  twilioPhoneNumber     String?        // Made Optional
   password              String?
   tier                  String         @default("BASIC")
   tierExpiresAt         DateTime?
   monthlyOrderCount     Int            @default(0)
   lastOrderCountReset   DateTime       @default(now())
   logoUrl               String?
-  contactPhone          String?
+  contactPhone          String?        // CRITICAL: Used for order alerts
   contactEmail          String?
   nudgeDays             Int            @default(2)
   nudgeMessage          String?
@@ -139,16 +139,17 @@ model OrderItem {
 }
 
 model Customer {
-  id           String    @id @default(uuid())
-  phoneNumber  String    @unique
-  name         String?
-  lastSeen     DateTime  @default(now())
-  merchantId   String
-  botPaused    Boolean   @default(false)
-  lastNudgedAt DateTime?
-  merchant     Merchant  @relation(fields: [merchantId], references: [id])
-  orders       Order[]
-  messages     Message[]
+  id                String    @id @default(uuid())
+  phoneNumber       String    @unique
+  name              String?
+  lastSeen          DateTime  @default(now())
+  merchantId        String?   // Made Optional (User can be in 'Directory Mode')
+  currentMerchantId String?   // NEW: Session state tracking which store they are in
+  botPaused         Boolean   @default(false)
+  lastNudgedAt      DateTime?
+  merchant          Merchant? @relation(fields: [merchantId], references: [id])
+  orders            Order[]
+  messages          Message[]
 }
 
 model StoredImage {
