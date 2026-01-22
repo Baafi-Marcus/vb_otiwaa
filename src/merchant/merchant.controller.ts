@@ -57,6 +57,23 @@ export class MerchantController {
         };
     }
 
+    @Get('public')
+    async getPublicMerchants() {
+        const merchants = await this.merchantService.getAllMerchants();
+        // Filter and return only public-safe data
+        return merchants.map(m => ({
+            id: m.id,
+            name: m.name,
+            category: m.category,
+            location: m.location,
+            tier: (m as any).tier,
+            isClosed: m.isClosed,
+            // Only expose contactPhone for LISTING tier
+            contactPhone: (m as any).tier === 'LISTING' ? (m as any).contactPhone : null,
+            menuImageUrl: m.menuImageUrl
+        }));
+    }
+
     @Get()
     @Roles('admin')
     async findAll() {

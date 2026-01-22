@@ -143,67 +143,46 @@ export class WhatsappController {
       return this.executeMerchantFlow(merchant, customer, sender, messageText, mediaUrl, mediaType, messageSid, host);
 
     } else {
-      // --- NO SESSION: Directory / Lobby ---
+      // --- NO SESSION: Check for Start Command ---
 
-      // Handle Selection (Number)
-      const selection = parseInt(messageText);
-      if (!isNaN(selection) && selection > 0) {
-        const list = await this.directory.listMerchants(1, 100); // Fetch all to map index
-        const selectedMerchant = list.merchants[selection - 1];
+      // Detect "Start:[merchantId]" pattern
+      const startMatch = messageText?.match(/^Start:(.+)$/i);
+      if (startMatch) {
+        const merchantId = startMatch[1].trim();
+        const merchant = await this.prismaService.merchant.findUnique({
+          where: { id: merchantId }
+        });
 
-        if (selectedMerchant) {
-          // --- TIER CHECK: LISTING vs PRO ---
-          if (selectedMerchant.tier === 'LISTING') {
-            // Listing Mode: Send info + Link defined (No Session)
-            const phone = selectedMerchant.contactPhone ? selectedMerchant.contactPhone.replace(/\+/g, '') : '';
-            const link = phone ? `https://wa.me/${phone}` : 'No contact info available.';
-
-            let msg = `📍 *${selectedMerchant.name}*\n`;
-            msg += `ℹ️ ${selectedMerchant.category || 'Business'} • ${selectedMerchant.location || 'Online'}\n\n`;
-
-            if (selectedMerchant.isClosed) {
-              msg += `🔴 *Currently Closed*\n`;
-            }
-
-            if (phone) {
-              msg += `🔗 *Chat Directly:* ${link}\n\n`;
-              msg += `_Click the link above to message them directly! You are still in the main directory._`;
-            } else {
-              msg += `_No direct contact number available._`;
-            }
-
-            await this.whatsAppService.sendWhatsAppMessage(sender, msg);
-            // Return early - DO NOT start session
-            return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
-          }
-
-          // --- PRO TIER: Start Session ---
+        if (merchant) {
+          // Start Session
           await this.prismaService.customer.upsert({
             where: { phoneNumber: sender },
             update: {
-              currentMerchantId: selectedMerchant.id,
-              merchantId: selectedMerchant.id, // Update legacy field too for compatibility
+              currentMerchantId: merchant.id,
+              merchantId: merchant.id,
               lastSeen: new Date()
             },
             create: {
               phoneNumber: sender,
-              currentMerchantId: selectedMerchant.id,
-              merchantId: selectedMerchant.id,
+              currentMerchantId: merchant.id,
+              merchantId: merchant.id,
               name: 'Guest'
             }
           });
 
           // Send Welcome
-          const welcomeMsg = `Welcome to *${selectedMerchant.name}*! 👋\n\n${selectedMerchant.category ? `_${selectedMerchant.category}_\n` : ''}How can I help you today?`;
+          const welcomeMsg = `Welcome to *${merchant.name}*! 👋\n\n${(merchant as any).category ? `_${(merchant as any).category}_\n` : ''}How can I help you today?`;
           await this.whatsAppService.sendWhatsAppMessage(sender, welcomeMsg);
+          return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
+        } else {
+          await this.whatsAppService.sendWhatsAppMessage(sender, "Sorry, that merchant is not available. Please visit our website to browse merchants.");
           return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
         }
       }
 
-      // Default: Show Directory
-      const list = await this.directory.listMerchants();
-      const message = this.directory.formatMerchantList(list.merchants);
-      await this.whatsAppService.sendWhatsAppMessage(sender, message);
+      // Default: No session and no Start command
+      const websiteMsg = `👋 Welcome to VB.OTIWAA!\n\nPlease visit our website to browse all available merchants:\n🌐 ${process.env.SERVER_URL || 'https://yourplatform.com'}\n\nClick "Chat Now" on any merchant to start ordering!`;
+      await this.whatsAppService.sendWhatsAppMessage(sender, websiteMsg);
       return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
     }
   }

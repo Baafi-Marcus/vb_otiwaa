@@ -1,6 +1,13 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bot, Zap, Globe, ShieldCheck, Send, Check } from 'lucide-react';
+import { Bot, Zap, Globe, ShieldCheck, Send, Check, MapPin, Store, MessageCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import axios from 'axios';
+
+const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:3001'
+    : '';
+
+const PLATFORM_WHATSAPP = import.meta.env.VITE_PLATFORM_WHATSAPP || '+14155238886'; // Your centralized WhatsApp number
 
 export default function LandingPage() {
     return (
@@ -75,6 +82,9 @@ export default function LandingPage() {
                     <ChatDemo />
                 </motion.div>
             </div >
+
+            {/* Directory Section */}
+            <DirectorySection />
 
             <footer className="w-full py-8 text-center text-xs font-bold text-muted-foreground/60 relative z-10 uppercase tracking-widest flex flex-col md:flex-row items-center justify-between px-8 gap-4 bg-black/20 backdrop-blur-sm border-t border-white/5">
                 <div className="flex items-center gap-4">
@@ -240,6 +250,116 @@ function ChatDemo() {
                 <div className="w-8 h-8 rounded-full bg-[#00897B] flex items-center justify-center text-white shadow-sm">
                     <Send className="w-3 h-3" />
                 </div>
+            </div>
+        </div>
+    );
+}
+
+function DirectorySection() {
+    const [merchants, setMerchants] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        axios.get(`${API_BASE}/api/merchants/public`)
+            .then(res => {
+                setMerchants(res.data);
+                setLoading(false);
+            })
+            .catch(err => {
+                console.error('Failed to load merchants:', err);
+                setLoading(false);
+            });
+    }, []);
+
+    if (loading) {
+        return (
+            <div className="w-full py-20 px-6 relative z-10">
+                <div className="max-w-7xl mx-auto text-center">
+                    <p className="text-muted-foreground">Loading directory...</p>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="w-full py-20 px-6 relative z-10 bg-black/20 backdrop-blur-sm border-t border-white/5">
+            <div className="max-w-7xl mx-auto">
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    className="text-center mb-12"
+                >
+                    <h2 className="text-4xl lg:text-5xl font-black mb-4 bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60">
+                        Browse Merchants
+                    </h2>
+                    <p className="text-muted-foreground max-w-2xl mx-auto">
+                        Discover local businesses powered by AI. Click "Chat Now" to start ordering instantly.
+                    </p>
+                </motion.div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {merchants.map((merchant, index) => (
+                        <motion.div
+                            key={merchant.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            transition={{ delay: index * 0.1 }}
+                            className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-md hover:bg-white/10 transition-all"
+                        >
+                            <div className="flex items-start justify-between mb-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-purple-600/20 flex items-center justify-center">
+                                        <Store className="w-6 h-6 text-white" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-bold text-white">{merchant.name}</h3>
+                                        <p className="text-xs text-muted-foreground">{merchant.category}</p>
+                                    </div>
+                                </div>
+                                <span className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${merchant.tier === 'PRO' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-blue-500/20 text-blue-400'
+                                    }`}>
+                                    {merchant.tier}
+                                </span>
+                            </div>
+
+                            {merchant.location && (
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+                                    <MapPin className="w-4 h-4" />
+                                    <span>{merchant.location}</span>
+                                </div>
+                            )}
+
+                            <div className="flex items-center gap-2 mb-4">
+                                <div className={`w-2 h-2 rounded-full ${merchant.isClosed ? 'bg-red-500' : 'bg-emerald-500'}`} />
+                                <span className="text-xs text-muted-foreground">
+                                    {merchant.isClosed ? 'Currently Closed' : 'Open Now'}
+                                </span>
+                            </div>
+
+                            <a
+                                href={
+                                    merchant.tier === 'LISTING'
+                                        ? `https://wa.me/${merchant.contactPhone?.replace(/\+/g, '')}`
+                                        : `https://wa.me/${PLATFORM_WHATSAPP.replace(/\+/g, '')}?text=Start:${merchant.id}`
+                                }
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-500/20"
+                            >
+                                <MessageCircle className="w-4 h-4" />
+                                Chat Now
+                            </a>
+                        </motion.div>
+                    ))}
+                </div>
+
+                {merchants.length === 0 && (
+                    <div className="text-center py-12">
+                        <p className="text-muted-foreground">No merchants available at the moment.</p>
+                    </div>
+                )}
             </div>
         </div>
     );
