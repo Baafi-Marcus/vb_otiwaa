@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bot, Zap, Globe, ShieldCheck, Send, Check, Store, ArrowLeft } from 'lucide-react';
+import { Bot, Zap, Globe, ShieldCheck, Send, Check, ArrowLeft } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 
@@ -10,13 +10,6 @@ const API_BASE = window.location.hostname === 'localhost' || window.location.hos
 
 
 export default function LandingPage() {
-    const [isLoggedIn, setIsLoggedIn] = useState(false);
-
-    useEffect(() => {
-        const token = localStorage.getItem('vb_token');
-        const role = localStorage.getItem('vb_role');
-        setIsLoggedIn(!!(token && role));
-    }, []);
 
     return (
         <div className="min-h-screen bg-[#020202] text-white flex flex-col font-sans relative overflow-y-auto">

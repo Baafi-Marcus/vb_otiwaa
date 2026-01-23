@@ -198,113 +198,111 @@ export default function BusinessesPage() {
                                         </p>
                                     </div>
 
-                                </div>
+                                    {/* Delivery Options & Menu Section */}
+                                    <div className="space-y-6 border-t border-white/5 pt-6">
+                                        {selectedMerchant.deliveryOptions && (
+                                            <div className="flex flex-wrap gap-2">
+                                                {(selectedMerchant.deliveryOptions === 'BOTH' || selectedMerchant.deliveryOptions === 'PICKUP') && (
+                                                    <span className="px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-xs font-bold text-white flex items-center gap-2">
+                                                        🛍️ Pickup Available
+                                                    </span>
+                                                )}
+                                                {(selectedMerchant.deliveryOptions === 'BOTH' || selectedMerchant.deliveryOptions === 'DELIVERY') && (
+                                                    <span className="px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-xs font-bold text-white flex items-center gap-2">
+                                                        🛵 Delivery Available
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
 
-                                {/* Delivery Options & Menu Section */}
-                                <div className="space-y-6 border-t border-white/5 pt-6">
-                                    {selectedMerchant.deliveryOptions && (
-                                        <div className="flex flex-wrap gap-2">
-                                            {(selectedMerchant.deliveryOptions === 'BOTH' || selectedMerchant.deliveryOptions === 'PICKUP') && (
-                                                <span className="px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-xs font-bold text-white flex items-center gap-2">
-                                                    🛍️ Pickup Available
-                                                </span>
-                                            )}
-                                            {(selectedMerchant.deliveryOptions === 'BOTH' || selectedMerchant.deliveryOptions === 'DELIVERY') && (
-                                                <span className="px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-xs font-bold text-white flex items-center gap-2">
-                                                    🛵 Delivery Available
-                                                </span>
-                                            )}
-                                        </div>
-                                    )}
+                                        {selectedMerchant.catalog && selectedMerchant.catalog.length > 0 && (
+                                            <div className="space-y-3">
+                                                <h4 className="text-sm font-black uppercase tracking-widest text-white/40">Menu & Prices</h4>
+                                                <div className="grid gap-2">
+                                                    {selectedMerchant.catalog.map((product: any) => (
+                                                        <div key={product.id} className="flex justify-between items-center p-3 bg-white/5 rounded-xl border border-white/10">
+                                                            <div>
+                                                                <p className="font-bold text-sm text-white">{product.name}</p>
+                                                                {product.description && <p className="text-xs text-muted-foreground line-clamp-1">{product.description}</p>}
+                                                            </div>
+                                                            <div className="font-bold text-primary text-sm">
+                                                                GHS {product.price}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
 
-                                    {selectedMerchant.catalog && selectedMerchant.catalog.length > 0 && (
-                                        <div className="space-y-3">
-                                            <h4 className="text-sm font-black uppercase tracking-widest text-white/40">Menu & Prices</h4>
-                                            <div className="grid gap-2">
-                                                {selectedMerchant.catalog.map((product: any) => (
-                                                    <div key={product.id} className="flex justify-between items-center p-3 bg-white/5 rounded-xl border border-white/10">
-                                                        <div>
-                                                            <p className="font-bold text-sm text-white">{product.name}</p>
-                                                            {product.description && <p className="text-xs text-muted-foreground line-clamp-1">{product.description}</p>}
-                                                        </div>
-                                                        <div className="font-bold text-primary text-sm">
-                                                            GHS {product.price}
-                                                        </div>
-                                                    </div>
-                                                ))}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4 border-t border-white/5">
+                                        <div className="space-y-1">
+                                            <div className="text-[10px] font-black uppercase tracking-widest text-white/40">Category</div>
+                                            <div className="flex items-center gap-2 font-bold text-white">
+                                                <Tag className="w-4 h-4 text-primary" />
+                                                {selectedMerchant.category || 'Local Business'}
                                             </div>
                                         </div>
-                                    )}
-                                </div>
+                                        <div className="space-y-1">
+                                            <div className="text-[10px] font-black uppercase tracking-widest text-white/40">Location</div>
+                                            <div className="flex items-center gap-2 font-bold text-white">
+                                                <MapPin className="w-4 h-4 text-primary" />
+                                                {selectedMerchant.location || 'Accra, Ghana'}
+                                            </div>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <div className="text-[10px] font-black uppercase tracking-widest text-white/40">Official Channel</div>
+                                            <div className="flex items-center gap-2 font-bold text-white">
+                                                <Smartphone className="w-4 h-4 text-primary" />
+                                                Verified WhatsApp Bot
+                                            </div>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <div className="text-[10px] font-black uppercase tracking-widest text-white/40">Status</div>
+                                            <div className="flex items-center gap-2 font-bold text-white">
+                                                {selectedMerchant.isClosed ? (
+                                                    <span className="flex items-center gap-2 text-red-500">
+                                                        <span className="w-2 h-2 rounded-full bg-red-500" />
+                                                        Currently Closed
+                                                    </span>
+                                                ) : (
+                                                    <span className="flex items-center gap-2 text-emerald-500">
+                                                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                                        Online & Chatting
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4 border-t border-white/5">
-                                    <div className="space-y-1">
-                                        <div className="text-[10px] font-black uppercase tracking-widest text-white/40">Category</div>
-                                        <div className="flex items-center gap-2 font-bold text-white">
-                                            <Tag className="w-4 h-4 text-primary" />
-                                            {selectedMerchant.category || 'Local Business'}
-                                        </div>
+                                    <div className="pt-6">
+                                        <a
+                                            href={
+                                                selectedMerchant.tier === 'LISTING'
+                                                    ? `https://wa.me/${selectedMerchant.contactPhone?.replace(/\+/g, '')}`
+                                                    : `https://wa.me/${PLATFORM_WHATSAPP.replace(/\+/g, '').replace(' ', '')}?text=Start:${selectedMerchant.id}`
+                                            }
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="w-full py-5 px-8 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-lg flex items-center justify-center gap-3 transition-all shadow-xl shadow-emerald-500/20 active:scale-95"
+                                        >
+                                            <MessageCircle className="w-6 h-6" />
+                                            Start Chatting Now
+                                        </a>
+                                        <p className="text-center text-[10px] text-muted-foreground/40 mt-4 uppercase tracking-[0.2em]">
+                                            Secure end-to-end encrypted conversation
+                                        </p>
                                     </div>
-                                    <div className="space-y-1">
-                                        <div className="text-[10px] font-black uppercase tracking-widest text-white/40">Location</div>
-                                        <div className="flex items-center gap-2 font-bold text-white">
-                                            <MapPin className="w-4 h-4 text-primary" />
-                                            {selectedMerchant.location || 'Accra, Ghana'}
-                                        </div>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <div className="text-[10px] font-black uppercase tracking-widest text-white/40">Official Channel</div>
-                                        <div className="flex items-center gap-2 font-bold text-white">
-                                            <Smartphone className="w-4 h-4 text-primary" />
-                                            Verified WhatsApp Bot
-                                        </div>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <div className="text-[10px] font-black uppercase tracking-widest text-white/40">Status</div>
-                                        <div className="flex items-center gap-2 font-bold text-white">
-                                            {selectedMerchant.isClosed ? (
-                                                <span className="flex items-center gap-2 text-red-500">
-                                                    <span className="w-2 h-2 rounded-full bg-red-500" />
-                                                    Currently Closed
-                                                </span>
-                                            ) : (
-                                                <span className="flex items-center gap-2 text-emerald-500">
-                                                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                                                    Online & Chatting
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="pt-6">
-                                    <a
-                                        href={
-                                            selectedMerchant.tier === 'LISTING'
-                                                ? `https://wa.me/${selectedMerchant.contactPhone?.replace(/\+/g, '')}`
-                                                : `https://wa.me/${PLATFORM_WHATSAPP.replace(/\+/g, '').replace(' ', '')}?text=Start:${selectedMerchant.id}`
-                                        }
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="w-full py-5 px-8 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-lg flex items-center justify-center gap-3 transition-all shadow-xl shadow-emerald-500/20 active:scale-95"
-                                    >
-                                        <MessageCircle className="w-6 h-6" />
-                                        Start Chatting Now
-                                    </a>
-                                    <p className="text-center text-[10px] text-muted-foreground/40 mt-4 uppercase tracking-[0.2em]">
-                                        Secure end-to-end encrypted conversation
-                                    </p>
                                 </div>
                             </div>
-                    </div>
                         </motion.div>
-        </div>
-    )
-}
+                    </div>
+                )
+                }
             </AnimatePresence >
 
-    {/* Footer */ }
-    < footer className = "w-full py-8 text-center text-xs font-bold text-muted-foreground/60 relative z-10 uppercase tracking-widest flex flex-col md:flex-row items-center justify-between px-8 gap-4 bg-black/20 backdrop-blur-sm border-t border-white/5" >
+            {/* Footer */}
+            < footer className="w-full py-8 text-center text-xs font-bold text-muted-foreground/60 relative z-10 uppercase tracking-widest flex flex-col md:flex-row items-center justify-between px-8 gap-4 bg-black/20 backdrop-blur-sm border-t border-white/5" >
                 <div className="flex items-center gap-4">
                     <span>© 2026 FuseWeb Service</span>
                 </div>
