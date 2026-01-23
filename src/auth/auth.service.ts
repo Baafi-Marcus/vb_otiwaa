@@ -32,10 +32,7 @@ export class AuthService {
                 const { password, ...result } = user;
                 return { ...result, type };
             }
-        }
-
-        // For trial period: if user has NO password set, allow them in (first time setup)
-        if (user && !user.password) {
+        } else if (user && !user.password) {
             const { password, ...result } = user;
             return { ...result, type, setupRequired: true };
         }

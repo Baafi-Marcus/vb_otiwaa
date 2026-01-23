@@ -19,7 +19,6 @@ import { RolesGuard } from '../auth/roles.guard';
 import { TwilioService } from '../twilio/twilio.service';
 
 @Controller('merchants')
-@UseGuards(JwtAuthGuard, RolesGuard)
 export class MerchantController {
     constructor(
         private readonly merchantService: MerchantService,
@@ -29,6 +28,7 @@ export class MerchantController {
     ) { }
 
     @Post('upload')
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('merchant', 'admin')
     @UseInterceptors(FileInterceptor('file')) // Memory storage by default
     async uploadFile(@UploadedFile() file: any) {
@@ -37,6 +37,7 @@ export class MerchantController {
     }
 
     @Post('analyze-menu')
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('merchant', 'admin')
     async analyzeMenu(@Body() data: { imageUrl: string }) {
         const products = await this.openai.analyzeMenuImage(data.imageUrl);
@@ -44,12 +45,14 @@ export class MerchantController {
     }
 
     @Post('register')
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('admin')
     async register(@Body() data: RegisterMerchantDto) {
         return this.merchantService.registerMerchant(data);
     }
 
     @Post('expand-vision')
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('merchant', 'admin')
     async expandVision(@Body() data: { name: string; category: string; vision: string }) {
         return {
@@ -70,17 +73,22 @@ export class MerchantController {
             isClosed: m.isClosed,
             // Only expose contactPhone for LISTING tier
             contactPhone: (m as any).tier === 'LISTING' ? (m as any).contactPhone : null,
-            menuImageUrl: m.menuImageUrl
+            menuImageUrl: m.menuImageUrl,
+            description: (m as any).description,
+            deliveryOptions: (m as any).deliveryOptions,
+            catalog: m.catalog // Expose products for pricing display
         }));
     }
 
     @Get()
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('admin')
     async findAll() {
         return this.merchantService.getAllMerchants();
     }
 
     @Post(':id/products')
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('merchant', 'admin')
     async addProduct(
         @Param('id') id: string,
@@ -92,6 +100,7 @@ export class MerchantController {
     }
 
     @Post(':id/bulk-products')
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('merchant', 'admin')
     async addBulkProducts(
         @Param('id') id: string,
@@ -103,6 +112,7 @@ export class MerchantController {
     }
 
     @Patch(':merchantId/products/:productId')
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('merchant', 'admin')
     async updateProduct(
         @Param('merchantId') merchantId: string,
@@ -115,6 +125,7 @@ export class MerchantController {
     }
 
     @Delete(':merchantId/products/:productId')
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('merchant', 'admin')
     async deleteProduct(
         @Param('merchantId') merchantId: string,
@@ -126,6 +137,7 @@ export class MerchantController {
     }
 
     @Post(':id/generate-image')
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('merchant', 'admin')
     async generateImage(
         @Param('id') id: string,
@@ -137,6 +149,7 @@ export class MerchantController {
     }
 
     @Get(':id/dashboard')
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('merchant', 'admin')
     async getDashboard(@Param('id') id: string, @Request() req: any) {
         if (req.user.type === 'merchant' && req.user.sub !== id) throw new ForbiddenException('Not owner');
@@ -144,6 +157,7 @@ export class MerchantController {
     }
 
     @Get(':id/orders')
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('merchant', 'admin')
     async getOrders(@Param('id') id: string, @Request() req: any) {
         if (req.user.type === 'merchant' && req.user.sub !== id) throw new ForbiddenException('Not owner');
@@ -151,6 +165,7 @@ export class MerchantController {
     }
 
     @Post(':id/sandbox')
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('merchant', 'admin')
     async simulateSandbox(
         @Param('id') id: string,
@@ -162,6 +177,7 @@ export class MerchantController {
     }
 
     @Get(':id/customers')
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('merchant', 'admin')
     async getCustomers(@Param('id') id: string, @Request() req: any) {
         if (req.user.type === 'merchant' && req.user.sub !== id) throw new ForbiddenException('Not owner');
@@ -169,6 +185,7 @@ export class MerchantController {
     }
 
     @Post(':id/broadcast')
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('merchant', 'admin')
     async sendBroadcast(
         @Param('id') id: string,
@@ -180,10 +197,11 @@ export class MerchantController {
     }
 
     @Patch(':id')
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('merchant', 'admin')
     async update(
         @Param('id') id: string,
-        @Body() data: { name?: string; category?: string; systemPrompt?: string; menuImageUrl?: string },
+        @Body() data: { name?: string; category?: string; systemPrompt?: string; menuImageUrl?: string; description?: string; deliveryOptions?: string },
         @Request() req: any
     ) {
         if (req.user.type === 'merchant' && req.user.sub !== id) throw new ForbiddenException('Not owner');
@@ -191,6 +209,7 @@ export class MerchantController {
     }
 
     @Get(':id/delivery-zones')
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('merchant', 'admin')
     async getDeliveryZones(@Param('id') id: string, @Request() req: any) {
         if (req.user.type === 'merchant' && req.user.sub !== id) throw new ForbiddenException('Not owner');
@@ -198,6 +217,7 @@ export class MerchantController {
     }
 
     @Post(':id/delivery-zones')
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('merchant', 'admin')
     async addDeliveryZone(
         @Param('id') id: string,
@@ -209,6 +229,7 @@ export class MerchantController {
     }
 
     @Patch(':merchantId/delivery-zones/:zoneId')
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('merchant', 'admin')
     async updateDeliveryZone(
         @Param('merchantId') merchantId: string,
@@ -221,6 +242,7 @@ export class MerchantController {
     }
 
     @Delete(':merchantId/delivery-zones/:zoneId')
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('merchant', 'admin')
     async deleteDeliveryZone(
         @Param('merchantId') merchantId: string,
@@ -232,6 +254,7 @@ export class MerchantController {
     }
 
     @Patch(':id/customers/:customerId/toggle-bot')
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('merchant', 'admin')
     async toggleBot(
         @Param('id') id: string,
@@ -244,12 +267,14 @@ export class MerchantController {
     }
 
     @Get('upgrade-requests')
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('admin')
     async getUpgradeRequests() {
         return this.merchantService.getUpgradeRequests();
     }
 
     @Post(':id/upgrade-request')
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('merchant', 'admin')
     async createUpgradeRequest(
         @Param('id') id: string,
@@ -261,6 +286,7 @@ export class MerchantController {
     }
 
     @Patch('upgrade-requests/:id/approve')
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('admin')
     async approveUpgradeRequest(
         @Param('id') id: string,
@@ -270,12 +296,14 @@ export class MerchantController {
     }
 
     @Patch('upgrade-requests/:id/reject')
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('admin')
     async rejectUpgradeRequest(@Param('id') id: string) {
         return this.merchantService.rejectUpgradeRequest(id);
     }
 
     @Delete(':id/delete')
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('admin')
     async deleteMerchant(@Param('id') id: string) {
         return this.merchantService.deleteMerchant(id);
@@ -283,6 +311,7 @@ export class MerchantController {
 
 
     @Post(':id/chat/send')
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('merchant', 'admin')
     async sendMessage(
         @Param('id') id: string,
@@ -300,6 +329,7 @@ export class MerchantController {
     }
 
     @Get(':id/chat/:customerId')
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('merchant', 'admin')
     async getChatHistory(
         @Param('id') id: string,

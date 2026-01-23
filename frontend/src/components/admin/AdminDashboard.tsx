@@ -30,7 +30,8 @@ import {
     ArrowUpCircle,
     Bell,
     Mail,
-    User
+    User,
+    Inbox
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useSocket } from '../../context/SocketContext';
@@ -46,10 +47,12 @@ const SidebarLink = ({ active, onClick, icon: Icon, label }: any) => (
     </button>
 );
 
-const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:3001' : '';
+const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:3000'
+    : '';
 
 export const AdminDashboard: React.FC<{ onMerchantSelect: (id: string) => void }> = ({ onMerchantSelect }) => {
-    const [activeView, setActiveView] = useState<'overview' | 'register' | 'directory' | 'settings' | 'upgrades' | 'alerts' | 'profile' | 'simulation'>('overview');
+    const [activeView, setActiveView] = useState<'overview' | 'register' | 'directory' | 'settings' | 'upgrades' | 'alerts' | 'profile' | 'simulation' | 'leads'>('overview');
     const [merchants, setMerchants] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
 
@@ -163,6 +166,12 @@ export const AdminDashboard: React.FC<{ onMerchantSelect: (id: string) => void }
                         icon={User}
                         label="My Profile"
                     />
+                    <SidebarLink
+                        active={activeView === 'leads'}
+                        onClick={() => setActiveView('leads')}
+                        icon={Inbox}
+                        label="Leads Inbox"
+                    />
                 </nav>
             </aside>
 
@@ -176,6 +185,7 @@ export const AdminDashboard: React.FC<{ onMerchantSelect: (id: string) => void }
                 {activeView === 'alerts' && <Notifications />}
                 {activeView === 'profile' && <AdminProfile />}
                 {activeView === 'simulation' && <AdminSandbox merchants={merchants} />}
+                {activeView === 'leads' && <LeadsView />}
             </main>
         </div>
     );
@@ -239,7 +249,7 @@ const AdminOverview = ({ merchants, setView }: any) => {
             <header className="flex items-center justify-between">
                 <div>
                     <h1 className="text-3xl font-bold text-foreground">Admin Workspace</h1>
-                    <p className="text-muted-foreground mt-1">Monitor activity and manage the VB.OTIWAA merchant network.</p>
+                    <p className="text-muted-foreground mt-1">Monitor activity and manage the FuseWeb Service merchant network.</p>
                 </div>
             </header>
 
@@ -1618,6 +1628,122 @@ const AdminProfile = () => {
                         {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Save Profile Changes'}
                     </button>
                 </form>
+            </div>
+        </div>
+    );
+};
+
+const LeadsView = () => {
+    const [leads, setLeads] = React.useState<any[]>([]);
+    const [loading, setLoading] = React.useState(false);
+
+    const fetchLeads = async () => {
+        setLoading(true);
+        try {
+            const resp = await axios.get(`${API_BASE}/api/system/leads`);
+            setLeads(resp.data);
+        } catch (err) {
+            toast.error('Failed to fetch leads');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const updateStatus = async (id: string, status: string) => {
+        try {
+            await axios.patch(`${API_BASE}/api/system/leads/${id}`, { status });
+            toast.success('Lead status updated');
+            fetchLeads();
+        } catch (err) {
+            toast.error('Failed to update status');
+        }
+    };
+
+    React.useEffect(() => {
+        fetchLeads();
+    }, []);
+
+    return (
+        <div className="space-y-6">
+            <header className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-3xl font-black text-foreground flex items-center gap-3">
+                        <Inbox className="w-8 h-8 text-blue-500" />
+                        Business Leads Inbox
+                    </h1>
+                    <p className="text-muted-foreground mt-1">Manage businesses that want to join the FuseWeb platform.</p>
+                </div>
+                <button
+                    onClick={fetchLeads}
+                    className="p-3 bg-secondary/50 hover:bg-secondary rounded-xl transition-all"
+                >
+                    <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+                </button>
+            </header>
+
+            <div className="bg-card border border-border rounded-3xl overflow-hidden shadow-sm">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                        <thead>
+                            <tr className="bg-secondary/30 border-b border-border">
+                                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">Lead Details</th>
+                                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">Business Type</th>
+                                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">Message</th>
+                                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">Status</th>
+                                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-muted-foreground text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                            {leads.map((lead) => (
+                                <tr key={lead.id} className="hover:bg-secondary/10 transition-colors">
+                                    <td className="px-6 py-4">
+                                        <div className="font-bold text-foreground">{lead.businessName}</div>
+                                        <div className="text-xs text-muted-foreground">{lead.contactPerson}</div>
+                                        <div className="text-xs font-mono text-blue-500 mt-1">{lead.phone}</div>
+                                        <div className="text-xs text-muted-foreground">{lead.email}</div>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <span className="px-2 py-1 rounded-lg bg-blue-500/10 text-blue-500 text-[10px] font-black uppercase">
+                                            {lead.businessType}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 max-w-xs">
+                                        <p className="text-xs text-muted-foreground line-clamp-2 italic">"{lead.message || 'No message'}"</p>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${lead.status === 'NEW' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' :
+                                                lead.status === 'CONTACTED' ? 'bg-amber-500 text-white' :
+                                                    'bg-emerald-500 text-white'
+                                            }`}>
+                                            {lead.status}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 text-right">
+                                        <div className="relative group/sel">
+                                            <select
+                                                className="bg-secondary/50 border-none rounded-lg px-2 py-1 text-xs font-bold outline-none cursor-pointer appearance-none pr-6"
+                                                value={lead.status}
+                                                onChange={(e) => updateStatus(lead.id, e.target.value)}
+                                            >
+                                                <option value="NEW">New</option>
+                                                <option value="CONTACTED">Contacted</option>
+                                                <option value="ARCHIVED">Archived</option>
+                                            </select>
+                                            <ChevronRight className="w-3 h-3 text-muted-foreground absolute right-2 top-1/2 -translate-y-1/2 rotate-90 pointer-events-none" />
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                            {leads.length === 0 && !loading && (
+                                <tr>
+                                    <td colSpan={5} className="px-6 py-20 text-center text-muted-foreground">
+                                        No leads found. New submissions from the landing page will appear here.
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     );

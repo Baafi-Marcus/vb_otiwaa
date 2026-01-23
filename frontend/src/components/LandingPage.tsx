@@ -1,15 +1,23 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bot, Zap, Globe, ShieldCheck, Send, Check, MapPin, Store, MessageCircle } from 'lucide-react';
+import { Bot, Zap, Globe, ShieldCheck, Send, Check, Store, ArrowLeft } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 
 const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? 'http://localhost:3001'
+    ? 'http://localhost:3000'
     : '';
 
-const PLATFORM_WHATSAPP = import.meta.env.VITE_PLATFORM_WHATSAPP || '+14155238886'; // Your centralized WhatsApp number
+
 
 export default function LandingPage() {
+    const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+    useEffect(() => {
+        const token = localStorage.getItem('vb_token');
+        const role = localStorage.getItem('vb_role');
+        setIsLoggedIn(!!(token && role));
+    }, []);
+
     return (
         <div className="min-h-screen bg-[#020202] text-white flex flex-col font-sans relative overflow-y-auto">
             {/* Background Grid Pattern */}
@@ -20,6 +28,26 @@ export default function LandingPage() {
                 <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-primary rounded-full blur-[150px] animate-pulse" />
                 <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-purple-600 rounded-full blur-[150px] animate-pulse [animation-delay:2s]" />
             </div>
+
+            {/* Navigation Bar */}
+            <nav className="w-full py-4 px-6 lg:px-20 relative z-20 bg-black/20 backdrop-blur-sm border-b border-white/5">
+                <div className="max-w-7xl mx-auto flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <img src="/logo-white.png" alt="FuseWeb Service Logo" className="w-10 h-10 object-contain" />
+                        <span className="text-xl font-black tracking-tight">FuseWeb Service</span>
+                    </div>
+                    <div className="flex items-center gap-6">
+                        <a href="/businesses" className="text-sm font-semibold text-white/80 hover:text-white transition-colors">
+                            Businesses
+                        </a>
+                        <a href="/admin" className="px-4 py-2 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 rounded-xl text-xs sm:text-sm font-bold text-white transition-all shadow-lg shadow-primary/20">
+                            Dashboard
+                        </a>
+                    </div>
+                </div>
+            </nav>
+
+            {/* Hero Section */}
 
             <div className="flex-1 flex flex-col lg:flex-row items-center justify-center p-6 lg:p-20 relative z-10 gap-16 lg:gap-24">
                 <motion.div
@@ -35,14 +63,26 @@ export default function LandingPage() {
                             transition={{ duration: 0.5, delay: 0.2 }}
                             className="w-24 h-24 lg:w-32 lg:h-32 flex-shrink-0"
                         >
-                            <img src="/logo-white.png" alt="VB.OTIWAA Logo" className="w-full h-full object-contain" />
+                            <img src="/logo-white.png" alt="FuseWeb Service Logo" className="w-full h-full object-contain" />
                         </motion.div>
 
-                        <div className="space-y-2 text-center lg:text-left">
-                            <h1 className="text-6xl lg:text-8xl font-black tracking-tighter leading-none bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60">
-                                VB.OTIWAA
+                        <div className="space-y-4 text-center lg:text-left">
+                            <motion.div
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-bold tracking-widest uppercase text-primary"
+                            >
+                                <span className="relative flex h-2 w-2">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                                </span>
+                                Welcome to
+                            </motion.div>
+                            <h1 className="text-5xl sm:text-7xl lg:text-8xl font-black tracking-tighter leading-[0.9] bg-clip-text text-transparent bg-gradient-to-b from-white to-white/40">
+                                AI-POWERED<br />
+                                COMMERCE.
                             </h1>
-                            <p className="text-xl lg:text-2xl text-white/90 font-medium tracking-wide font-mono">
+                            <p className="text-lg sm:text-xl lg:text-2xl text-primary font-bold tracking-[0.2em] uppercase font-sans">
                                 create.build.inspire.
                             </p>
                         </div>
@@ -83,8 +123,136 @@ export default function LandingPage() {
                 </motion.div>
             </div >
 
-            {/* Directory Section */}
-            <DirectorySection />
+            {/* What We Offer Section */}
+            <section className="w-full py-20 px-6 relative z-10">
+                <div className="max-w-7xl mx-auto">
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        className="text-center mb-12"
+                    >
+                        <h2 className="text-4xl lg:text-5xl font-black mb-4 bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60">
+                            What We Offer
+                        </h2>
+                        <p className="text-muted-foreground max-w-2xl mx-auto">
+                            Empowering businesses with cutting-edge AI technology
+                        </p>
+                    </motion.div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        <OfferCard
+                            icon={Bot}
+                            title="AI-Powered Chatbot"
+                            description="24/7 automated customer service that handles orders, inquiries, and support seamlessly through WhatsApp."
+                        />
+                        <OfferCard
+                            icon={Zap}
+                            title="Instant Setup"
+                            description="Get your business online in minutes. Upload your menu, customize your bot, and start taking orders immediately."
+                        />
+                        <OfferCard
+                            icon={Globe}
+                            title="Multi-Business Platform"
+                            description="Join our growing directory of businesses. Customers discover you, and our AI handles the rest."
+                        />
+                    </div>
+                </div>
+            </section>
+
+            {/* How It Works Section */}
+            <section className="w-full py-20 px-6 relative z-10 bg-gradient-to-b from-white/5 to-transparent">
+                <div className="max-w-7xl mx-auto">
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        className="text-center mb-16"
+                    >
+                        <h2 className="text-4xl lg:text-5xl font-black mb-4 bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60">
+                            How It Works
+                        </h2>
+                        <p className="text-muted-foreground max-w-2xl mx-auto">
+                            Simple, fast, and powerful
+                        </p>
+                    </motion.div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-12 md:gap-8">
+                        <ImprovedStepCard
+                            number="1"
+                            title="Contact Us"
+                            description="Fill out our simple form with your business details and requirements."
+                        />
+                        <ImprovedStepCard
+                            number="2"
+                            title="We Set Up Everything"
+                            description="Our team configures your AI chatbot, menu, and WhatsApp integration."
+                        />
+                        <ImprovedStepCard
+                            number="3"
+                            title="Start Selling"
+                            description="Your customers can order 24/7 through WhatsApp with zero effort from you."
+                        />
+                    </div>
+                </div>
+            </section>
+
+            {/* For Customers Section */}
+            <section className="w-full py-24 px-6 relative z-10 bg-gradient-to-t from-white/5 to-transparent">
+                <div className="max-w-7xl mx-auto">
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        className="text-center mb-16"
+                    >
+                        <h2 className="text-4xl lg:text-5xl font-black mb-4 bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60 uppercase">
+                            Better For You
+                        </h2>
+                        <p className="text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+                            Experience the future of shopping. No slow websites, no complicated apps. Just chat with your favorite local businesses directly on WhatsApp.
+                        </p>
+                    </motion.div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+                        <OfferCard
+                            icon={Bot}
+                            title="Instant AI Help"
+                            description="Get immediate answers about prices and availability from our AI, any time of day."
+                        />
+                        <OfferCard
+                            icon={Zap}
+                            title="Shop on WhatsApp"
+                            description="Order directly from your chat window. No extra apps or storage space required."
+                        />
+                        <OfferCard
+                            icon={Globe}
+                            title="Track Your Orders"
+                            description="Receive automated live updates and track your delivery status with simple messages."
+                        />
+                    </div>
+
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        className="text-center"
+                    >
+                        <a
+                            href="/businesses"
+                            className="inline-flex items-center gap-2 px-10 py-5 bg-white text-black font-black rounded-2xl hover:scale-105 active:scale-95 transition-all shadow-xl shadow-white/10"
+                        >
+                            Explore Business Directory
+                            <ArrowLeft className="w-5 h-5 rotate-180" />
+                        </a>
+                    </motion.div>
+                </div>
+            </section>
+
+            {/* Contact Form Section */}
+            <div id="contact">
+                <ContactFormSection />
+            </div>
 
             <footer className="w-full py-8 text-center text-xs font-bold text-muted-foreground/60 relative z-10 uppercase tracking-widest flex flex-col md:flex-row items-center justify-between px-8 gap-4 bg-black/20 backdrop-blur-sm border-t border-white/5">
                 <div className="flex items-center gap-4">
@@ -122,6 +290,180 @@ function FeatureCard({ icon: Icon, title, description }: any) {
             <p className="text-xs text-muted-foreground leading-relaxed">{description}</p>
         </motion.div>
     )
+}
+
+function OfferCard({ icon: Icon, title, description }: any) {
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            whileHover={{ y: -5 }}
+            className="p-8 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md"
+        >
+            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary/20 to-purple-600/20 flex items-center justify-center mb-6 text-white">
+                <Icon className="w-7 h-7" />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-3">{title}</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">{description}</p>
+        </motion.div>
+    );
+}
+
+function ImprovedStepCard({ number, title, description }: any) {
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="relative flex flex-col items-center text-center"
+        >
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center text-3xl font-black shadow-2xl shadow-primary/40 mb-6">
+                {number}
+            </div>
+            <div className="space-y-3">
+                <h3 className="text-2xl font-bold text-white">{title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed max-w-xs mx-auto">{description}</p>
+            </div>
+        </motion.div>
+    );
+}
+
+function ContactFormSection() {
+    const [formData, setFormData] = useState({
+        businessName: '',
+        contactPerson: '',
+        phone: '',
+        email: '',
+        businessType: '',
+        message: ''
+    });
+    const [loading, setLoading] = useState(false);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+
+        try {
+            await axios.post(`${API_BASE}/api/system/leads`, formData);
+            alert('Thank you! We will contact you soon for any further questions and details.');
+            setFormData({ businessName: '', contactPerson: '', phone: '', email: '', businessType: '', message: '' });
+        } catch (error) {
+            console.error('Failed to submit lead:', error);
+            alert('Something went wrong. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="w-full py-20 px-6 relative z-10 bg-black/20 backdrop-blur-sm">
+            <div className="max-w-4xl mx-auto">
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    className="text-center mb-12"
+                >
+                    <h2 className="text-4xl lg:text-5xl font-black mb-4 bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60">
+                        Get Started Today
+                    </h2>
+                    <p className="text-muted-foreground max-w-2xl mx-auto">
+                        Fill out the form below and we'll set up your AI-powered WhatsApp business in no time
+                    </p>
+                </motion.div>
+
+                <motion.form
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    onSubmit={handleSubmit}
+                    className="bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-md space-y-6"
+                >
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label className="block text-sm font-semibold text-white mb-2">Business Name *</label>
+                            <input
+                                type="text"
+                                required
+                                value={formData.businessName}
+                                onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
+                                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                                placeholder="Your Business Name"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-semibold text-white mb-2">Contact Person *</label>
+                            <input
+                                type="text"
+                                required
+                                value={formData.contactPerson}
+                                onChange={(e) => setFormData({ ...formData, contactPerson: e.target.value })}
+                                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                                placeholder="Your Name"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-semibold text-white mb-2">Phone Number *</label>
+                            <input
+                                type="tel"
+                                required
+                                value={formData.phone}
+                                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                                placeholder="+233 XXX XXX XXX"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-semibold text-white mb-2">Email *</label>
+                            <input
+                                type="email"
+                                required
+                                value={formData.email}
+                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                                placeholder="your@email.com"
+                            />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-semibold text-white mb-2">Business Type *</label>
+                        <select
+                            required
+                            value={formData.businessType}
+                            onChange={(e) => setFormData({ ...formData, businessType: e.target.value })}
+                            className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                        >
+                            <option value="" className="bg-[#1a1a1a]">Select a type</option>
+                            <option value="Restaurant" className="bg-[#1a1a1a]">🍴 Restaurant / Cafe</option>
+                            <option value="Boutique" className="bg-[#1a1a1a]">👗 Boutique / Fashion</option>
+                            <option value="Professional Service" className="bg-[#1a1a1a]">💼 Professional Service</option>
+                            <option value="Logistics" className="bg-[#1a1a1a]">🚚 Logistics / Delivery</option>
+                            <option value="General" className="bg-[#1a1a1a]">🏢 General Business</option>
+                            <option value="Other" className="bg-[#1a1a1a]">✨ Other</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-semibold text-white mb-2">Message</label>
+                        <textarea
+                            value={formData.message}
+                            onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                            rows={4}
+                            className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                            placeholder="Tell us about your business and what you need..."
+                        />
+                    </div>
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full py-4 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 text-white font-bold rounded-xl transition-all shadow-lg shadow-primary/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {loading ? 'Sending...' : 'Get Started →'}
+                    </button>
+                </motion.form>
+            </div>
+        </div>
+    );
 }
 
 function ChatDemo() {
@@ -255,113 +597,4 @@ function ChatDemo() {
     );
 }
 
-function DirectorySection() {
-    const [merchants, setMerchants] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        axios.get(`${API_BASE}/api/merchants/public`)
-            .then(res => {
-                setMerchants(res.data);
-                setLoading(false);
-            })
-            .catch(err => {
-                console.error('Failed to load merchants:', err);
-                setLoading(false);
-            });
-    }, []);
-
-    if (loading) {
-        return (
-            <div className="w-full py-20 px-6 relative z-10">
-                <div className="max-w-7xl mx-auto text-center">
-                    <p className="text-muted-foreground">Loading directory...</p>
-                </div>
-            </div>
-        );
-    }
-
-    return (
-        <div className="w-full py-20 px-6 relative z-10 bg-black/20 backdrop-blur-sm border-t border-white/5">
-            <div className="max-w-7xl mx-auto">
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    className="text-center mb-12"
-                >
-                    <h2 className="text-4xl lg:text-5xl font-black mb-4 bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60">
-                        Browse Merchants
-                    </h2>
-                    <p className="text-muted-foreground max-w-2xl mx-auto">
-                        Discover local businesses powered by AI. Click "Chat Now" to start ordering instantly.
-                    </p>
-                </motion.div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {merchants.map((merchant, index) => (
-                        <motion.div
-                            key={merchant.id}
-                            initial={{ opacity: 0, y: 20 }}
-                            whileInView={{ opacity: 1, y: 0 }}
-                            viewport={{ once: true }}
-                            transition={{ delay: index * 0.1 }}
-                            className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-md hover:bg-white/10 transition-all"
-                        >
-                            <div className="flex items-start justify-between mb-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-purple-600/20 flex items-center justify-center">
-                                        <Store className="w-6 h-6 text-white" />
-                                    </div>
-                                    <div>
-                                        <h3 className="text-lg font-bold text-white">{merchant.name}</h3>
-                                        <p className="text-xs text-muted-foreground">{merchant.category}</p>
-                                    </div>
-                                </div>
-                                <span className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${merchant.tier === 'PRO' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-blue-500/20 text-blue-400'
-                                    }`}>
-                                    {merchant.tier}
-                                </span>
-                            </div>
-
-                            {merchant.location && (
-                                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-                                    <MapPin className="w-4 h-4" />
-                                    <span>{merchant.location}</span>
-                                </div>
-                            )}
-
-                            <div className="flex items-center gap-2 mb-4">
-                                <div className={`w-2 h-2 rounded-full ${merchant.isClosed ? 'bg-red-500' : 'bg-emerald-500'}`} />
-                                <span className="text-xs text-muted-foreground">
-                                    {merchant.isClosed ? 'Currently Closed' : 'Open Now'}
-                                </span>
-                            </div>
-
-                            <a
-                                href={
-                                    merchant.tier === 'LISTING'
-                                        ? `https://wa.me/${merchant.contactPhone?.replace(/\+/g, '')}`
-                                        : `https://wa.me/${PLATFORM_WHATSAPP.replace(/\+/g, '')}?text=Start:${merchant.id}`
-                                }
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-500/20"
-                            >
-                                <MessageCircle className="w-4 h-4" />
-                                Chat Now
-                            </a>
-                        </motion.div>
-                    ))}
-                </div>
-
-                {merchants.length === 0 && (
-                    <div className="text-center py-12">
-                        <p className="text-muted-foreground">No merchants available at the moment.</p>
-                    </div>
-                )}
-            </div>
-        </div>
-    );
-}
 

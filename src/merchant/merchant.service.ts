@@ -297,18 +297,7 @@ export class MerchantService {
         });
     }
 
-    async deleteMerchant(merchantId: string) {
-        // Cascade delete is handled by Prisma relation usually, but let's be safe
-        try {
-            await this.prisma.merchant.delete({
-                where: { id: merchantId }
-            });
-            return { message: 'Merchant deleted successfully' };
-        } catch (error) {
-            this.logger.error(`Failed to delete merchant ${merchantId}: ${error.message}`);
-            throw new InternalServerErrorException('Failed to delete merchant');
-        }
-    }
+
 
     async getMerchantDashboardData(merchantId: string) {
         const merchant = await (this.prisma.merchant as any).findUnique({
@@ -525,5 +514,41 @@ export class MerchantService {
                 createdAt: 'asc'
             }
         });
+    }
+
+    async deleteMerchant(id: string) {
+        this.logger.log(`[DELETION] Starting cascading delete for merchant: ${id}`);
+
+        try {
+            // Sequential deletion to handle dependencies
+            // 1. Logs and Items (Deepest)
+            await (this.prisma as any).campaignLog.deleteMany({ where: { campaign: { merchantId: id } } });
+            await (this.prisma as any).orderItem.deleteMany({ where: { order: { merchantId: id } } });
+
+            // 2. Main related records
+            await (this.prisma as any).campaign.deleteMany({ where: { merchantId: id } });
+            await (this.prisma as any).order.deleteMany({ where: { merchantId: id } });
+            await (this.prisma as any).product.deleteMany({ where: { merchantId: id } });
+            await (this.prisma as any).deliveryZone.deleteMany({ where: { merchantId: id } });
+            await (this.prisma as any).upgradeRequest.deleteMany({ where: { merchantId: id } });
+            await (this.prisma as any).message.deleteMany({ where: { merchantId: id } });
+            await (this.prisma as any).adminNotification.deleteMany({ where: { merchantId: id } });
+
+            // 3. Customers (Optional: only if they are tied strictly to this merchant)
+            // For safety, we just nullify the merchantId to keep customer records
+            await (this.prisma as any).customer.updateMany({
+                where: { merchantId: id },
+                data: { merchantId: null, currentMerchantId: null }
+            });
+
+            // 4. Finally, the Merchant
+            await (this.prisma as any).merchant.delete({ where: { id } });
+
+            this.logger.log(`[DELETION] Merchant ${id} and all related data purged successfully.`);
+            return { message: 'Merchant and all associated data deleted successfully' };
+        } catch (error) {
+            this.logger.error(`[DELETION] Failed to delete merchant ${id}: ${error.message}`);
+            throw new InternalServerErrorException(`Failed to delete merchant: ${error.message}`);
+        }
     }
 }

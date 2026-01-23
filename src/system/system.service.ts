@@ -36,6 +36,51 @@ export class SystemService {
         });
     }
 
+    async createLead(data: {
+        businessName: string;
+        contactPerson: string;
+        phone: string;
+        email: string;
+        businessType: string;
+        message?: string;
+    }) {
+        const lead = await (this.prisma as any).lead.create({ data });
+
+        // Trigger WhatsApp Alert to Marcus
+        const adminNumber = 'whatsapp:+233276019796';
+        const alertMessage = `🚀 *New Business Lead!*
+            
+*Business:* ${data.businessName}
+*Contact:* ${data.contactPerson}
+*Phone:* ${data.phone}
+*Email:* ${data.email}
+*Type:* ${data.businessType}
+*Message:* ${data.message || 'N/A'}
+
+Check the Admin Dashboard for details.`;
+
+        try {
+            await this.twilioService.sendMessage(adminNumber, alertMessage, 'SYSTEM');
+        } catch (error) {
+            console.error('[LEAD_ALERT] Failed to send WhatsApp notification:', error);
+        }
+
+        return lead;
+    }
+
+    async getLeads() {
+        return (this.prisma as any).lead.findMany({
+            orderBy: { createdAt: 'desc' }
+        });
+    }
+
+    async updateLeadStatus(id: string, status: string) {
+        return (this.prisma as any).lead.update({
+            where: { id },
+            data: { status }
+        });
+    }
+
     async testMediaSend(to: string, url: string) {
         return this.twilioService.sendMediaMessage(to, url, "Test Image Delivery 🧪");
     }

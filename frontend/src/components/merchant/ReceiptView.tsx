@@ -155,7 +155,7 @@ export const ReceiptView: React.FC<ReceiptViewProps> = ({ order, merchant, onClo
                     <div className="mt-12 text-center">
                         <p className="text-xs text-gray-400 mb-2">Thank you for your business!</p>
                         <div className="inline-block px-3 py-1 bg-black text-white text-[10px] font-bold rounded-full uppercase tracking-widest">
-                            Powered by VB.OTIWAA
+                            Powered by FuseWeb Service
                         </div>
                     </div>
                 </div>

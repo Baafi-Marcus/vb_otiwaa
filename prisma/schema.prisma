@@ -24,6 +24,8 @@ model Merchant {
   paymentMethods        String?
   twilioPhoneNumber     String?        // Made Optional
   password              String?
+  description           String?        // New: Detailed business description
+  deliveryOptions       String?        @default("BOTH") // New: PICKUP, DELIVERY, BOTH
   tier                  String         @default("BASIC")
   tierExpiresAt         DateTime?
   monthlyOrderCount     Int            @default(0)
@@ -215,4 +217,16 @@ model Message {
   customer      Customer @relation(fields: [customerPhone], references: [phoneNumber])
 
   @@index([merchantId, customerPhone])
+}
+
+model Lead {
+  id             String   @id @default(uuid())
+  businessName   String
+  contactPerson  String
+  phone          String
+  email          String
+  businessType   String
+  message        String?
+  status         String   @default("NEW") // NEW, CONTACTED, ARCHIVED
+  createdAt      DateTime @default(now())
 }

@@ -4,24 +4,23 @@ import * as bcrypt from 'bcrypt';
 const prisma = new PrismaClient();
 
 async function main() {
-    const adminUsername = 'admin';
-    const adminPassword = 'Password123!'; // User should change this
+    // Clear existing admins
+    await prisma.admin.deleteMany({});
+    console.log('🗑️ Existing admins cleared.');
+
+    const adminEmail = 'marcusowusu26@gmail.com';
+    const adminPassword = 'Password123!';
     const hashedPassword = await bcrypt.hash(adminPassword, 10);
 
-    const admin = await prisma.admin.upsert({
-        where: { username: adminUsername },
-        update: { password: hashedPassword },
-        create: {
-            username: adminUsername,
+    const admin = await prisma.admin.create({
+        data: {
+            username: adminEmail,
             password: hashedPassword,
         },
     });
 
-    console.log(`✅ Admin user created/updated: ${admin.username}`);
-    console.log(`👉 Please use this password to log in for the first time.`);
-
-    // Optional: Set default passwords for existing merchants if needed
-    // For now, we allow merchants to log in and set their own password if it's null.
+    console.log(`✅ Admin user created: ${admin.username}`);
+    console.log(`👉 Access via /admin using: ${adminEmail} / ${adminPassword}`);
 }
 
 main()

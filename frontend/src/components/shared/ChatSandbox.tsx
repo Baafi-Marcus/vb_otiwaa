@@ -3,7 +3,9 @@ import axios from 'axios';
 import { MessageSquare, Send } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
-const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3001' : '';
+const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:3000'
+    : '';
 
 export const ChatSandbox: React.FC<{ merchantId: string | null, systemPrompt: string }> = ({ merchantId, systemPrompt }) => {
     const [messages, setMessages] = useState<{ role: 'user' | 'assistant', content: string }[]>([]);

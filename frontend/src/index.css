@@ -1,7 +1,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
- 
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -25,7 +25,7 @@
     --ring: 221.2 83.2% 53.3%;
     --radius: 0.5rem;
   }
- 
+
   .dark {
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
@@ -48,12 +48,19 @@
     --ring: 224.3 76.3% 48%;
   }
 }
- 
+
 @layer base {
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Global Select Fixes */
+select option {
+  background-color: #1a1a1a;
+  color: white;
 }

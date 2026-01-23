@@ -13,12 +13,15 @@ import { Routes, Route, useNavigate, useParams } from 'react-router-dom';
 import { AdminDashboard } from './components/admin/AdminDashboard';
 import { MerchantDashboard } from './components/merchant/MerchantDashboard';
 import LandingPage from './components/LandingPage';
+import BusinessesPage from './components/BusinessesPage';
 import { Toaster, toast } from 'react-hot-toast';
 import { SocketProvider } from './context/SocketContext';
 
 type UserRole = 'guest' | 'admin' | 'merchant';
 
-const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3001' : (import.meta.env.VITE_API_BASE || '');
+const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? 'http://localhost:3000'
+  : (import.meta.env.VITE_API_BASE || '');
 
 /* ----------------------------------------------------------------------------------
    MAIN APP COMPONENT (Router Wrapper)
@@ -30,6 +33,8 @@ function App() {
         <Toaster position="top-right" />
         <Routes>
           <Route path="/" element={<LandingPage />} />
+          <Route path="/businesses" element={<BusinessesPage />} />
+          <Route path="/admin" element={<AuthPage desiredRole="admin" />} />
           <Route path="/trymeFF" element={<AuthPage desiredRole="admin" />} />
           <Route path="/:merchantId" element={<MerchantRouteWrapper />} />
         </Routes>
@@ -237,13 +242,13 @@ function AuthPage({ desiredRole, forcedUsername }: { desiredRole: UserRole, forc
 
       {/* Animated Logo/Brand */}
       <motion.div
-        initial={{ opacity: 0, scale: 0.5 }}
-        animate={{ opacity: 1, scale: 1 }}
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.5 }}
-        className="absolute top-4 sm:top-6 left-4 sm:left-6 flex items-center gap-2 z-20"
+        className="absolute top-6 left-6 flex items-center gap-3 z-30"
       >
-        <img src="/logo-white.png" alt="Logo" className="w-8 h-8 sm:w-10 sm:h-10 object-contain" />
-        <span className="font-black text-sm sm:text-lg tracking-tight hidden sm:block">VB.OTIWAA</span>
+        <img src="/logo-white.png" alt="FuseWeb Service Logo" className="w-8 h-8 sm:w-10 sm:h-10 object-contain" />
+        <span className="font-black text-sm sm:text-lg tracking-tight hidden sm:block uppercase">FuseWeb Service</span>
       </motion.div>
 
       <motion.div
@@ -271,11 +276,11 @@ function AuthPage({ desiredRole, forcedUsername }: { desiredRole: UserRole, forc
               {desiredRole === 'admin' ? <ShieldCheck className="w-7 h-7 sm:w-8 sm:h-8 relative z-10" /> : <Store className="w-7 h-7 sm:w-8 sm:h-8 relative z-10" />}
             </motion.div>
 
-            <h2 className="text-2xl sm:text-3xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-white to-white/60">
-              {desiredRole === 'merchant' ? 'MERCHANT PORTAL' : 'ADMIN PORTAL'}
+            <h2 className="text-2xl sm:text-3xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-white to-white/60 uppercase">
+              {desiredRole === 'merchant' ? 'Business Portal' : 'Login Page'}
             </h2>
             <p className="text-muted-foreground text-xs sm:text-sm font-medium">
-              Welcome back! Please sign in to continue
+              Welcome to FuseWeb Service. Please sign in to continue.
             </p>
           </div>
 
@@ -283,18 +288,18 @@ function AuthPage({ desiredRole, forcedUsername }: { desiredRole: UserRole, forc
             {/* Username/ID Field */}
             <div className="space-y-2">
               <label className="text-xs font-bold text-white/60 uppercase tracking-widest px-2">
-                {desiredRole === 'admin' ? 'Username' : 'Merchant ID'}
+                {desiredRole === 'admin' ? 'Email' : 'Email'}
               </label>
               <div className="relative group">
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-2xl blur opacity-0 group-focus-within:opacity-100 transition-opacity" />
                 <User className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-white transition-colors z-10" />
                 <input
-                  type="text"
+                  type="email"
                   required
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   disabled={!!forcedUsername}
-                  placeholder={desiredRole === 'admin' ? "Enter username" : "Your merchant ID"}
+                  placeholder={desiredRole === 'admin' ? "admin@fuseweb.com" : "your@email.com"}
                   className="relative w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-11 sm:pl-12 pr-4 text-sm font-medium focus:outline-none focus:border-white/30 focus:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed placeholder:text-white/30"
                 />
               </div>
@@ -374,7 +379,7 @@ function Header({ role, onLogout }: { role: string, onLogout: () => void }) {
     <header className="h-16 border-b border-border bg-card/80 backdrop-blur-xl flex items-center justify-between px-8 z-50">
       <div className="flex items-center gap-4">
         <img src="/logo-black.png" alt="Logo" className="w-10 h-10 object-contain" />
-        <span className="font-black text-xl tracking-tight text-foreground">VB.OTIWAA</span>
+        <span className="font-black text-xl tracking-tight text-foreground uppercase">FuseWeb Service</span>
         <span className={`text-[10px] font-bold px-3 py-1 rounded-full ${role === 'admin' ? 'bg-blue-500/10 text-blue-500' : 'bg-purple-500/10 text-purple-500'}`}>
           {role.toUpperCase()}
         </span>

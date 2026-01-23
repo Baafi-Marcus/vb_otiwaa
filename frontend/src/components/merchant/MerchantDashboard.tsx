@@ -35,7 +35,9 @@ import { DashboardStats } from './DashboardStats';
 import { ReceiptView } from './ReceiptView';
 import { useSocket } from '../../context/SocketContext';
 
-const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:3001' : '';
+const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:3000'
+    : '';
 
 export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ merchantId }) => {
     const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'customers' | 'catalog' | 'sandbox' | 'marketing'>('overview');
@@ -774,6 +776,62 @@ export const MerchantDashboard: React.FC<{ merchantId: string | null }> = ({ mer
                                                             onChange={(e) => merchant && setMerchant({ ...merchant, menuImageUrl: e.target.value })}
                                                             placeholder="https://example.com/menu.jpg"
                                                         />
+                                                    </div>
+
+                                                    <div className="space-y-2">
+                                                        <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Business Description</label>
+                                                        <textarea
+                                                            className="w-full h-32 bg-secondary/20 border border-border rounded-2xl p-4 text-sm font-medium resize-none outline-none focus:ring-1 focus:ring-primary transition-all"
+                                                            value={merchant?.description || ""}
+                                                            onChange={(e) => merchant && setMerchant({ ...merchant, description: e.target.value })}
+                                                            placeholder="Tell customers about your business, what you offer, and why they should choose you..."
+                                                        />
+                                                    </div>
+
+                                                    <div className="space-y-4 p-4 bg-secondary/10 rounded-2xl border border-border">
+                                                        <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Delivery Options</label>
+                                                        <div className="flex flex-wrap gap-4">
+                                                            {(['BOTH', 'DELIVERY', 'PICKUP'] as const).map(option => (
+                                                                <button
+                                                                    key={option}
+                                                                    onClick={() => merchant && setMerchant({ ...merchant, deliveryOptions: option })}
+                                                                    className={`px-4 py-2 rounded-xl text-sm font-bold transition-all border ${merchant?.deliveryOptions === option
+                                                                            ? 'bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20'
+                                                                            : 'bg-card text-muted-foreground border-border hover:border-primary/50'
+                                                                        }`}
+                                                                >
+                                                                    {option === 'BOTH' ? '🛍️ Pickup & Delivery' : option === 'DELIVERY' ? '🛵 Delivery Only' : '🥡 Pickup Only'}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="space-y-2">
+                                                        <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Business Description</label>
+                                                        <textarea
+                                                            className="w-full h-32 bg-secondary/20 border border-border rounded-2xl p-4 text-sm font-medium resize-none outline-none focus:ring-1 focus:ring-primary transition-all"
+                                                            value={merchant?.description || ""}
+                                                            onChange={(e) => merchant && setMerchant({ ...merchant, description: e.target.value })}
+                                                            placeholder="Tell customers about your business, what you offer, and why they should choose you..."
+                                                        />
+                                                    </div>
+
+                                                    <div className="space-y-4 p-4 bg-secondary/10 rounded-2xl border border-border">
+                                                        <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Delivery Options</label>
+                                                        <div className="flex flex-wrap gap-4">
+                                                            {(['BOTH', 'DELIVERY', 'PICKUP'] as const).map(option => (
+                                                                <button
+                                                                    key={option}
+                                                                    onClick={() => merchant && setMerchant({ ...merchant, deliveryOptions: option })}
+                                                                    className={`px-4 py-2 rounded-xl text-sm font-bold transition-all border ${merchant?.deliveryOptions === option
+                                                                        ? 'bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20'
+                                                                        : 'bg-card text-muted-foreground border-border hover:border-primary/50'
+                                                                        }`}
+                                                                >
+                                                                    {option === 'BOTH' ? '🛍️ Pickup & Delivery' : option === 'DELIVERY' ? '🛵 Delivery Only' : '🥡 Pickup Only'}
+                                                                </button>
+                                                            ))}
+                                                        </div>
                                                     </div>
                                                     <div className="space-y-2">
                                                         <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">System Prompt (Personality)</label>

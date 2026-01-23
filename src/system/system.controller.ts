@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Body, Param, UseGuards, Logger } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Body, Param, UseGuards, Logger, Patch } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { SystemService } from './system.service';
 import { Roles } from '../auth/roles.decorator';
@@ -36,10 +36,27 @@ export class SystemController {
         return this.systemService.addApiKey(body.provider, body.key);
     }
 
-    @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles('admin')
     @Delete('api-keys/:id')
     async deleteApiKey(@Param('id') id: string) {
         return this.systemService.deleteApiKey(id);
+    }
+
+    @Post('leads')
+    async createLead(@Body() data: any) {
+        return this.systemService.createLead(data);
+    }
+
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles('admin')
+    @Get('leads')
+    async getLeads() {
+        return this.systemService.getLeads();
+    }
+
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles('admin')
+    @Patch('leads/:id')
+    async updateLeadStatus(@Param('id') id: string, @Body() body: { status: string }) {
+        return this.systemService.updateLeadStatus(id, body.status);
     }
 }
