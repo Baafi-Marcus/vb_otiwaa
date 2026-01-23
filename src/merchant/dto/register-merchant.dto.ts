@@ -38,4 +38,16 @@ export class RegisterMerchantDto {
     @IsNumber()
     @Min(1)
     tierDurationMonths?: number;
+
+    @IsOptional()
+    @IsString()
+    location?: string;
+
+    @IsOptional()
+    @IsString()
+    operatingHours?: string;
+
+    @IsOptional()
+    @IsString()
+    paymentMethods?: string;
 }
