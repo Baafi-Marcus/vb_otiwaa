@@ -60,9 +60,12 @@ export class SystemService {
 Check the Admin Dashboard for details.`;
 
         try {
-            await this.twilioService.sendMessage(adminNumber, alertMessage, 'SYSTEM');
+            // NOTE: This will fail if the Admin (+233276019796) has not messaged the bot in the last 24 hours.
+            // Using 'null' for merchantId to skip DB logging and avoid FK constraints.
+            const sid = await this.twilioService.sendMessage(adminNumber, alertMessage, undefined);
+            console.log(`[LEAD_ALERT] WhatsApp notification sent. SID: ${sid?.sid}`);
         } catch (error) {
-            console.error('[LEAD_ALERT] Failed to send WhatsApp notification:', error);
+            console.error('[LEAD_ALERT] Failed to send WhatsApp notification. Admin may be outside 24h session window.', error);
         }
 
         return lead;

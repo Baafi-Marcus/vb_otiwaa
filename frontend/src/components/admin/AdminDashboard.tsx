@@ -54,6 +54,7 @@ const API_BASE = window.location.hostname === 'localhost' || window.location.hos
 export const AdminDashboard: React.FC<{ onMerchantSelect: (id: string) => void }> = ({ onMerchantSelect }) => {
     const [activeView, setActiveView] = useState<'overview' | 'register' | 'directory' | 'settings' | 'upgrades' | 'alerts' | 'profile' | 'simulation' | 'leads'>('overview');
     const [merchants, setMerchants] = useState<any[]>([]);
+    const [registrationInitialData, setRegistrationInitialData] = useState<any>(null);
     const [loading, setLoading] = useState(false);
 
     const fetchMerchants = async () => {
@@ -178,14 +179,14 @@ export const AdminDashboard: React.FC<{ onMerchantSelect: (id: string) => void }
             {/* Main Content Area */}
             <main className="flex-1 overflow-auto p-8">
                 {activeView === 'overview' && <AdminOverview merchants={merchants} setView={setActiveView} />}
-                {activeView === 'register' && <MerchantRegistration onComplete={() => { fetchMerchants(); setActiveView('directory'); }} />}
+                {activeView === 'register' && <MerchantRegistration initialData={registrationInitialData} onComplete={() => { fetchMerchants(); setActiveView('directory'); setRegistrationInitialData(null); }} />}
                 {activeView === 'directory' && <MerchantDirectory merchants={merchants} onSelect={onMerchantSelect} loading={loading} />}
                 {activeView === 'upgrades' && <UpgradeRequests />}
                 {activeView === 'settings' && <SystemSettings />}
                 {activeView === 'alerts' && <Notifications />}
                 {activeView === 'profile' && <AdminProfile />}
                 {activeView === 'simulation' && <AdminSandbox merchants={merchants} />}
-                {activeView === 'leads' && <LeadsView />}
+                {activeView === 'leads' && <LeadsView onConvert={(lead: any) => { setRegistrationInitialData(lead); setActiveView('register'); }} />}
             </main>
         </div>
     );
@@ -329,12 +330,12 @@ const AdminOverview = ({ merchants, setView }: any) => {
     );
 };
 
-const MerchantRegistration = ({ onComplete }: any) => {
+const MerchantRegistration = ({ onComplete, initialData }: any) => {
     const [formData, setFormData] = useState({
-        name: '',
-        contactPhone: '',
-        category: 'Restaurant',
-        vision: '',
+        name: initialData?.businessName || '',
+        contactPhone: initialData?.phone || '',
+        category: initialData?.businessType || 'Restaurant',
+        vision: initialData?.message || '',
         location: '',
         operatingHours: '',
         paymentMethods: '',
@@ -342,6 +343,19 @@ const MerchantRegistration = ({ onComplete }: any) => {
         tier: 'BASIC',
         tierDurationMonths: 1
     });
+
+    // Update form if initialData changes (e.g. re-entering view)
+    React.useEffect(() => {
+        if (initialData) {
+            setFormData(prev => ({
+                ...prev,
+                name: initialData.businessName || '',
+                contactPhone: initialData.phone || '',
+                category: initialData.businessType || 'Restaurant',
+                vision: initialData.message || ''
+            }));
+        }
+    }, [initialData]);
     const [draftProducts, setDraftProducts] = useState<any[]>([]);
     const [analyzingMenu, setAnalyzingMenu] = useState(false);
     const [isReviewingMenu, setIsReviewingMenu] = useState(false);
@@ -1633,7 +1647,7 @@ const AdminProfile = () => {
     );
 };
 
-const LeadsView = () => {
+const LeadsView = ({ onConvert }: { onConvert: (lead: any) => void }) => {
     const [leads, setLeads] = React.useState<any[]>([]);
     const [loading, setLoading] = React.useState(false);
 
@@ -1712,8 +1726,8 @@ const LeadsView = () => {
                                     </td>
                                     <td className="px-6 py-4">
                                         <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${lead.status === 'NEW' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' :
-                                                lead.status === 'CONTACTED' ? 'bg-amber-500 text-white' :
-                                                    'bg-emerald-500 text-white'
+                                            lead.status === 'CONTACTED' ? 'bg-amber-500 text-white' :
+                                                'bg-emerald-500 text-white'
                                             }`}>
                                             {lead.status}
                                         </span>
@@ -1731,6 +1745,12 @@ const LeadsView = () => {
                                             </select>
                                             <ChevronRight className="w-3 h-3 text-muted-foreground absolute right-2 top-1/2 -translate-y-1/2 rotate-90 pointer-events-none" />
                                         </div>
+                                        <button
+                                            onClick={() => onConvert(lead)}
+                                            className="ml-2 px-3 py-1 bg-primary text-primary-foreground text-xs font-bold rounded-lg hover:opacity-90 transition-opacity whitespace-nowrap"
+                                        >
+                                            Convert to Merchant
+                                        </button>
                                     </td>
                                 </tr>
                             ))}
