@@ -34,11 +34,11 @@ export default function LandingPage() {
             </div>
 
             {/* Navigation Bar */}
-            <nav className="w-full py-4 px-6 lg:px-20 relative z-20 bg-black/20 backdrop-blur-sm border-b border-white/5">
+            <nav className="w-full py-4 px-4 sm:px-6 lg:px-20 relative z-20 bg-black/20 backdrop-blur-sm border-b border-white/5">
                 <div className="max-w-7xl mx-auto flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <img src="/logo-white.png" alt="FuseWeb Service Logo" className="w-10 h-10 object-contain" />
-                        <span className="text-xl font-black tracking-tight">FuseWeb Service</span>
+                        <span className="text-xl font-black tracking-tight hidden sm:inline">FuseWeb Service</span>
                     </div>
                     <div className="flex items-center gap-6">
                         <a href="/businesses" className="text-sm font-semibold text-white/80 hover:text-white transition-colors">
