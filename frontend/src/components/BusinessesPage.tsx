@@ -97,20 +97,15 @@ export default function BusinessesPage() {
                                     onClick={() => setSelectedMerchant(merchant)}
                                     className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-md hover:bg-white/10 transition-all cursor-pointer group"
                                 >
-                                    {merchant.menuImageUrl && (
+                                    {(merchant.logoUrl || merchant.menuImageUrl) && (
                                         <img
-                                            src={merchant.menuImageUrl}
+                                            src={merchant.logoUrl || merchant.menuImageUrl}
                                             alt={merchant.name}
                                             className="w-full h-48 object-cover rounded-xl mb-4"
                                         />
                                     )}
                                     <div className="flex items-start justify-between mb-3">
                                         <h3 className="text-xl font-bold text-white">{merchant.name}</h3>
-                                        {merchant.tier && (
-                                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${merchant.tier === 'PRO' ? 'bg-gradient-to-r from-primary to-purple-600' : 'bg-white/10'}`}>
-                                                {merchant.tier}
-                                            </span>
-                                        )}
                                     </div>
                                     <div className="space-y-2 mb-4">
                                         {merchant.category && (
@@ -170,10 +165,10 @@ export default function BusinessesPage() {
                             </button>
 
                             <div className="flex flex-col">
-                                {selectedMerchant.menuImageUrl && (
+                                {(selectedMerchant.logoUrl || selectedMerchant.menuImageUrl) && (
                                     <div className="w-full h-64 sm:h-80 relative overflow-hidden">
                                         <img
-                                            src={selectedMerchant.menuImageUrl}
+                                            src={selectedMerchant.logoUrl || selectedMerchant.menuImageUrl}
                                             alt={selectedMerchant.name}
                                             className="w-full h-full object-cover"
                                         />
@@ -187,11 +182,6 @@ export default function BusinessesPage() {
                                             <h2 className="text-3xl sm:text-4xl font-black text-white uppercase tracking-tight">
                                                 {selectedMerchant.name}
                                             </h2>
-                                            {selectedMerchant.tier && (
-                                                <span className={`px-4 py-1 rounded-full text-xs font-black uppercase tracking-widest ${selectedMerchant.tier === 'PRO' ? 'bg-gradient-to-r from-primary to-purple-600' : 'bg-white/10'}`}>
-                                                    {selectedMerchant.tier} Partner
-                                                </span>
-                                            )}
                                         </div>
                                         <p className="text-muted-foreground text-lg italic max-w-xl">
                                             "{selectedMerchant.description || 'Verified local business powered by FuseWeb AI.'}"

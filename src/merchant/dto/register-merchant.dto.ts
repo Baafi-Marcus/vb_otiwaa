@@ -50,4 +50,12 @@ export class RegisterMerchantDto {
     @IsOptional()
     @IsString()
     paymentMethods?: string;
+
+    @IsOptional()
+    @IsString()
+    logoUrl?: string;
+
+    @IsOptional()
+    @IsString()
+    description?: string;
 }

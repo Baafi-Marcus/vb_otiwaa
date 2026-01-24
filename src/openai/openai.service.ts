@@ -462,6 +462,35 @@ Keep it very short and use emojis.`;
     }
   }
 
+  async generateBusinessDescription(name: string, category: string, vision: string): Promise<string> {
+    try {
+      const prompt = `Write a short, engaging business description (max 2-3 sentences) for a ${category} business called "${name}".
+      
+      Owner's Vision: "${vision}"
+      
+      Output Rules:
+      - Professional and inviting.
+      - No hashtags.
+      - Focus on what they offer to customers.
+      - Do NOT start with "Here is a description" or quotes. Just the text.`;
+
+      const clientConfig = await this.getOpenAIClient();
+      if (!clientConfig) return 'A great local business.';
+      const { client, model } = clientConfig;
+
+      const response = await client.chat.completions.create({
+        messages: [{ role: 'user', content: prompt }],
+        model: model,
+        max_tokens: 100,
+      });
+
+      return response.choices[0].message.content.trim().replace(/^"|"$/g, '');
+    } catch (error) {
+      this.logger.error('Failed to generate description', error);
+      return `${name} is a premier ${category} provider dedicated to quality and service.`;
+    }
+  }
+
   async generateSandboxResponse(systemPrompt: string, userMessage: string): Promise<string> {
     const clientConfig = await this.getOpenAIClient();
     if (!clientConfig) return 'No AI Client available.';

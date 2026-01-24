@@ -47,6 +47,8 @@ export class MerchantService {
         menuImageUrl?: string;
         tier?: string;
         tierDurationMonths?: number;
+        logoUrl?: string;
+        description?: string;
     }) {
         this.logger.log(`Registering new ${data.category} merchant: ${data.name}`);
 
@@ -82,6 +84,8 @@ export class MerchantService {
                     menuImageUrl: data.menuImageUrl,
                     tier: tier,
                     tierExpiresAt: tierExpiresAt,
+                    logoUrl: data.logoUrl,
+                    description: data.description,
                 },
             });
 
@@ -550,5 +554,9 @@ export class MerchantService {
             this.logger.error(`[DELETION] Failed to delete merchant ${id}: ${error.message}`);
             throw new InternalServerErrorException(`Failed to delete merchant: ${error.message}`);
         }
+    }
+
+    async generateDescription(name: string, category: string, vision: string) {
+        return this.openai.generateBusinessDescription(name, category, vision);
     }
 }

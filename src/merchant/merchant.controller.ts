@@ -60,6 +60,15 @@ export class MerchantController {
         };
     }
 
+    @Post('generate-description')
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles('merchant', 'admin')
+    async generateDescription(@Body() data: { name: string; category: string; vision: string }) {
+        return {
+            description: await this.merchantService.generateDescription(data.name, data.category, data.vision)
+        };
+    }
+
     @Get('public')
     async getPublicMerchants() {
         const merchants = await this.merchantService.getAllMerchants();

@@ -330,7 +330,9 @@ const AdminOverview = ({ merchants, setView }: any) => {
     );
 };
 
-const MerchantRegistration = ({ onComplete, initialData }: any) => {
+
+
+function MerchantRegistration({ onComplete, initialData }: any) {
     const [formData, setFormData] = useState({
         name: initialData?.businessName || '',
         contactPhone: initialData?.phone || '',
@@ -340,6 +342,8 @@ const MerchantRegistration = ({ onComplete, initialData }: any) => {
         operatingHours: '',
         paymentMethods: '',
         menuImageUrl: '',
+        logoUrl: '',
+        description: '',
         tier: 'BASIC',
         tierDurationMonths: 1
     });
@@ -362,10 +366,12 @@ const MerchantRegistration = ({ onComplete, initialData }: any) => {
     const [registeredId, setRegisteredId] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [expanding, setExpanding] = useState(false);
+    const [generatingDesc, setGeneratingDesc] = useState(false);
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [expandedPrompt, setExpandedPrompt] = useState<string | null>(null);
     const [uploading, setUploading] = useState(false);
+    const [uploadingLogo, setUploadingLogo] = useState(false);
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -393,6 +399,48 @@ const MerchantRegistration = ({ onComplete, initialData }: any) => {
         } finally {
             setUploading(false);
             setAnalyzingMenu(false);
+        }
+    };
+
+    const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setUploadingLogo(true);
+        const formDataUpload = new FormData();
+        formDataUpload.append('file', file);
+
+        try {
+            const resp = await axios.post(`${API_BASE}/api/merchants/upload`, formDataUpload, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            setFormData({ ...formData, logoUrl: resp.data.url });
+            toast.success('Flyer/Logo uploaded!');
+        } catch (err) {
+            toast.error('Failed to upload logo');
+        } finally {
+            setUploadingLogo(false);
+        }
+    };
+
+    const handleGenerateDescription = async () => {
+        if (!formData.name || !formData.vision) {
+            toast.error('Enter Business Name and Vision first');
+            return;
+        }
+        setGeneratingDesc(true);
+        try {
+            const resp = await axios.post(`${API_BASE}/api/merchants/generate-description`, {
+                name: formData.name,
+                category: formData.category,
+                vision: formData.vision
+            });
+            setFormData(prev => ({ ...prev, description: resp.data.description }));
+            toast.success('Description generated!');
+        } catch (err) {
+            toast.error('Failed to generate description');
+        } finally {
+            setGeneratingDesc(false);
         }
     };
 
@@ -425,13 +473,15 @@ const MerchantRegistration = ({ onComplete, initialData }: any) => {
         try {
             const resp = await axios.post(`${API_BASE}/api/merchants/register`, {
                 name: formData.name,
-                contactPhone: formData.contactPhone, // New Mandatory Field
+                contactPhone: formData.contactPhone,
                 category: formData.category,
                 clientVision: formData.vision,
                 location: formData.location || undefined,
                 operatingHours: formData.operatingHours || undefined,
                 paymentMethods: formData.paymentMethods || undefined,
                 menuImageUrl: formData.menuImageUrl || undefined,
+                logoUrl: formData.logoUrl || undefined,
+                description: formData.description || undefined,
                 systemPrompt: expandedPrompt || undefined,
                 tier: formData.tier,
                 tierDurationMonths: formData.tierDurationMonths
@@ -441,27 +491,28 @@ const MerchantRegistration = ({ onComplete, initialData }: any) => {
             setRegisteredId(newId);
             setSuccess(true);
 
-            // We do NOT call onComplete() here anymore, we wait for user action
+            // Mark Lead as Completed if applicable
+            if (initialData?.id) {
+                try {
+                    await axios.patch(`${API_BASE}/api/leads/${initialData.id}`, { status: 'COMPLETED' });
+                    toast.success('Lead marked as COMPLETED');
+                } catch (e) {
+                    console.error('Failed to update lead status', e);
+                }
+            }
 
             if (draftProducts.length > 0) {
-                // If reviewing menu, we will show the review modal
-                // deeper integration might be needed but let's keep it simple for now:
-                // The review modal will appear. On success/close of THAT, we might usually call onComplete.
-                // We should probably update ReviewWorkspaceModal to NOT call onComplete but let us return to "Success" view.
-                // But for simplicity, let's just trigger review if needed. 
                 setIsReviewingMenu(true);
             } else {
-                // Clear form data so if they click "Register Another" it's clean
-                setFormData({ name: '', contactPhone: '', category: 'Restaurant', vision: '', location: '', operatingHours: '', paymentMethods: '', menuImageUrl: '', tier: 'BASIC', tierDurationMonths: 1 });
+                setFormData({ name: '', contactPhone: '', category: 'Restaurant', vision: '', location: '', operatingHours: '', paymentMethods: '', menuImageUrl: '', logoUrl: '', description: '', tier: 'BASIC', tierDurationMonths: 1 });
                 setExpandedPrompt(null);
             }
 
-            // Remove auto-hide
         } catch (err: any) {
             setError(err.response?.data?.message || 'Failed to register merchant. Check if DB is connected.');
-            setLoading(false); // Ensure loading is turned off on error
+            setLoading(false);
         } finally {
-            if (!success) setLoading(false); // Only turn off loading if not success (to prevent flickering before view switch? actually we can just turn it off)
+            if (!success) setLoading(false);
             setLoading(false);
         }
     };
@@ -515,7 +566,7 @@ const MerchantRegistration = ({ onComplete, initialData }: any) => {
                                 onClick={() => {
                                     setSuccess(false);
                                     setRegisteredId(null);
-                                    setFormData({ name: '', contactPhone: '', category: 'Restaurant', vision: '', location: '', operatingHours: '', paymentMethods: '', menuImageUrl: '', tier: 'BASIC', tierDurationMonths: 1 });
+                                    setFormData({ name: '', contactPhone: '', category: 'Restaurant', vision: '', location: '', operatingHours: '', paymentMethods: '', menuImageUrl: '', logoUrl: '', description: '', tier: 'BASIC', tierDurationMonths: 1 });
                                     setExpandedPrompt(null);
                                 }}
                                 className="px-6 py-3 font-bold text-muted-foreground hover:text-foreground transition-colors"
@@ -604,7 +655,7 @@ const MerchantRegistration = ({ onComplete, initialData }: any) => {
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Location</label>
+                                    <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Location & Address</label>
                                     <input
                                         type="text"
                                         placeholder="e.g. Accra, Ghana"
@@ -615,7 +666,7 @@ const MerchantRegistration = ({ onComplete, initialData }: any) => {
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Operating Hours</label>
+                                    <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Opening & Closing Times</label>
                                     <input
                                         type="text"
                                         placeholder="e.g. Mon-Sat 9am-9pm"
@@ -639,47 +690,83 @@ const MerchantRegistration = ({ onComplete, initialData }: any) => {
                                 />
                             </div>
 
-                            <div className="space-y-2">
-                                <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Menu Image (Upload from Device)</label>
-                                <div className="relative group">
-                                    <input
-                                        type="file"
-                                        accept="image/*"
-                                        onChange={handleFileUpload}
-                                        className="hidden"
-                                        id="menu-upload"
-                                        disabled={uploading || loading}
-                                    />
-                                    <label
-                                        htmlFor="menu-upload"
-                                        className={`flex items-center justify-center gap-3 w-full h-32 border-2 border-dashed rounded-2xl cursor-pointer transition-all
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Menu Image (For AI)</label>
+                                    <div className="relative group">
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={handleFileUpload}
+                                            className="hidden"
+                                            id="menu-upload"
+                                            disabled={uploading || loading}
+                                        />
+                                        <label
+                                            htmlFor="menu-upload"
+                                            className={`flex items-center justify-center gap-3 w-full h-32 border-2 border-dashed rounded-2xl cursor-pointer transition-all
                                         ${formData.menuImageUrl
-                                                ? 'border-emerald-500/30 bg-emerald-500/5'
-                                                : 'border-border bg-secondary/20 hover:border-primary/50'}`}
-                                    >
-                                        {uploading ? (
-                                            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                                        ) : formData.menuImageUrl ? (
-                                            <div className="flex flex-col items-center gap-1">
-                                                <CheckCircle2 className="w-8 h-8 text-emerald-500" />
-                                                <span className="text-xs font-bold text-emerald-500 uppercase tracking-widest">Image Uploaded</span>
-                                            </div>
-                                        ) : (
-                                            <div className="flex flex-col items-center gap-1">
-                                                <Upload className="w-8 h-8 text-muted-foreground opacity-50 group-hover:scale-110 transition-transform" />
-                                                <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Pick Menu Image</span>
-                                            </div>
-                                        )}
-                                    </label>
-                                    {formData.menuImageUrl && (
-                                        <button
-                                            type="button"
-                                            onClick={() => setFormData({ ...formData, menuImageUrl: '' })}
-                                            className="absolute top-2 right-2 p-1.5 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors"
+                                                    ? 'border-emerald-500/30 bg-emerald-500/5'
+                                                    : 'border-border bg-secondary/20 hover:border-primary/50'}`}
                                         >
-                                            <X className="w-3 h-3" />
-                                        </button>
-                                    )}
+                                            {uploading ? (
+                                                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                                            ) : formData.menuImageUrl ? (
+                                                <div className="flex flex-col items-center gap-1">
+                                                    <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+                                                    <span className="text-xs font-bold text-emerald-500 uppercase tracking-widest">Image Uploaded</span>
+                                                </div>
+                                            ) : (
+                                                <div className="flex flex-col items-center gap-1">
+                                                    <Upload className="w-8 h-8 text-muted-foreground opacity-50 group-hover:scale-110 transition-transform" />
+                                                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Pick Menu Image</span>
+                                                </div>
+                                            )}
+                                        </label>
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Flyer / Logo (Optional)</label>
+                                    <div className="relative group">
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={handleLogoUpload}
+                                            className="hidden"
+                                            id="logo-upload"
+                                            disabled={uploadingLogo || loading}
+                                        />
+                                        <label
+                                            htmlFor="logo-upload"
+                                            className={`flex items-center justify-center gap-3 w-full h-32 border-2 border-dashed rounded-2xl cursor-pointer transition-all
+                                        ${formData.logoUrl
+                                                    ? 'border-blue-500/30 bg-blue-500/5'
+                                                    : 'border-border bg-secondary/20 hover:border-blue-500/50'}`}
+                                        >
+                                            {uploadingLogo ? (
+                                                <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+                                            ) : formData.logoUrl ? (
+                                                <div className="flex flex-col items-center gap-1">
+                                                    <CheckCircle2 className="w-8 h-8 text-blue-500" />
+                                                    <span className="text-xs font-bold text-blue-500 uppercase tracking-widest">Flyer Uploaded</span>
+                                                </div>
+                                            ) : (
+                                                <div className="flex flex-col items-center gap-1">
+                                                    <Upload className="w-8 h-8 text-muted-foreground opacity-50 group-hover:scale-110 transition-transform" />
+                                                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Pick Flyer / Logo</span>
+                                                </div>
+                                            )}
+                                        </label>
+                                        {formData.logoUrl && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setFormData({ ...formData, logoUrl: '' })}
+                                                className="absolute top-2 right-2 p-1.5 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors"
+                                            >
+                                                <X className="w-3 h-3" />
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
 
@@ -698,11 +785,34 @@ const MerchantRegistration = ({ onComplete, initialData }: any) => {
                                 </div>
                                 <textarea
                                     required
-                                    rows={4}
-                                    placeholder="Describe how the bot should behave and what the business offers..."
+                                    rows={3}
+                                    placeholder="Describe how the bot should behave..."
                                     className="w-full bg-secondary/30 border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all resize-none"
                                     value={formData.vision}
                                     onChange={(e) => setFormData({ ...formData, vision: e.target.value })}
+                                    disabled={loading}
+                                />
+                            </div>
+
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Public Description</label>
+                                    <button
+                                        type="button"
+                                        onClick={handleGenerateDescription}
+                                        disabled={generatingDesc || loading}
+                                        className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 text-purple-500 rounded-lg transition-colors text-xs font-bold"
+                                    >
+                                        {generatingDesc ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                                        AI Generate
+                                    </button>
+                                </div>
+                                <textarea
+                                    rows={3}
+                                    placeholder="Short business description for the directory..."
+                                    className="w-full bg-secondary/30 border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all resize-none"
+                                    value={formData.description}
+                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                     disabled={loading}
                                 />
                             </div>
@@ -744,13 +854,13 @@ const MerchantRegistration = ({ onComplete, initialData }: any) => {
                             onClose={() => {
                                 setIsReviewingMenu(false);
                                 onComplete();
-                                setFormData({ name: '', contactPhone: '', category: 'Restaurant', vision: '', location: '', operatingHours: '', paymentMethods: '', menuImageUrl: '', tier: 'LISTING', tierDurationMonths: 1 });
+                                setFormData({ name: '', contactPhone: '', category: 'Restaurant', vision: '', location: '', operatingHours: '', paymentMethods: '', menuImageUrl: '', logoUrl: '', description: '', tier: 'LISTING', tierDurationMonths: 1 });
                                 setExpandedPrompt(null);
                             }}
                             onSuccess={() => {
                                 setIsReviewingMenu(false);
                                 onComplete();
-                                setFormData({ name: '', contactPhone: '', category: 'Restaurant', vision: '', location: '', operatingHours: '', paymentMethods: '', menuImageUrl: '', tier: 'LISTING', tierDurationMonths: 1 });
+                                setFormData({ name: '', contactPhone: '', category: 'Restaurant', vision: '', location: '', operatingHours: '', paymentMethods: '', menuImageUrl: '', logoUrl: '', description: '', tier: 'LISTING', tierDurationMonths: 1 });
                                 setExpandedPrompt(null);
                             }}
                         />
@@ -1012,7 +1122,7 @@ const SystemSettings = () => {
         </div>
     );
 };
-const ReviewWorkspaceModal = ({ merchantId, drafts, onClose, onSuccess }: any) => {
+function ReviewWorkspaceModal({ merchantId, drafts, onClose, onSuccess }: any) {
     const [items, setItems] = React.useState(drafts);
     const [loading, setLoading] = React.useState(false);
 
@@ -1240,7 +1350,7 @@ const MerchantCard = ({ merchant, index, onSelect, onRefresh }: any) => {
     );
 }
 
-const UpgradeRequests = () => {
+function UpgradeRequests() {
     const [requests, setRequests] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [approvingRequestId, setApprovingRequestId] = useState<string | null>(null);
@@ -1447,7 +1557,7 @@ const UpgradeRequests = () => {
     );
 };
 
-const Notifications = () => {
+function Notifications() {
     const [notifications, setNotifications] = React.useState<any[]>([]);
     const [loading, setLoading] = React.useState(false);
 
@@ -1578,7 +1688,7 @@ const Notifications = () => {
     );
 };
 
-const AdminProfile = () => {
+function AdminProfile() {
     const [phone, setPhone] = React.useState('');
     const [loading, setLoading] = React.useState(false);
 
@@ -1647,7 +1757,7 @@ const AdminProfile = () => {
     );
 };
 
-const LeadsView = ({ onConvert }: { onConvert: (lead: any) => void }) => {
+function LeadsView({ onConvert }: { onConvert: (lead: any) => void }) {
     const [leads, setLeads] = React.useState<any[]>([]);
     const [loading, setLoading] = React.useState(false);
 
