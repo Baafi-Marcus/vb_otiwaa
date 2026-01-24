@@ -94,22 +94,52 @@ export class OpenaiService {
         ? `\n\nCUSTOMER ORDER HISTORY: ${customerOrders.map(o => `- Order ${o.shortId}: ${o.items.map(i => i.product.name).join(', ')}`).join('\n')}`
         : "";
 
-      const catalogInfo = merchant.catalog.slice(0, 20).map(p => `- ${p.name}: ${p.price} GHS (${p.description})`).join('\n');
+      const catalogInfo = merchant.catalog.slice(0, 30).map(p => `- ${p.name}: ${p.price} GHS (${p.description})`).join('\n');
       const deliveryZones = (merchant.deliveryZones || []).map(z => `- ${z.name}: ${z.price} GHS`).join('\n');
 
-      let mainTerm = "Menu", actionTerm = "Order", vibe = "polite agent";
-      if (merchant.category === 'Boutique') { mainTerm = "Collections"; actionTerm = "Buy"; vibe = "stylist"; }
-      else if (merchant.category === 'Professional Service') { mainTerm = "Services"; actionTerm = "Book"; vibe = "consultant"; }
+      // --- ADVANCED CATEGORY AWARENESS ---
+      let mainTerm = "Menu", actionTerm = "Order", vibe = "polite agent", emoji = "💼";
+      if (merchant.category === 'Boutique') {
+        mainTerm = "Collections"; actionTerm = "Buy"; vibe = "trendy personal stylist"; emoji = "👗";
+      } else if (merchant.category === 'Professional Service') {
+        mainTerm = "Services"; actionTerm = "Book"; vibe = "professional consultant"; emoji = "🤝";
+      } else if (merchant.category === 'Logistics') {
+        mainTerm = "Shipping Rates & Services"; actionTerm = "Request Shipment"; vibe = "efficient logistics coordinator"; emoji = "🚚";
+      } else if (merchant.category === 'Restaurant') {
+        mainTerm = "Menu"; actionTerm = "Order"; vibe = "friendly host"; emoji = "🥘";
+      } else {
+        mainTerm = "Products"; actionTerm = "Buy"; vibe = "helpful clerk"; emoji = "🏪";
+      }
+
+      // --- FULFILLMENT CONSTRAINTS ---
+      const deliveryOpts = merchant.deliveryOptions || "BOTH";
+      let fulfillmentInstruction = "Include [ASK_FULFILLMENT] for 'Pickup or Delivery'.";
+      if (deliveryOpts === "PICKUP") fulfillmentInstruction = "We ONLY offer PICKUP. Do NOT mention delivery.";
+      if (deliveryOpts === "DELIVERY") fulfillmentInstruction = "We ONLY offer DELIVERY. Do NOT offer pickup.";
 
       const systemPrompt = `
-You are the WhatsApp assistant for ${merchant.name}, a ${merchant.category}. Act as a ${vibe}.
-Context: ${merchant.description} | Location: ${merchant.location}
-1️⃣ View ${mainTerm} | 2️⃣ ${actionTerm} Now | 3️⃣ Track ${actionTerm} | 4️⃣ Support
+You are the dedicated WhatsApp assistant for ${merchant.name} ${emoji}, a ${merchant.category} business. 
+Your vibe: ${vibe}.
+Business Description: ${merchant.description || 'Premium products and services.'}
+Hours: ${merchant.operatingHours || 'Available daily.'}
+Location: ${merchant.location}
+
+KNOWLEDGE RULE: Use the description, hours, and catalog provided below to answer ALL questions about what we do, when we are open, and what we offer. If asked "What do you offer?", provide a helpful summary based on our context.
+
+1️⃣ View ${mainTerm} | 2️⃣ ${actionTerm} Now | 3️⃣ Track ${actionTerm}s | 4️⃣ Talk to Support
+
 ${orderMemory}
+
+FULFILLMENT RULE: ${fulfillmentInstruction}
 Visual Assets: ${merchant.menuImageUrl ? 'YES' : 'NO'} (Use [SEND_MENU_IMAGE] if they ask to see ${mainTerm}).
-Catalog:\n${catalogInfo}\nDelivery:\n${deliveryZones}
-Always use [ASK_FULFILLMENT] when they are ready to ${actionTerm.toLowerCase()}.
-Stay strictly in the context of ${merchant.name}. Do NOT mention other businesses.
+
+CATALOG / PRODUCTS:
+${catalogInfo}
+
+DELIVERY RATES:
+${deliveryZones}
+
+Stay strictly in the context of ${merchant.name}. Do NOT mention or knowledge other businesses. Use Ghanaian English or local Twi if the user speaks it.
 `;
 
       const history = await this.context.saveAndFetchContext(userInput, 'user', userID, merchant.id);
@@ -125,7 +155,7 @@ Stay strictly in the context of ${merchant.name}. Do NOT mention other businesse
               type: 'function',
               function: {
                 name: 'place_order',
-                description: 'Record an order',
+                description: `Record an official ${actionTerm.toLowerCase()}`,
                 parameters: {
                   type: 'object',
                   properties: {
@@ -141,7 +171,7 @@ Stay strictly in the context of ${merchant.name}. Do NOT mention other businesse
             },
             {
               type: 'function',
-              function: { name: 'check_order_status', description: 'Check status', parameters: { type: 'object', properties: {} } }
+              function: { name: 'check_order_status', description: 'Check status of ALL active orders', parameters: { type: 'object', properties: {} } }
             }
           ];
 
@@ -149,7 +179,7 @@ Stay strictly in the context of ${merchant.name}. Do NOT mention other businesse
             messages: [{ role: 'system', content: systemPrompt }, ...history],
             model: config.model,
             tools: tools,
-            max_tokens: 300
+            max_tokens: 350
           });
 
           const msg = completion.choices[0].message;
@@ -157,6 +187,15 @@ Stay strictly in the context of ${merchant.name}. Do NOT mention other businesse
             for (const tool of msg.tool_calls) {
               if (tool.function.name === 'place_order') {
                 const args = JSON.parse(tool.function.arguments);
+
+                // Enforce business constraints at tool level
+                if (deliveryOpts === "PICKUP" && args.fulfillmentMode === "DELIVERY") {
+                  return "I'm sorry, but we currently only offer Pickup service. Would you like to proceed with a pickup order? 😊";
+                }
+                if (deliveryOpts === "DELIVERY" && args.fulfillmentMode === "PICKUP") {
+                  return "I'm sorry, but we currently only operate via Delivery. Please provide your delivery location to proceed. 🚚";
+                }
+
                 const items = args.items.map(i => {
                   const p = merchant.catalog.find(cat => cat.name.toLowerCase().includes(i.name.toLowerCase()));
                   return p ? { productId: p.id, quantity: i.quantity, price: Number(p.price) } : null;
@@ -172,8 +211,15 @@ Stay strictly in the context of ${merchant.name}. Do NOT mention other businesse
                   return `Recorded ${actionTerm} ${order.shortId}! We are processing it now. 😊`;
                 }
               } else if (tool.function.name === 'check_order_status') {
-                const order = await (this.orderService as any).getLatestOrderStatus(userID, merchant.id);
-                return order ? `Order ${order.shortId} status: ${order.status}` : "No active orders found.";
+                const activeOrders = await (this.orderService as any).getActiveOrders(userID, merchant.id);
+                if (activeOrders.length === 0) return "I couldn't find any active orders for you at the moment. Would you like to see our offerings? 😊";
+
+                const summary = activeOrders.map(o => {
+                  const items = o.items.map(i => i.product.name).join(', ');
+                  return `📍 Order ${o.shortId}: ${items} (Status: *${o.status}*)`;
+                }).join('\n');
+
+                return `I found your active ${actionTerm.toLowerCase()}s! 🔍\n\n${summary}\n\nLet me know if you need more details! 😊`;
               }
             }
           }
@@ -189,6 +235,7 @@ Stay strictly in the context of ${merchant.name}. Do NOT mention other businesse
       }
       return '[AI_FAILURE]';
     } catch (e) {
+      this.logger.error(`Fatal AI Error: ${e.message}`);
       return '[AI_FAILURE]';
     }
   }
@@ -232,10 +279,11 @@ Stay strictly in the context of ${merchant.name}. Do NOT mention other businesse
     try {
       const resp = await config.client.chat.completions.create({
         model: config.model,
-        messages: [{ role: "user", content: [{ type: "text", text: "JSON array of items (name, price, description) from this image" }, { type: "image_url", image_url: { url } }] }],
+        messages: [{ role: "user", content: [{ type: "text", text: "Extract items as JSON: {name, price, description}" }, { type: "image_url", image_url: { url } }] }],
         max_tokens: 1000
       });
-      return JSON.parse(resp.choices[0].message.content.replace(/```json|```/g, ''));
+      const content = resp.choices[0].message.content;
+      return JSON.parse(content.replace(/```json|```/g, '').trim());
     } catch { return []; }
   }
 

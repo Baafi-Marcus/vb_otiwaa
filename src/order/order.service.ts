@@ -241,6 +241,20 @@ export class OrderService {
         });
     }
 
+    async getActiveOrders(customerPhone: string, merchantId: string) {
+        return this.prisma.order.findMany({
+            where: {
+                customerPhone,
+                merchantId,
+                status: {
+                    in: ['PENDING', 'CONFIRMED', 'READY', 'IN_PROGRESS']
+                }
+            },
+            orderBy: { createdAt: 'desc' },
+            include: { items: { include: { product: true } } }
+        });
+    }
+
     async getMerchantAnalytics(merchantId: string) {
         const orders = await this.prisma.order.findMany({
             where: { merchantId },
