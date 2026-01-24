@@ -2,7 +2,24 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 async function main() {
-    console.log('🌱 Starting to seed 25 demo businesses with coordinates...');
+    console.log('🌱 Starting to seed demo businesses...');
+
+    try {
+        // Clear dependencies first
+        await prisma.orderItem.deleteMany({});
+        await prisma.order.deleteMany({});
+        await prisma.product.deleteMany({});
+        await prisma.message.deleteMany({});
+        await prisma.campaignLog.deleteMany({});
+        await prisma.campaign.deleteMany({});
+        await prisma.deliveryZone.deleteMany({});
+        await prisma.upgradeRequest.deleteMany({});
+        await prisma.customer.deleteMany({});
+        await prisma.merchant.deleteMany({});
+        console.log('🧹 Cleared all existing data.');
+    } catch (e) {
+        console.warn('⚠️ Warning during cleanup:', e.message);
+    }
 
     const businesses = [
         { name: 'Star Jollof', category: 'Restaurant', location: 'Osu, Accra', vision: 'Best spicy jollof in the city.', lat: 5.5566, lng: -0.1740 },
@@ -59,7 +76,7 @@ async function main() {
 
 main()
     .catch((e) => {
-        console.error(e);
+        console.error('❌ Fatal error during seeding:', e);
         process.exit(1);
     })
     .finally(async () => {

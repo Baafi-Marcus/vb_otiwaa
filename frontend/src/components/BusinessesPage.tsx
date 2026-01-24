@@ -76,7 +76,7 @@ export default function BusinessesPage() {
         fetchMerchants();
     }, []);
 
-    const filteredMerchants = merchants
+    const allMappedMerchants = merchants
         .filter(m =>
             m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (m.category && m.category.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -92,8 +92,81 @@ export default function BusinessesPage() {
             if (userCoords && a.distance !== Infinity && b.distance !== Infinity) {
                 return a.distance - b.distance;
             }
-            return 0; // Maintain original sort (name 'asc') if no location
+            return a.name.localeCompare(b.name);
         });
+
+    const DISTANCE_THRESHOLD = 15; // 15km for "Nearby"
+    const nearbyMerchants = userCoords ? allMappedMerchants.filter(m => m.distance <= DISTANCE_THRESHOLD) : [];
+    const otherMerchants = userCoords ? allMappedMerchants.filter(m => m.distance > DISTANCE_THRESHOLD) : allMappedMerchants;
+
+    const renderMerchantGrid = (merchantsToRender: any[], title?: string, icon?: React.ReactNode, subtitle?: string) => (
+        <div className="mb-12">
+            {(title || subtitle) && (
+                <div className="mb-6">
+                    {title && (
+                        <h2 className="text-xl sm:text-2xl font-black text-white flex items-center gap-3 uppercase tracking-tight">
+                            {icon}
+                            {title}
+                        </h2>
+                    )}
+                    {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
+                </div>
+            )}
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
+                {merchantsToRender.map((merchant, index) => (
+                    <motion.div
+                        key={merchant.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        onClick={() => setSelectedMerchant(merchant)}
+                        className="bg-white/5 border border-white/10 rounded-xl sm:rounded-2xl p-3 sm:p-6 backdrop-blur-md hover:bg-white/10 transition-all cursor-pointer group"
+                    >
+                        {(merchant.logoUrl || merchant.menuImageUrl) && (
+                            <img
+                                src={merchant.logoUrl || merchant.menuImageUrl}
+                                alt={merchant.name}
+                                className="w-full h-24 sm:h-48 object-cover rounded-lg sm:rounded-xl mb-2 sm:mb-4"
+                            />
+                        )}
+                        <div className="flex items-start justify-between mb-1 sm:mb-3">
+                            <h3 className="text-sm sm:text-xl font-bold text-white leading-tight line-clamp-1 sm:line-clamp-none">{merchant.name}</h3>
+                            {userCoords && merchant.distance !== Infinity && (
+                                <span className={`text-[10px] px-2 py-0.5 rounded-full border font-bold whitespace-nowrap ${merchant.distance <= DISTANCE_THRESHOLD ? 'bg-primary/20 text-primary border-primary/30' : 'bg-white/5 text-white/40 border-white/10'}`}>
+                                    {merchant.distance < 1 ? '< 1 km' : `${Math.round(merchant.distance)} km`}
+                                </span>
+                            )}
+                        </div>
+                        <div className="space-y-1 sm:space-y-2 mb-3 sm:mb-4">
+                            {merchant.category && (
+                                <p className="text-[10px] sm:text-sm text-muted-foreground truncate">📂 {merchant.category}</p>
+                            )}
+                            {merchant.location && (
+                                <p className="text-[10px] sm:text-sm text-muted-foreground truncate">📍 {merchant.location}</p>
+                            )}
+                            {merchant.isClosed && (
+                                <p className="text-[10px] sm:text-sm text-red-400 font-semibold">🔴 Closed</p>
+                            )}
+                        </div>
+                        <a
+                            href={
+                                merchant.tier === 'LISTING'
+                                    ? `https://wa.me/${merchant.contactPhone?.replace(/\+/g, '')}`
+                                    : `https://wa.me/${PLATFORM_WHATSAPP.replace(/\+/g, '').replace(' ', '')}?text=Start:${merchant.id}`
+                            }
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-full py-2 sm:py-3 px-3 sm:px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg sm:rounded-xl font-bold text-[10px] sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition-all shadow-lg shadow-emerald-500/20"
+                        >
+                            <MessageCircle className="w-3 h-3 sm:w-4 sm:h-4" />
+                            Chat Now
+                        </a>
+                    </motion.div>
+                ))}
+            </div>
+        </div>
+    );
 
     return (
         <div className="min-h-screen bg-[#020202] text-white flex flex-col font-sans relative overflow-y-auto">
@@ -183,63 +256,39 @@ export default function BusinessesPage() {
                             <div className="inline-block w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
                             <p className="mt-4 text-muted-foreground">Loading merchants...</p>
                         </div>
-                    ) : filteredMerchants.length === 0 ? (
+                    ) : allMappedMerchants.length === 0 ? (
                         <div className="text-center py-20">
                             <p className="text-muted-foreground text-lg">No merchants found matching "{searchTerm}".</p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
-                            {filteredMerchants.map((merchant, index) => (
+                        <div>
+                            {userCoords && nearbyMerchants.length > 0 && renderMerchantGrid(
+                                nearbyMerchants,
+                                "Nearby in Your District",
+                                <MapPin className="w-6 h-6 text-primary" />,
+                                "Based on your current location"
+                            )}
+
+                            {userCoords && nearbyMerchants.length === 0 && (
                                 <motion.div
-                                    key={merchant.id}
-                                    initial={{ opacity: 0, y: 20 }}
+                                    initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: index * 0.1 }}
-                                    onClick={() => setSelectedMerchant(merchant)}
-                                    className="bg-white/5 border border-white/10 rounded-xl sm:rounded-2xl p-3 sm:p-6 backdrop-blur-md hover:bg-white/10 transition-all cursor-pointer group"
+                                    className="mb-10 p-4 bg-primary/10 border border-primary/20 rounded-2xl flex items-center gap-4 text-primary"
                                 >
-                                    {(merchant.logoUrl || merchant.menuImageUrl) && (
-                                        <img
-                                            src={merchant.logoUrl || merchant.menuImageUrl}
-                                            alt={merchant.name}
-                                            className="w-full h-24 sm:h-48 object-cover rounded-lg sm:rounded-xl mb-2 sm:mb-4"
-                                        />
-                                    )}
-                                    <div className="flex items-start justify-between mb-1 sm:mb-3">
-                                        <h3 className="text-sm sm:text-xl font-bold text-white leading-tight line-clamp-1 sm:line-clamp-none">{merchant.name}</h3>
-                                        {userCoords && merchant.distance !== Infinity && (
-                                            <span className="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded-full border border-primary/30 font-bold whitespace-nowrap">
-                                                {merchant.distance < 1 ? '< 1 km' : `${Math.round(merchant.distance)} km`}
-                                            </span>
-                                        )}
+                                    <div className="w-10 h-10 bg-primary/20 rounded-xl flex items-center justify-center shrink-0">
+                                        <MapPin className="w-5 h-5" />
                                     </div>
-                                    <div className="space-y-1 sm:space-y-2 mb-3 sm:mb-4">
-                                        {merchant.category && (
-                                            <p className="text-[10px] sm:text-sm text-muted-foreground truncate">📂 {merchant.category}</p>
-                                        )}
-                                        {merchant.location && (
-                                            <p className="text-[10px] sm:text-sm text-muted-foreground truncate">📍 {merchant.location}</p>
-                                        )}
-                                        {merchant.isClosed && (
-                                            <p className="text-[10px] sm:text-sm text-red-400 font-semibold">🔴 Closed</p>
-                                        )}
-                                    </div>
-                                    <a
-                                        href={
-                                            merchant.tier === 'LISTING'
-                                                ? `https://wa.me/${merchant.contactPhone?.replace(/\+/g, '')}`
-                                                : `https://wa.me/${PLATFORM_WHATSAPP.replace(/\+/g, '').replace(' ', '')}?text=Start:${merchant.id}`
-                                        }
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        onClick={(e) => e.stopPropagation()}
-                                        className="w-full py-2 sm:py-3 px-3 sm:px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg sm:rounded-xl font-bold text-[10px] sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition-all shadow-lg shadow-emerald-500/20"
-                                    >
-                                        <MessageCircle className="w-3 h-3 sm:w-4 sm:h-4" />
-                                        Chat Now
-                                    </a>
+                                    <p className="text-sm font-bold leading-tight">
+                                        No businesses found in your immediate district, showing nearest options below.
+                                    </p>
                                 </motion.div>
-                            ))}
+                            )}
+
+                            {renderMerchantGrid(
+                                otherMerchants,
+                                userCoords && nearbyMerchants.length > 0 ? "All Businesses" : "Available Businesses",
+                                <Plus className="w-6 h-6 text-purple-500" />
+                            )}
                         </div>
                     )}
                 </div>
