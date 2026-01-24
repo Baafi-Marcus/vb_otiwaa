@@ -16,7 +16,19 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   // 1. Security Headers (XSS protection, etc.)
-  app.use(helmet());
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        imgSrc: ["'self'", "data:", "https:", "blob:"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https:"],
+        connectSrc: ["'self'", "https:", "wss:"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https:"],
+        fontSrc: ["'self'", "https:", "data:"],
+      },
+    },
+    crossOriginEmbedderPolicy: false,
+  }));
 
   // 2. Global Validation Pipe (Strict input validation)
   app.useGlobalPipes(new ValidationPipe({
