@@ -14,6 +14,51 @@ export default function BusinessesPage() {
     const [loading, setLoading] = useState(true);
     const [selectedMerchant, setSelectedMerchant] = useState<any>(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
+    const [showLocationPrompt, setShowLocationPrompt] = useState(false);
+
+    useEffect(() => {
+        const hasPrompted = localStorage.getItem('locationPrompted');
+        if (!hasPrompted) {
+            setShowLocationPrompt(true);
+        }
+    }, []);
+
+    const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+        if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
+        const R = 6371; // Radius of the earth in km
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a =
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c; // Distance in km
+    };
+
+    const handleAllowLocation = () => {
+        setShowLocationPrompt(false);
+        localStorage.setItem('locationPrompted', 'true');
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    setUserCoords({
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude
+                    });
+                },
+                (error) => {
+                    console.error('Geolocation error:', error);
+                }
+            );
+        }
+    };
+
+    const handleDenyLocation = () => {
+        setShowLocationPrompt(false);
+        localStorage.setItem('locationPrompted', 'true');
+    };
 
 
 
@@ -31,11 +76,24 @@ export default function BusinessesPage() {
         fetchMerchants();
     }, []);
 
-    const filteredMerchants = merchants.filter(m =>
-        m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (m.category && m.category.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (m.location && m.location.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
+    const filteredMerchants = merchants
+        .filter(m =>
+            m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (m.category && m.category.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            (m.location && m.location.toLowerCase().includes(searchTerm.toLowerCase()))
+        )
+        .map(m => {
+            if (userCoords && m.latitude && m.longitude) {
+                return { ...m, distance: calculateDistance(userCoords.lat, userCoords.lng, m.latitude, m.longitude) };
+            }
+            return { ...m, distance: Infinity };
+        })
+        .sort((a, b) => {
+            if (userCoords && a.distance !== Infinity && b.distance !== Infinity) {
+                return a.distance - b.distance;
+            }
+            return 0; // Maintain original sort (name 'asc') if no location
+        });
 
     return (
         <div className="min-h-screen bg-[#020202] text-white flex flex-col font-sans relative overflow-y-auto">
@@ -149,6 +207,11 @@ export default function BusinessesPage() {
                                     )}
                                     <div className="flex items-start justify-between mb-1 sm:mb-3">
                                         <h3 className="text-sm sm:text-xl font-bold text-white leading-tight line-clamp-1 sm:line-clamp-none">{merchant.name}</h3>
+                                        {userCoords && merchant.distance !== Infinity && (
+                                            <span className="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded-full border border-primary/30 font-bold whitespace-nowrap">
+                                                {merchant.distance < 1 ? '< 1 km' : `${Math.round(merchant.distance)} km`}
+                                            </span>
+                                        )}
                                     </div>
                                     <div className="space-y-1 sm:space-y-2 mb-3 sm:mb-4">
                                         {merchant.category && (
@@ -361,6 +424,48 @@ export default function BusinessesPage() {
             </AnimatePresence>
 
             {/* Footer */}
+            {/* Location Permission Modal */}
+            <AnimatePresence>
+                {showLocationPrompt && (
+                    <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 sm:p-0">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: 30 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 30 }}
+                            className="relative w-full max-w-xs sm:max-w-sm bg-[#111111] border border-white/10 rounded-3xl p-8 shadow-2xl z-10 text-center"
+                        >
+                            <div className="w-16 h-16 bg-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                                <MapPin className="w-8 h-8 text-primary" />
+                            </div>
+                            <h3 className="text-2xl font-black text-white mb-3">Nearby Services?</h3>
+                            <p className="text-sm text-muted-foreground mb-8 leading-relaxed">
+                                Share your location to find the best businesses and services closest to you right now. 📍
+                            </p>
+                            <div className="flex flex-col gap-3">
+                                <button
+                                    onClick={handleAllowLocation}
+                                    className="w-full py-4 bg-primary hover:bg-primary/90 text-white rounded-2xl font-black text-base transition-all active:scale-95 shadow-lg shadow-primary/20"
+                                >
+                                    Allow Access
+                                </button>
+                                <button
+                                    onClick={handleDenyLocation}
+                                    className="w-full py-4 bg-white/5 hover:bg-white/10 text-white/60 rounded-2xl font-bold text-base transition-all active:scale-95"
+                                >
+                                    Not Now
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
             < footer className="w-full py-8 text-center text-xs font-bold text-muted-foreground/60 relative z-10 uppercase tracking-widest flex flex-col md:flex-row items-center justify-between px-8 gap-4 bg-black/20 backdrop-blur-sm border-t border-white/5" >
                 <div className="flex items-center gap-4">
                     <span>© 2026 FuseWeb Service</span>

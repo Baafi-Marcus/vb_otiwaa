@@ -19,6 +19,8 @@ model Merchant {
   clientVision          String?
   isClosed              Boolean        @default(false)
   location              String?
+  latitude              Float?
+  longitude             Float?
   menuImageUrl          String?
   operatingHours        String?
   paymentMethods        String?
