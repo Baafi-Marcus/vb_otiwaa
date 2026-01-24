@@ -82,9 +82,11 @@ export class MerchantController {
             isClosed: m.isClosed,
             // Only expose contactPhone for LISTING tier
             contactPhone: (m as any).tier === 'LISTING' ? (m as any).contactPhone : null,
+            logoUrl: (m as any).logoUrl,
             menuImageUrl: m.menuImageUrl,
             description: (m as any).description,
             deliveryOptions: (m as any).deliveryOptions,
+            operatingHours: (m as any).operatingHours,
             catalog: m.catalog // Expose products for pricing display
         }));
     }

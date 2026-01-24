@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { MessageCircle, ArrowLeft, X, Smartphone, MapPin, Tag } from 'lucide-react';
+import { MessageCircle, ArrowLeft, X, MapPin, Tag, Clock } from 'lucide-react';
 import axios from 'axios';
 
 const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
@@ -155,117 +155,143 @@ export default function BusinessesPage() {
                             initial={{ opacity: 0, scale: 0.9, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                            className="relative w-full max-w-2xl bg-[#0a0a0a] border border-white/10 rounded-[2.5rem] overflow-hidden shadow-2xl z-10"
+                            className="relative w-full max-w-3xl bg-card border border-border rounded-3xl overflow-hidden shadow-2xl z-10 max-h-[90vh] overflow-y-auto"
                         >
                             <button
                                 onClick={() => setSelectedMerchant(null)}
-                                className="absolute top-6 right-6 p-2 rounded-full bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all z-20"
+                                className="absolute top-4 right-4 p-2 rounded-full bg-secondary hover:bg-secondary/80 text-foreground transition-all z-20"
                             >
-                                <X className="w-6 h-6" />
+                                <X className="w-5 h-5" />
                             </button>
 
                             <div className="flex flex-col">
+                                {/* Hero Image */}
                                 {(selectedMerchant.logoUrl || selectedMerchant.menuImageUrl) && (
-                                    <div className="w-full h-64 sm:h-80 relative overflow-hidden">
+                                    <div className="w-full h-48 sm:h-64 relative overflow-hidden">
                                         <img
                                             src={selectedMerchant.logoUrl || selectedMerchant.menuImageUrl}
                                             alt={selectedMerchant.name}
                                             className="w-full h-full object-cover"
                                         />
-                                        <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] to-transparent" />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-card via-card/50 to-transparent" />
                                     </div>
                                 )}
 
-                                <div className="p-8 sm:p-10 space-y-8">
-                                    <div className="space-y-4 text-center sm:text-left">
-                                        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                                            <h2 className="text-3xl sm:text-4xl font-black text-white uppercase tracking-tight">
-                                                {selectedMerchant.name}
-                                            </h2>
-                                        </div>
-                                        <p className="text-muted-foreground text-lg italic max-w-xl">
-                                            "{selectedMerchant.description || 'Verified local business powered by FuseWeb AI.'}"
-                                        </p>
+                                <div className="p-6 sm:p-8 space-y-6">
+                                    {/* Business Header */}
+                                    <div className="space-y-3">
+                                        <h2 className="text-3xl sm:text-4xl font-black text-foreground">
+                                            {selectedMerchant.name}
+                                        </h2>
+                                        {selectedMerchant.description && (
+                                            <p className="text-muted-foreground text-base italic leading-relaxed">
+                                                "{selectedMerchant.description}"
+                                            </p>
+                                        )}
                                     </div>
 
-                                    {/* Delivery Options & Menu Section */}
-                                    <div className="space-y-6 border-t border-white/5 pt-6">
-                                        {selectedMerchant.deliveryOptions && (
-                                            <div className="flex flex-wrap gap-2">
-                                                {(selectedMerchant.deliveryOptions === 'BOTH' || selectedMerchant.deliveryOptions === 'PICKUP') && (
-                                                    <span className="px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-xs font-bold text-white flex items-center gap-2">
-                                                        🛍️ Pickup Available
-                                                    </span>
-                                                )}
-                                                {(selectedMerchant.deliveryOptions === 'BOTH' || selectedMerchant.deliveryOptions === 'DELIVERY') && (
-                                                    <span className="px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-xs font-bold text-white flex items-center gap-2">
-                                                        🛵 Delivery Available
-                                                    </span>
-                                                )}
+                                    {/* Quick Info Grid */}
+                                    <div className="grid grid-cols-2 gap-4 p-4 bg-secondary/30 rounded-2xl border border-border">
+                                        <div className="space-y-1">
+                                            <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                                                <Tag className="w-3 h-3" />
+                                                Category
                                             </div>
-                                        )}
-
-                                        {selectedMerchant.catalog && selectedMerchant.catalog.length > 0 && (
-                                            <div className="space-y-3">
-                                                <h4 className="text-sm font-black uppercase tracking-widest text-white/40">Menu & Prices</h4>
-                                                <div className="grid gap-2">
-                                                    {selectedMerchant.catalog.map((product: any) => (
-                                                        <div key={product.id} className="flex justify-between items-center p-3 bg-white/5 rounded-xl border border-white/10">
-                                                            <div>
-                                                                <p className="font-bold text-sm text-white">{product.name}</p>
-                                                                {product.description && <p className="text-xs text-muted-foreground line-clamp-1">{product.description}</p>}
-                                                            </div>
-                                                            <div className="font-bold text-primary text-sm">
-                                                                GHS {product.price}
-                                                            </div>
-                                                        </div>
-                                                    ))}
+                                            <div className="font-bold text-foreground text-sm">
+                                                {selectedMerchant.category || 'Local Business'}
+                                            </div>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                                                <MapPin className="w-3 h-3" />
+                                                Location
+                                            </div>
+                                            <div className="font-bold text-foreground text-sm">
+                                                {selectedMerchant.location || 'Accra, Ghana'}
+                                            </div>
+                                        </div>
+                                        {selectedMerchant.operatingHours && (
+                                            <div className="space-y-1 col-span-2">
+                                                <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                                                    <Clock className="w-3 h-3" />
+                                                    Hours
+                                                </div>
+                                                <div className="font-bold text-foreground text-sm">
+                                                    {selectedMerchant.operatingHours}
                                                 </div>
                                             </div>
                                         )}
                                     </div>
 
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4 border-t border-white/5">
-                                        <div className="space-y-1">
-                                            <div className="text-[10px] font-black uppercase tracking-widest text-white/40">Category</div>
-                                            <div className="flex items-center gap-2 font-bold text-white">
-                                                <Tag className="w-4 h-4 text-primary" />
-                                                {selectedMerchant.category || 'Local Business'}
-                                            </div>
+                                    {/* Delivery Options */}
+                                    {selectedMerchant.deliveryOptions && (
+                                        <div className="flex flex-wrap gap-2">
+                                            {(selectedMerchant.deliveryOptions === 'BOTH' || selectedMerchant.deliveryOptions === 'PICKUP') && (
+                                                <span className="px-4 py-2 rounded-xl bg-blue-500/10 border border-blue-500/20 text-sm font-bold text-blue-600 dark:text-blue-400 flex items-center gap-2">
+                                                    🛍️ Pickup Available
+                                                </span>
+                                            )}
+                                            {(selectedMerchant.deliveryOptions === 'BOTH' || selectedMerchant.deliveryOptions === 'DELIVERY') && (
+                                                <span className="px-4 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-sm font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
+                                                    🛵 Delivery Available
+                                                </span>
+                                            )}
                                         </div>
-                                        <div className="space-y-1">
-                                            <div className="text-[10px] font-black uppercase tracking-widest text-white/40">Location</div>
-                                            <div className="flex items-center gap-2 font-bold text-white">
-                                                <MapPin className="w-4 h-4 text-primary" />
-                                                {selectedMerchant.location || 'Accra, Ghana'}
+                                    )}
+
+                                    {/* Menu Preview */}
+                                    {selectedMerchant.catalog && selectedMerchant.catalog.length > 0 && (
+                                        <div className="space-y-4">
+                                            <div className="flex items-center justify-between">
+                                                <h4 className="text-lg font-black text-foreground">Popular Items</h4>
+                                                <span className="text-xs font-bold text-muted-foreground">
+                                                    {selectedMerchant.catalog.length} items available
+                                                </span>
                                             </div>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <div className="text-[10px] font-black uppercase tracking-widest text-white/40">Official Channel</div>
-                                            <div className="flex items-center gap-2 font-bold text-white">
-                                                <Smartphone className="w-4 h-4 text-primary" />
-                                                Verified WhatsApp Bot
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                {selectedMerchant.catalog.slice(0, 6).map((product: any) => (
+                                                    <div key={product.id} className="p-4 bg-secondary/50 rounded-xl border border-border hover:border-primary/30 transition-all">
+                                                        <div className="flex justify-between items-start gap-3">
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="font-bold text-sm text-foreground truncate">{product.name}</p>
+                                                                {product.description && (
+                                                                    <p className="text-xs text-muted-foreground line-clamp-1 mt-1">
+                                                                        {product.description}
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                            <div className="font-black text-primary text-sm whitespace-nowrap">
+                                                                GHS {product.price}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
                                             </div>
+                                            {selectedMerchant.catalog.length > 6 && (
+                                                <p className="text-center text-xs text-muted-foreground italic">
+                                                    + {selectedMerchant.catalog.length - 6} more items available via chat
+                                                </p>
+                                            )}
                                         </div>
-                                        <div className="space-y-1">
-                                            <div className="text-[10px] font-black uppercase tracking-widest text-white/40">Status</div>
-                                            <div className="flex items-center gap-2 font-bold text-white">
-                                                {selectedMerchant.isClosed ? (
-                                                    <span className="flex items-center gap-2 text-red-500">
-                                                        <span className="w-2 h-2 rounded-full bg-red-500" />
-                                                        Currently Closed
-                                                    </span>
-                                                ) : (
-                                                    <span className="flex items-center gap-2 text-emerald-500">
-                                                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                                                        Online & Chatting
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
+                                    )}
+
+                                    {/* Status Indicator */}
+                                    <div className="flex items-center justify-center gap-2 p-3 bg-secondary/30 rounded-xl">
+                                        {selectedMerchant.isClosed ? (
+                                            <span className="flex items-center gap-2 text-red-500 font-bold text-sm">
+                                                <span className="w-2 h-2 rounded-full bg-red-500" />
+                                                Currently Closed
+                                            </span>
+                                        ) : (
+                                            <span className="flex items-center gap-2 text-emerald-500 font-bold text-sm">
+                                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                                Online & Ready to Chat
+                                            </span>
+                                        )}
                                     </div>
 
-                                    <div className="pt-6">
+                                    {/* CTA Button */}
+                                    <div className="space-y-3 pt-2">
                                         <a
                                             href={
                                                 selectedMerchant.tier === 'LISTING'
@@ -274,13 +300,13 @@ export default function BusinessesPage() {
                                             }
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="w-full py-5 px-8 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-lg flex items-center justify-center gap-3 transition-all shadow-xl shadow-emerald-500/20 active:scale-95"
+                                            className="w-full py-4 px-6 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-base flex items-center justify-center gap-3 transition-all shadow-lg shadow-emerald-500/20 active:scale-95"
                                         >
-                                            <MessageCircle className="w-6 h-6" />
-                                            Start Chatting Now
+                                            <MessageCircle className="w-5 h-5" />
+                                            Start Chatting on WhatsApp
                                         </a>
-                                        <p className="text-center text-[10px] text-muted-foreground/40 mt-4 uppercase tracking-[0.2em]">
-                                            Secure end-to-end encrypted conversation
+                                        <p className="text-center text-xs text-muted-foreground/60 uppercase tracking-wider">
+                                            🔒 Secure end-to-end encrypted
                                         </p>
                                     </div>
                                 </div>
@@ -289,7 +315,7 @@ export default function BusinessesPage() {
                     </div>
                 )
                 }
-            </AnimatePresence >
+            </AnimatePresence>
 
             {/* Footer */}
             < footer className="w-full py-8 text-center text-xs font-bold text-muted-foreground/60 relative z-10 uppercase tracking-widest flex flex-col md:flex-row items-center justify-between px-8 gap-4 bg-black/20 backdrop-blur-sm border-t border-white/5" >

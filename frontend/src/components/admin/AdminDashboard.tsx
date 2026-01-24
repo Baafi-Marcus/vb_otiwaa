@@ -494,7 +494,7 @@ function MerchantRegistration({ onComplete, initialData }: any) {
             // Mark Lead as Completed if applicable
             if (initialData?.id) {
                 try {
-                    await axios.patch(`${API_BASE}/api/leads/${initialData.id}`, { status: 'COMPLETED' });
+                    await axios.patch(`${API_BASE}/api/system/leads/${initialData.id}`, { status: 'COMPLETED' });
                     toast.success('Lead marked as COMPLETED');
                 } catch (e) {
                     console.error('Failed to update lead status', e);
