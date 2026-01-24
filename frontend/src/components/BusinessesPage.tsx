@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { MessageCircle, ArrowLeft, X, MapPin, Tag, Clock, Search } from 'lucide-react';
+import { MessageCircle, ArrowLeft, X, MapPin, Tag, Clock, Search, Plus } from 'lucide-react';
 import axios from 'axios';
 
 const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
@@ -61,6 +61,10 @@ export default function BusinessesPage() {
                             <span className="hidden sm:inline">Back to Home</span>
                             <span className="sm:hidden">Home</span>
                         </a>
+                        <a href="/#contact" className="hidden sm:flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs sm:text-sm font-bold text-white transition-all">
+                            <Plus className="w-4 h-4" />
+                            Add Your Business
+                        </a>
                         <a href="/admin" className="px-4 py-2 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 rounded-xl text-xs sm:text-sm font-bold text-white transition-all shadow-lg shadow-primary/20">
                             Dashboard
                         </a>
@@ -79,9 +83,16 @@ export default function BusinessesPage() {
                         <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black mb-4 bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60 uppercase">
                             Browse Merchants
                         </h1>
-                        <p className="text-muted-foreground max-w-2xl mx-auto text-base sm:text-lg px-4">
+                        <p className="text-muted-foreground max-w-2xl mx-auto text-base sm:text-lg px-4 mb-8">
                             Discover local businesses powered by AI. Click "Chat Now" to start ordering instantly.
                         </p>
+                        <a
+                            href="/#contact"
+                            className="inline-flex items-center gap-2 px-8 py-4 bg-white text-black font-black rounded-2xl hover:scale-105 active:scale-95 transition-all shadow-xl shadow-white/10"
+                        >
+                            <Plus className="w-5 h-5" />
+                            Add Your Business
+                        </a>
                     </motion.div>
 
                     {merchants.length >= 20 && (
@@ -363,6 +374,7 @@ export default function BusinessesPage() {
                 </div>
                 <div className="flex items-center gap-6">
                     <a href="/" className="hover:text-white transition-colors">Home</a>
+                    <a href="/#contact" className="hover:text-white transition-colors">Join Us</a>
                     <a href="/businesses" className="hover:text-white transition-colors">Businesses</a>
                     <a href="/admin" className="hover:text-white transition-colors">Admin</a>
                 </div>

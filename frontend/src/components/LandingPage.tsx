@@ -49,36 +49,25 @@ export default function LandingPage() {
                     transition={{ duration: 0.8, ease: "easeOut" }}
                     className="max-w-2xl w-full space-y-10 text-center lg:text-left"
                 >
-                    <div className="flex flex-col lg:flex-row items-center gap-8">
+                    <div className="space-y-4">
                         <motion.div
-                            initial={{ scale: 0.8, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            transition={{ duration: 0.5, delay: 0.2 }}
-                            className="w-24 h-24 lg:w-32 lg:h-32 flex-shrink-0"
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-bold tracking-widest uppercase text-primary"
                         >
-                            <img src="/logo-white.png" alt="FuseWeb Service Logo" className="w-full h-full object-contain" />
+                            <span className="relative flex h-2 w-2">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                            </span>
+                            Welcome to
                         </motion.div>
-
-                        <div className="space-y-4 text-center lg:text-left">
-                            <motion.div
-                                initial={{ opacity: 0, x: -20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-bold tracking-widest uppercase text-primary"
-                            >
-                                <span className="relative flex h-2 w-2">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-                                </span>
-                                Welcome to
-                            </motion.div>
-                            <h1 className="text-5xl sm:text-7xl lg:text-8xl font-black tracking-tighter leading-[0.9] bg-clip-text text-transparent bg-gradient-to-b from-white to-white/40">
-                                AI-POWERED<br />
-                                COMMERCE.
-                            </h1>
-                            <p className="text-lg sm:text-xl lg:text-2xl text-primary font-bold tracking-[0.2em] uppercase font-sans">
-                                create.build.inspire.
-                            </p>
-                        </div>
+                        <h1 className="text-5xl sm:text-7xl lg:text-8xl font-black tracking-tighter leading-[0.9] bg-clip-text text-transparent bg-gradient-to-b from-white to-white/40">
+                            AI-POWERED<br />
+                            COMMERCE.
+                        </h1>
+                        <p className="text-lg sm:text-xl lg:text-2xl text-primary font-bold tracking-[0.2em] uppercase font-sans">
+                            create.build.inspire.
+                        </p>
                     </div>
 
                     <p className="text-base lg:text-lg text-muted-foreground/80 leading-relaxed max-w-lg mx-auto lg:mx-0 text-center lg:text-left">
