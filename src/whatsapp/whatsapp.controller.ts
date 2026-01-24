@@ -382,11 +382,11 @@ export class WhatsappController {
     if (aiResponse.includes('[ASK_FULFILLMENT]')) {
       if (cleanResponse) {
         await this.whatsAppService.sendWhatsAppMessage(sender, cleanResponse);
-        await this.context.saveToContext(cleanResponse, 'assistant', sender);
+        await this.context.saveToContext(cleanResponse, 'assistant', sender, contextId);
       }
       const buttonBody = "Select fulfillment method for your order:\n\n1. Pickup 🛍️\n2. Delivery 🚚";
       await this.twilioService.sendFulfillmentButtons(sender);
-      await this.context.saveToContext(buttonBody, 'assistant', sender);
+      await this.context.saveToContext(buttonBody, 'assistant', sender, contextId);
       return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
     }
 
@@ -459,6 +459,7 @@ export class WhatsappController {
       const activeOrder = await this.prismaService.order.findFirst({
         where: {
           customerPhone: sender,
+          merchantId: contextId,
           paymentStatus: 'NONE',
           status: 'PENDING'
         },

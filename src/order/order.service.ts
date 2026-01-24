@@ -233,9 +233,9 @@ export class OrderService {
         return updatedOrder;
     }
 
-    async getLatestOrderStatus(customerPhone: string) {
+    async getLatestOrderStatus(customerPhone: string, merchantId: string) {
         return this.prisma.order.findFirst({
-            where: { customerPhone },
+            where: { customerPhone, merchantId },
             orderBy: { createdAt: 'desc' },
             include: { items: { include: { product: true } } }
         });
