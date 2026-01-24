@@ -14,9 +14,18 @@ export class SpaFallbackFilter implements ExceptionFilter {
             ? exception.getStatus()
             : HttpStatus.INTERNAL_SERVER_ERROR;
 
-        // If it's a 404 and NOT an API request, serve index.html
+        // If it's a 404 and NOT an API request AND not a static file (has extension), serve index.html
         if (status === HttpStatus.NOT_FOUND && !request.path.startsWith('/api')) {
-            const indexPath = join(__dirname, '..', '..', 'frontend', 'dist', 'index.html');
+            // Exclude paths with extensions (likely static assets) unless it's just a routing path
+            if (request.path.includes('.') && !request.path.endsWith('.html')) {
+                return response.status(status).json({
+                    statusCode: status,
+                    message: "Static asset not found",
+                    path: request.url
+                });
+            }
+
+            const indexPath = join(process.cwd(), 'frontend', 'dist', 'index.html');
             if (existsSync(indexPath)) {
                 return response.sendFile(indexPath);
             }
