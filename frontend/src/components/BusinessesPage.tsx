@@ -52,8 +52,8 @@ export default function BusinessesPage() {
             <nav className="w-full py-4 px-6 lg:px-20 relative z-20 bg-black/20 backdrop-blur-sm border-b border-white/5">
                 <div className="max-w-7xl mx-auto flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <img src="/logo-white.png" alt="FuseWeb Service Logo" className="w-10 h-10 object-contain" />
-                        <span className="text-xl font-black tracking-tight">FuseWeb Service</span>
+                        <img src="/logo-white.png" alt="FuseWeb Service Logo" className="w-8 h-8 sm:w-10 sm:h-10 object-contain" />
+                        <span className="text-xl font-black tracking-tight hidden sm:inline">FuseWeb Service</span>
                     </div>
                     <div className="flex items-center gap-6">
                         <a href="/" className="text-xs sm:text-sm font-semibold text-white/80 hover:text-white transition-colors flex items-center gap-2">
@@ -130,7 +130,7 @@ export default function BusinessesPage() {
                             <p className="text-muted-foreground text-lg">No merchants found matching "{searchTerm}".</p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
                             {filteredMerchants.map((merchant, index) => (
                                 <motion.div
                                     key={merchant.id}
@@ -138,27 +138,27 @@ export default function BusinessesPage() {
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: index * 0.1 }}
                                     onClick={() => setSelectedMerchant(merchant)}
-                                    className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-md hover:bg-white/10 transition-all cursor-pointer group"
+                                    className="bg-white/5 border border-white/10 rounded-xl sm:rounded-2xl p-3 sm:p-6 backdrop-blur-md hover:bg-white/10 transition-all cursor-pointer group"
                                 >
                                     {(merchant.logoUrl || merchant.menuImageUrl) && (
                                         <img
                                             src={merchant.logoUrl || merchant.menuImageUrl}
                                             alt={merchant.name}
-                                            className="w-full h-40 sm:h-48 object-cover rounded-xl mb-3 sm:mb-4"
+                                            className="w-full h-24 sm:h-48 object-cover rounded-lg sm:rounded-xl mb-2 sm:mb-4"
                                         />
                                     )}
-                                    <div className="flex items-start justify-between mb-2 sm:mb-3">
-                                        <h3 className="text-lg sm:text-xl font-bold text-white leading-tight">{merchant.name}</h3>
+                                    <div className="flex items-start justify-between mb-1 sm:mb-3">
+                                        <h3 className="text-sm sm:text-xl font-bold text-white leading-tight line-clamp-1 sm:line-clamp-none">{merchant.name}</h3>
                                     </div>
-                                    <div className="space-y-2 mb-4">
+                                    <div className="space-y-1 sm:space-y-2 mb-3 sm:mb-4">
                                         {merchant.category && (
-                                            <p className="text-sm text-muted-foreground">📂 {merchant.category}</p>
+                                            <p className="text-[10px] sm:text-sm text-muted-foreground truncate">📂 {merchant.category}</p>
                                         )}
                                         {merchant.location && (
-                                            <p className="text-sm text-muted-foreground">📍 {merchant.location}</p>
+                                            <p className="text-[10px] sm:text-sm text-muted-foreground truncate">📍 {merchant.location}</p>
                                         )}
                                         {merchant.isClosed && (
-                                            <p className="text-sm text-red-400 font-semibold">🔴 Currently Closed</p>
+                                            <p className="text-[10px] sm:text-sm text-red-400 font-semibold">🔴 Closed</p>
                                         )}
                                     </div>
                                     <a
@@ -170,9 +170,9 @@ export default function BusinessesPage() {
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         onClick={(e) => e.stopPropagation()}
-                                        className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-500/20"
+                                        className="w-full py-2 sm:py-3 px-3 sm:px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg sm:rounded-xl font-bold text-[10px] sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition-all shadow-lg shadow-emerald-500/20"
                                     >
-                                        <MessageCircle className="w-4 h-4" />
+                                        <MessageCircle className="w-3 h-3 sm:w-4 sm:h-4" />
                                         Chat Now
                                     </a>
                                 </motion.div>
@@ -222,12 +222,12 @@ export default function BusinessesPage() {
 
                                 <div className="p-6 sm:p-8 space-y-6">
                                     {/* Business Header */}
-                                    <div className="space-y-3">
-                                        <h2 className="text-3xl sm:text-4xl font-black text-foreground">
+                                    <div className="space-y-2">
+                                        <h2 className="text-xl sm:text-4xl font-black text-foreground">
                                             {selectedMerchant.name}
                                         </h2>
                                         {selectedMerchant.description && (
-                                            <p className="text-muted-foreground text-base italic leading-relaxed">
+                                            <p className="text-muted-foreground text-xs sm:text-base italic leading-relaxed">
                                                 "{selectedMerchant.description}"
                                             </p>
                                         )}
@@ -240,26 +240,26 @@ export default function BusinessesPage() {
                                                 <Tag className="w-3 h-3" />
                                                 Category
                                             </div>
-                                            <div className="font-bold text-foreground text-sm">
+                                            <div className="font-bold text-foreground text-[10px] sm:text-sm">
                                                 {selectedMerchant.category || 'Local Business'}
                                             </div>
                                         </div>
                                         <div className="space-y-1">
-                                            <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                                            <div className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
                                                 <MapPin className="w-3 h-3" />
                                                 Location
                                             </div>
-                                            <div className="font-bold text-foreground text-sm">
+                                            <div className="font-bold text-foreground text-[10px] sm:text-sm">
                                                 {selectedMerchant.location || 'Accra, Ghana'}
                                             </div>
                                         </div>
                                         {selectedMerchant.operatingHours && (
                                             <div className="space-y-1 col-span-2">
-                                                <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                                                <div className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
                                                     <Clock className="w-3 h-3" />
                                                     Hours
                                                 </div>
-                                                <div className="font-bold text-foreground text-sm">
+                                                <div className="font-bold text-foreground text-[10px] sm:text-sm">
                                                     {selectedMerchant.operatingHours}
                                                 </div>
                                             </div>
@@ -270,13 +270,13 @@ export default function BusinessesPage() {
                                     {selectedMerchant.deliveryOptions && (
                                         <div className="flex flex-wrap gap-2">
                                             {(selectedMerchant.deliveryOptions === 'BOTH' || selectedMerchant.deliveryOptions === 'PICKUP') && (
-                                                <span className="px-4 py-2 rounded-xl bg-blue-500/10 border border-blue-500/20 text-sm font-bold text-blue-600 dark:text-blue-400 flex items-center gap-2">
-                                                    🛍️ Pickup Available
+                                                <span className="px-3 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-[10px] sm:text-sm font-bold text-blue-600 dark:text-blue-400 flex items-center gap-2">
+                                                    🛍️ Pickup
                                                 </span>
                                             )}
                                             {(selectedMerchant.deliveryOptions === 'BOTH' || selectedMerchant.deliveryOptions === 'DELIVERY') && (
-                                                <span className="px-4 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-sm font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
-                                                    🛵 Delivery Available
+                                                <span className="px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-[10px] sm:text-sm font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
+                                                    🛵 Delivery
                                                 </span>
                                             )}
                                         </div>
@@ -293,17 +293,17 @@ export default function BusinessesPage() {
                                             </div>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                 {selectedMerchant.catalog.slice(0, 6).map((product: any) => (
-                                                    <div key={product.id} className="p-4 bg-secondary/50 rounded-xl border border-border hover:border-primary/30 transition-all">
+                                                    <div key={product.id} className="p-3 sm:p-4 bg-secondary/50 rounded-xl border border-border hover:border-primary/30 transition-all">
                                                         <div className="flex justify-between items-start gap-3">
                                                             <div className="flex-1 min-w-0">
-                                                                <p className="font-bold text-sm text-foreground truncate">{product.name}</p>
+                                                                <p className="font-bold text-xs sm:text-sm text-foreground truncate">{product.name}</p>
                                                                 {product.description && (
-                                                                    <p className="text-xs text-muted-foreground line-clamp-1 mt-1">
+                                                                    <p className="text-[10px] sm:text-xs text-muted-foreground line-clamp-1 mt-1">
                                                                         {product.description}
                                                                     </p>
                                                                 )}
                                                             </div>
-                                                            <div className="font-black text-primary text-sm whitespace-nowrap">
+                                                            <div className="font-black text-primary text-[10px] sm:text-sm whitespace-nowrap">
                                                                 GHS {product.price}
                                                             </div>
                                                         </div>
@@ -343,9 +343,9 @@ export default function BusinessesPage() {
                                             }
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="w-full py-4 px-6 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-base flex items-center justify-center gap-3 transition-all shadow-lg shadow-emerald-500/20 active:scale-95"
+                                            className="w-full py-3 sm:py-4 px-6 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl sm:rounded-2xl font-black text-sm sm:text-base flex items-center justify-center gap-2 sm:gap-3 transition-all shadow-lg shadow-emerald-500/20 active:scale-95"
                                         >
-                                            <MessageCircle className="w-5 h-5" />
+                                            <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
                                             Start Chatting on WhatsApp
                                         </a>
                                         <p className="text-center text-xs text-muted-foreground/60 uppercase tracking-wider">
