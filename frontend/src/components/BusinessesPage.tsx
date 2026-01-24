@@ -80,10 +80,10 @@ export default function BusinessesPage() {
                         animate={{ opacity: 1, y: 0 }}
                         className="text-center mb-12 sm:mb-16"
                     >
-                        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black mb-4 bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60 uppercase">
+                        <h1 className="text-2xl sm:text-5xl lg:text-6xl font-black mb-3 sm:mb-4 bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60 uppercase">
                             Browse Merchants
                         </h1>
-                        <p className="text-muted-foreground max-w-2xl mx-auto text-base sm:text-lg px-4">
+                        <p className="text-xs sm:text-lg text-muted-foreground max-w-2xl mx-auto px-4">
                             Discover local businesses powered by AI. Click "Chat Now" to start ordering instantly.
                         </p>
                     </motion.div>
@@ -144,11 +144,11 @@ export default function BusinessesPage() {
                                         <img
                                             src={merchant.logoUrl || merchant.menuImageUrl}
                                             alt={merchant.name}
-                                            className="w-full h-48 object-cover rounded-xl mb-4"
+                                            className="w-full h-40 sm:h-48 object-cover rounded-xl mb-3 sm:mb-4"
                                         />
                                     )}
-                                    <div className="flex items-start justify-between mb-3">
-                                        <h3 className="text-xl font-bold text-white">{merchant.name}</h3>
+                                    <div className="flex items-start justify-between mb-2 sm:mb-3">
+                                        <h3 className="text-lg sm:text-xl font-bold text-white leading-tight">{merchant.name}</h3>
                                     </div>
                                     <div className="space-y-2 mb-4">
                                         {merchant.category && (

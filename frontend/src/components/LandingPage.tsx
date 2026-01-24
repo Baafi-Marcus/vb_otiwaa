@@ -53,12 +53,12 @@ export default function LandingPage() {
 
             {/* Hero Section */}
 
-            <div className="flex-1 flex flex-col lg:flex-row items-center justify-center p-6 lg:p-20 relative z-10 gap-16 lg:gap-24">
+            <div className="flex-1 flex flex-col lg:flex-row items-center justify-center p-6 lg:p-20 relative z-10 gap-8 lg:gap-24">
                 <motion.div
                     initial={{ opacity: 0, x: -50 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.8, ease: "easeOut" }}
-                    className="max-w-2xl w-full space-y-10 text-center lg:text-left"
+                    className="max-w-2xl w-full space-y-6 lg:space-y-10 text-center lg:text-left"
                 >
                     <div className="space-y-4">
                         <motion.div
@@ -72,16 +72,16 @@ export default function LandingPage() {
                             </span>
                             Welcome to
                         </motion.div>
-                        <h1 className="text-5xl sm:text-7xl lg:text-8xl font-black tracking-tighter leading-[0.9] bg-clip-text text-transparent bg-gradient-to-b from-white to-white/40">
+                        <h1 className="text-4xl sm:text-7xl lg:text-8xl font-black tracking-tighter leading-[0.9] bg-clip-text text-transparent bg-gradient-to-b from-white to-white/40">
                             AI-POWERED<br />
                             COMMERCE.
                         </h1>
-                        <p className="text-lg sm:text-xl lg:text-2xl text-primary font-bold tracking-[0.2em] uppercase font-sans">
+                        <p className="text-sm sm:text-xl lg:text-2xl text-primary font-bold tracking-[0.2em] uppercase font-sans">
                             create.build.inspire.
                         </p>
                     </div>
 
-                    <p className="text-base lg:text-lg text-muted-foreground/80 leading-relaxed max-w-lg mx-auto lg:mx-0 text-center lg:text-left">
+                    <p className="text-sm lg:text-lg text-muted-foreground/80 leading-relaxed max-w-lg mx-auto lg:mx-0 text-center lg:text-left">
                         Empowering small businesses with AI-driven WhatsApp commerce.
                         Automate orders, engage customers, and scale effortlessy with the power of intelligent conversations.
                     </p>
@@ -123,12 +123,12 @@ export default function LandingPage() {
                         initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
-                        className="text-center mb-12"
+                        className="text-center mb-8 lg:mb-12"
                     >
-                        <h2 className="text-4xl lg:text-5xl font-black mb-4 bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60">
+                        <h2 className="text-2xl lg:text-5xl font-black mb-3 lg:mb-4 bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60">
                             What We Offer
                         </h2>
-                        <p className="text-muted-foreground max-w-2xl mx-auto">
+                        <p className="text-xs lg:text-base text-muted-foreground max-w-2xl mx-auto">
                             Empowering businesses with cutting-edge AI technology
                         </p>
                     </motion.div>
@@ -160,12 +160,12 @@ export default function LandingPage() {
                         initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
-                        className="text-center mb-16"
+                        className="text-center mb-10 lg:mb-16"
                     >
-                        <h2 className="text-4xl lg:text-5xl font-black mb-4 bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60">
+                        <h2 className="text-3xl lg:text-5xl font-black mb-3 lg:mb-4 bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60">
                             How It Works
                         </h2>
-                        <p className="text-muted-foreground max-w-2xl mx-auto">
+                        <p className="text-xs lg:text-base text-muted-foreground max-w-2xl mx-auto">
                             Simple, fast, and powerful
                         </p>
                     </motion.div>
@@ -197,12 +197,12 @@ export default function LandingPage() {
                         initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
-                        className="text-center mb-16"
+                        className="text-center mb-10 lg:mb-16"
                     >
-                        <h2 className="text-4xl lg:text-5xl font-black mb-4 bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60 uppercase">
+                        <h2 className="text-3xl lg:text-5xl font-black mb-3 lg:mb-4 bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60 uppercase">
                             Better For You
                         </h2>
-                        <p className="text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+                        <p className="text-xs lg:text-base text-muted-foreground max-w-2xl mx-auto leading-relaxed">
                             Experience the future of shopping. No slow websites, no complicated apps. Just chat with your favorite local businesses directly on WhatsApp.
                         </p>
                     </motion.div>
