@@ -107,16 +107,19 @@ export class OrderService {
 
             // --- ALL TIERS: Send WhatsApp Alert to Merchant (Centralized Flow) ---
             if (merchant.contactPhone) {
-                const itemsList = data.items.map(i => `${i.quantity}x ${i.productId}`).join(', '); // Ideally product name, but ID for now or fetch it
-                // We have items with product data in 'data.items' but only ID. 
-                // However, the `order` object returned by create has items included.
-
                 const shortId = order.shortId || order.id.substring(0, 4);
+
+                // Construct items summary
+                const itemsList = order.items.map(item => `- ${item.product.name} (x${item.quantity})`).join('\n');
+
                 const alertMsg = `🔔 *NEW ORDER ${shortId}*\n\n` +
-                    `👤 Customer: ${data.customerName}\n` +
-                    `💰 Total: GHS ${totalAmount}\n` +
-                    `🚚 Mode: ${data.fulfillmentMode}\n\n` +
-                    `Login to your dashboard to view details and accept!`;
+                    `👤 *Customer*: ${data.customerName}\n` +
+                    `📞 *Phone*: ${data.customerPhone}\n\n` +
+                    `📦 *Items*:\n${itemsList}\n\n` +
+                    `💰 *Total*: GHS ${totalAmount}\n` +
+                    `🚚 *Mode*: ${data.fulfillmentMode}\n` +
+                    `📍 *Location*: ${data.location || 'N/A'}\n\n` +
+                    `👉 Login to your dashboard to process: \n${process.env.SERVER_URL || 'https://fuseweb.service'}/admin`;
 
                 try {
                     await this.whatsapp.sendWhatsAppMessage(merchant.contactPhone, alertMsg);

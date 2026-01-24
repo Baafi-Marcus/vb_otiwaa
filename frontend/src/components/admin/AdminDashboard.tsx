@@ -341,6 +341,7 @@ function MerchantRegistration({ onComplete, initialData }: any) {
         location: '',
         operatingHours: '',
         paymentMethods: '',
+        momoNumber: '',
         menuImageUrl: '',
         logoUrl: '',
         description: '',
@@ -470,6 +471,13 @@ function MerchantRegistration({ onComplete, initialData }: any) {
         setLoading(true);
         setError(null);
 
+        // Security Check: If MoMo is selected, number is required
+        if (formData.paymentMethods.includes('MTN MoMo') && !formData.momoNumber) {
+            toast.error('MoMo Number is required for MoMo payments!');
+            setLoading(false);
+            return;
+        }
+
         try {
             const resp = await axios.post(`${API_BASE}/api/merchants/register`, {
                 name: formData.name,
@@ -504,7 +512,7 @@ function MerchantRegistration({ onComplete, initialData }: any) {
             if (draftProducts.length > 0) {
                 setIsReviewingMenu(true);
             } else {
-                setFormData({ name: '', contactPhone: '', category: 'Restaurant', vision: '', location: '', operatingHours: '', paymentMethods: '', menuImageUrl: '', logoUrl: '', description: '', tier: 'BASIC', tierDurationMonths: 1 });
+                setFormData({ name: '', contactPhone: '', category: 'Restaurant', vision: '', location: '', operatingHours: '', paymentMethods: '', momoNumber: '', menuImageUrl: '', logoUrl: '', description: '', tier: 'BASIC', tierDurationMonths: 1 });
                 setExpandedPrompt(null);
             }
 
@@ -566,7 +574,7 @@ function MerchantRegistration({ onComplete, initialData }: any) {
                                 onClick={() => {
                                     setSuccess(false);
                                     setRegisteredId(null);
-                                    setFormData({ name: '', contactPhone: '', category: 'Restaurant', vision: '', location: '', operatingHours: '', paymentMethods: '', menuImageUrl: '', logoUrl: '', description: '', tier: 'BASIC', tierDurationMonths: 1 });
+                                    setFormData({ name: '', contactPhone: '', category: 'Restaurant', vision: '', location: '', operatingHours: '', paymentMethods: '', momoNumber: '', menuImageUrl: '', logoUrl: '', description: '', tier: 'BASIC', tierDurationMonths: 1 });
                                     setExpandedPrompt(null);
                                 }}
                                 className="px-6 py-3 font-bold text-muted-foreground hover:text-foreground transition-colors"
@@ -678,16 +686,59 @@ function MerchantRegistration({ onComplete, initialData }: any) {
                                 </div>
                             </div>
 
-                            <div className="space-y-2">
+                            <div className="space-y-4">
                                 <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Payment Methods</label>
-                                <input
-                                    type="text"
-                                    placeholder="e.g. MTN MoMo, Cash on Delivery"
-                                    className="w-full bg-secondary/30 border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all text-sm"
-                                    value={formData.paymentMethods}
-                                    onChange={(e) => setFormData({ ...formData, paymentMethods: e.target.value })}
-                                    disabled={loading}
-                                />
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                    {['MTN MoMo', 'Telecel Cash', 'Cash on Delivery', 'Card Payment'].map((method) => {
+                                        const isSelected = formData.paymentMethods.includes(method);
+                                        return (
+                                            <button
+                                                key={method}
+                                                type="button"
+                                                onClick={() => {
+                                                    const current = formData.paymentMethods ? formData.paymentMethods.split(', ') : [];
+                                                    const updated = isSelected
+                                                        ? current.filter(m => m !== method)
+                                                        : [...current, method];
+                                                    setFormData({ ...formData, paymentMethods: updated.join(', ') });
+                                                }}
+                                                className={`px-4 py-3 rounded-xl border text-sm font-bold transition-all flex items-center gap-2
+                                                    ${isSelected
+                                                        ? 'bg-primary/20 border-primary text-primary shadow-lg shadow-primary/10'
+                                                        : 'bg-secondary/30 border-border text-muted-foreground hover:border-primary/30'}`}
+                                            >
+                                                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all ${isSelected ? 'border-primary bg-primary' : 'border-muted-foreground/30'}`}>
+                                                    {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                                                </div>
+                                                {method}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+
+                                {formData.paymentMethods.includes('MTN MoMo') || formData.paymentMethods.includes('Telecel Cash') ? (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: -10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-2xl space-y-3"
+                                    >
+                                        <div className="flex items-center gap-2 text-emerald-500">
+                                            <Smartphone className="w-4 h-4" />
+                                            <span className="text-xs font-bold uppercase tracking-widest">MoMo / Mobile Money Number</span>
+                                        </div>
+                                        <input
+                                            type="text"
+                                            placeholder="Enter MoMo Number (e.g. 024XXXXXXX)"
+                                            className="w-full bg-white/5 border-emerald-500/20 text-foreground rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none transition-all font-mono"
+                                            value={formData.momoNumber || ''}
+                                            onChange={(e) => setFormData({ ...formData, momoNumber: e.target.value })}
+                                            required
+                                        />
+                                        <p className="text-[10px] text-emerald-500/60 font-medium italic">
+                                            This number will be shared with customers for payment screenshots.
+                                        </p>
+                                    </motion.div>
+                                ) : null}
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -854,13 +905,13 @@ function MerchantRegistration({ onComplete, initialData }: any) {
                             onClose={() => {
                                 setIsReviewingMenu(false);
                                 onComplete();
-                                setFormData({ name: '', contactPhone: '', category: 'Restaurant', vision: '', location: '', operatingHours: '', paymentMethods: '', menuImageUrl: '', logoUrl: '', description: '', tier: 'LISTING', tierDurationMonths: 1 });
+                                setFormData({ name: '', contactPhone: '', category: 'Restaurant', vision: '', location: '', operatingHours: '', paymentMethods: '', momoNumber: '', menuImageUrl: '', logoUrl: '', description: '', tier: 'BASIC', tierDurationMonths: 1 });
                                 setExpandedPrompt(null);
                             }}
                             onSuccess={() => {
                                 setIsReviewingMenu(false);
                                 onComplete();
-                                setFormData({ name: '', contactPhone: '', category: 'Restaurant', vision: '', location: '', operatingHours: '', paymentMethods: '', menuImageUrl: '', logoUrl: '', description: '', tier: 'LISTING', tierDurationMonths: 1 });
+                                setFormData({ name: '', contactPhone: '', category: 'Restaurant', vision: '', location: '', operatingHours: '', paymentMethods: '', momoNumber: '', menuImageUrl: '', logoUrl: '', description: '', tier: 'BASIC', tierDurationMonths: 1 });
                                 setExpandedPrompt(null);
                             }}
                         />

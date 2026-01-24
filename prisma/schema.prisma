@@ -32,6 +32,7 @@ model Merchant {
   lastOrderCountReset   DateTime       @default(now())
   logoUrl               String?
   contactPhone          String?        // CRITICAL: Used for order alerts
+  momoNumber            String?        // NEW: Specific field for MoMo payments
   contactEmail          String?
   nudgeDays             Int            @default(2)
   nudgeMessage          String?

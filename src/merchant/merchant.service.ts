@@ -86,6 +86,7 @@ export class MerchantService {
                     tierExpiresAt: tierExpiresAt,
                     logoUrl: data.logoUrl,
                     description: data.description,
+                    momoNumber: (data as any).momoNumber,
                 },
             });
 

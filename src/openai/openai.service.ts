@@ -179,7 +179,7 @@ Business type: ${merchant.category}
 Location: ${merchant.location || 'Not Specified'}
 Operating hours: ${merchant.operatingHours || 'Not Specified'}
 Payment methods: ${merchant.paymentMethods || 'Not Specified'}
-Delivery options: Base Delivery Fee: ${merchant.baseDeliveryFee || 0} GHS
+${(merchant as any).momoNumber ? `MoMo Number: ${(merchant as any).momoNumber}\n` : ''}Delivery options: Base Delivery Fee: ${merchant.baseDeliveryFee || 0} GHS
 Menu Image Available: ${merchant.menuImageUrl ? 'YES' : 'NO'}
 ${orderMemory}
 ${closedInstruction}

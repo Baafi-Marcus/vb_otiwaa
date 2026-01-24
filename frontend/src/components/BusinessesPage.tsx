@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { MessageCircle, ArrowLeft, X, MapPin, Tag, Clock } from 'lucide-react';
+import { MessageCircle, ArrowLeft, X, MapPin, Tag, Clock, Search } from 'lucide-react';
 import axios from 'axios';
 
 const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
@@ -13,6 +13,7 @@ export default function BusinessesPage() {
     const [merchants, setMerchants] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedMerchant, setSelectedMerchant] = useState<any>(null);
+    const [searchTerm, setSearchTerm] = useState('');
 
 
 
@@ -29,6 +30,12 @@ export default function BusinessesPage() {
         };
         fetchMerchants();
     }, []);
+
+    const filteredMerchants = merchants.filter(m =>
+        m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (m.category && m.category.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (m.location && m.location.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
 
     return (
         <div className="min-h-screen bg-[#020202] text-white flex flex-col font-sans relative overflow-y-auto">
@@ -77,18 +84,50 @@ export default function BusinessesPage() {
                         </p>
                     </motion.div>
 
+                    {merchants.length >= 20 && (
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="relative max-w-xl mx-auto mb-12 sm:mb-16"
+                        >
+                            <div className="relative group">
+                                <div className="absolute -inset-1 bg-gradient-to-r from-primary to-purple-600 rounded-[2rem] blur opacity-25 group-focus-within:opacity-50 transition duration-1000"></div>
+                                <div className="relative flex items-center bg-[#0a0a0a] border border-white/10 rounded-2xl overflow-hidden">
+                                    <div className="pl-5">
+                                        <Search className="w-5 h-5 text-primary" />
+                                    </div>
+                                    <input
+                                        type="text"
+                                        placeholder="Search by name, category, or location..."
+                                        className="w-full px-4 py-5 bg-transparent outline-none font-bold text-white placeholder:text-muted-foreground/40 text-lg"
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                    />
+                                    {searchTerm && (
+                                        <button
+                                            onClick={() => setSearchTerm('')}
+                                            className="pr-5 text-muted-foreground hover:text-white transition-colors"
+                                        >
+                                            <X className="w-5 h-5" />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+
                     {loading ? (
                         <div className="text-center py-20">
                             <div className="inline-block w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
                             <p className="mt-4 text-muted-foreground">Loading merchants...</p>
                         </div>
-                    ) : merchants.length === 0 ? (
+                    ) : filteredMerchants.length === 0 ? (
                         <div className="text-center py-20">
-                            <p className="text-muted-foreground text-lg">No merchants available at the moment.</p>
+                            <p className="text-muted-foreground text-lg">No merchants found matching "{searchTerm}".</p>
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {merchants.map((merchant, index) => (
+                            {filteredMerchants.map((merchant, index) => (
                                 <motion.div
                                     key={merchant.id}
                                     initial={{ opacity: 0, y: 20 }}

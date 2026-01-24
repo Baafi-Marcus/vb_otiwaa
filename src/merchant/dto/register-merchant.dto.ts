@@ -53,6 +53,10 @@ export class RegisterMerchantDto {
 
     @IsOptional()
     @IsString()
+    momoNumber?: string;
+
+    @IsOptional()
+    @IsString()
     logoUrl?: string;
 
     @IsOptional()
