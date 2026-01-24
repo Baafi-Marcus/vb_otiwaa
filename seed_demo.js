@@ -5,7 +5,6 @@ async function main() {
     console.log('🌱 Starting to seed demo businesses...');
 
     try {
-        // Clear dependencies first
         await prisma.orderItem.deleteMany({});
         await prisma.order.deleteMany({});
         await prisma.product.deleteMany({});
@@ -49,7 +48,8 @@ async function main() {
         { name: 'Brew & Bake', category: 'Restaurant', location: 'Kaneshie', vision: 'Quality coffee and artisan donuts.', lat: 5.5726, lng: -0.2426 }
     ];
 
-    for (const b of businesses) {
+    for (let i = 0; i < businesses.length; i++) {
+        const b = businesses[i];
         await prisma.merchant.create({
             data: {
                 name: b.name,
@@ -63,12 +63,12 @@ async function main() {
                 baseDeliveryFee: 15.00,
                 isClosed: false,
                 paymentMethods: 'MTN MoMo, Cash',
-                momoNumber: '0240000000',
+                momoNumber: `024${String(i).padStart(7, '0')}`, // Unique MoMo number
                 description: `${b.name} is a premier ${b.category} business in ${b.location}.`,
                 operatingHours: 'Mon-Sat 9am-9pm'
             }
         });
-        console.log(`✅ Created ${b.name}`);
+        console.log(`✅ Created ${i + 1}/25: ${b.name}`);
     }
 
     console.log('✨ Seeded 25 businesses with coordinates successfully!');

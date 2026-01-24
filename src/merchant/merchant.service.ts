@@ -49,6 +49,8 @@ export class MerchantService {
         tierDurationMonths?: number;
         logoUrl?: string;
         description?: string;
+        latitude?: number;
+        longitude?: number;
     }) {
         this.logger.log(`Registering new ${data.category} merchant: ${data.name}`);
 
@@ -87,6 +89,8 @@ export class MerchantService {
                     logoUrl: data.logoUrl,
                     description: data.description,
                     momoNumber: (data as any).momoNumber,
+                    latitude: data.latitude,
+                    longitude: data.longitude,
                 },
             });
 

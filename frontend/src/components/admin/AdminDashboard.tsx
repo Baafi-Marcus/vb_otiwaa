@@ -31,7 +31,10 @@ import {
     Bell,
     Mail,
     User,
-    Inbox
+    Inbox,
+    MapPin,
+    Edit3,
+    Check
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useSocket } from '../../context/SocketContext';
@@ -345,6 +348,8 @@ function MerchantRegistration({ onComplete, initialData }: any) {
         menuImageUrl: '',
         logoUrl: '',
         description: '',
+        latitude: '',
+        longitude: '',
         tier: 'BASIC',
         tierDurationMonths: 1
     });
@@ -445,6 +450,54 @@ function MerchantRegistration({ onComplete, initialData }: any) {
         }
     };
 
+    const handleSearchLocation = async () => {
+        if (!formData.location) {
+            toast.error('Enter a location or address to search');
+            return;
+        }
+        toast.loading('Searching for coordinates...');
+        try {
+            const resp = await axios.get(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(formData.location)}`);
+            if (resp.data && resp.data.length > 0) {
+                const result = resp.data[0];
+                setFormData(prev => ({
+                    ...prev,
+                    latitude: result.lat.toString(),
+                    longitude: result.lon.toString()
+                }));
+                toast.dismiss();
+                toast.success('Location coordinates found!');
+            } else {
+                toast.dismiss();
+                toast.error('Could not find coordinates for this location');
+            }
+        } catch (err) {
+            toast.dismiss();
+            toast.error('Geocoding service error');
+        }
+    };
+
+    const handlePinCurrentLocation = () => {
+        if (navigator.geolocation) {
+            toast.loading('Getting current GPS coordinates...');
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    setFormData(prev => ({
+                        ...prev,
+                        latitude: pos.coords.latitude.toString(),
+                        longitude: pos.coords.longitude.toString()
+                    }));
+                    toast.dismiss();
+                    toast.success('Pinned current location!');
+                },
+                () => {
+                    toast.dismiss();
+                    toast.error('Failed to get current location');
+                }
+            );
+        }
+    };
+
     const handleMagicExpand = async () => {
         if (!formData.name || !formData.vision) {
             setError('Please provide a Business Name and Vision first.');
@@ -491,6 +544,8 @@ function MerchantRegistration({ onComplete, initialData }: any) {
                 logoUrl: formData.logoUrl || undefined,
                 description: formData.description || undefined,
                 systemPrompt: expandedPrompt || undefined,
+                latitude: formData.latitude ? Number(formData.latitude) : undefined,
+                longitude: formData.longitude ? Number(formData.longitude) : undefined,
                 tier: formData.tier,
                 tierDurationMonths: formData.tierDurationMonths
             });
@@ -512,7 +567,7 @@ function MerchantRegistration({ onComplete, initialData }: any) {
             if (draftProducts.length > 0) {
                 setIsReviewingMenu(true);
             } else {
-                setFormData({ name: '', contactPhone: '', category: 'Restaurant', vision: '', location: '', operatingHours: '', paymentMethods: '', momoNumber: '', menuImageUrl: '', logoUrl: '', description: '', tier: 'BASIC', tierDurationMonths: 1 });
+                setFormData({ name: '', contactPhone: '', category: 'Restaurant', vision: '', location: '', operatingHours: '', paymentMethods: '', momoNumber: '', menuImageUrl: '', logoUrl: '', description: '', latitude: '', longitude: '', tier: 'BASIC', tierDurationMonths: 1 });
                 setExpandedPrompt(null);
             }
 
@@ -574,7 +629,7 @@ function MerchantRegistration({ onComplete, initialData }: any) {
                                 onClick={() => {
                                     setSuccess(false);
                                     setRegisteredId(null);
-                                    setFormData({ name: '', contactPhone: '', category: 'Restaurant', vision: '', location: '', operatingHours: '', paymentMethods: '', momoNumber: '', menuImageUrl: '', logoUrl: '', description: '', tier: 'BASIC', tierDurationMonths: 1 });
+                                    setFormData({ name: '', contactPhone: '', category: 'Restaurant', vision: '', location: '', operatingHours: '', paymentMethods: '', momoNumber: '', menuImageUrl: '', logoUrl: '', description: '', latitude: '', longitude: '', tier: 'BASIC', tierDurationMonths: 1 });
                                     setExpandedPrompt(null);
                                 }}
                                 className="px-6 py-3 font-bold text-muted-foreground hover:text-foreground transition-colors"
@@ -663,15 +718,57 @@ function MerchantRegistration({ onComplete, initialData }: any) {
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Location & Address</label>
+                                    <div className="flex justify-between items-center">
+                                        <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Location & Address</label>
+                                        <div className="flex gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={handleSearchLocation}
+                                                className="text-[10px] bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded-lg hover:bg-primary/20 transition-all font-bold"
+                                            >
+                                                🔍 Find Coordinates
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={handlePinCurrentLocation}
+                                                className="text-[10px] bg-white/5 text-muted-foreground border border-white/10 px-2 py-0.5 rounded-lg hover:bg-white/10 transition-all font-bold"
+                                            >
+                                                📍 Pin My Location
+                                            </button>
+                                        </div>
+                                    </div>
                                     <input
                                         type="text"
-                                        placeholder="e.g. Accra, Ghana"
+                                        placeholder="e.g. Accra Mall, Osu"
                                         className="w-full bg-secondary/30 border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all text-sm"
                                         value={formData.location}
                                         onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                                         disabled={loading}
                                     />
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="space-y-1">
+                                            <span className="text-[10px] font-bold text-muted-foreground/60 uppercase">Latitude</span>
+                                            <input
+                                                type="number"
+                                                step="any"
+                                                placeholder="5.55..."
+                                                className="w-full bg-black/20 border-border/50 rounded-lg px-3 py-2 text-xs font-mono"
+                                                value={formData.latitude}
+                                                onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <span className="text-[10px] font-bold text-muted-foreground/60 uppercase">Longitude</span>
+                                            <input
+                                                type="number"
+                                                step="any"
+                                                placeholder="-0.19..."
+                                                className="w-full bg-black/20 border-border/50 rounded-lg px-3 py-2 text-xs font-mono"
+                                                value={formData.longitude}
+                                                onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Opening & Closing Times</label>
@@ -905,13 +1002,12 @@ function MerchantRegistration({ onComplete, initialData }: any) {
                             onClose={() => {
                                 setIsReviewingMenu(false);
                                 onComplete();
-                                setFormData({ name: '', contactPhone: '', category: 'Restaurant', vision: '', location: '', operatingHours: '', paymentMethods: '', momoNumber: '', menuImageUrl: '', logoUrl: '', description: '', tier: 'BASIC', tierDurationMonths: 1 });
+                                setFormData({ name: '', contactPhone: '', category: 'Restaurant', vision: '', location: '', operatingHours: '', paymentMethods: '', momoNumber: '', menuImageUrl: '', logoUrl: '', description: '', latitude: '', longitude: '', tier: 'BASIC', tierDurationMonths: 1 });
                                 setExpandedPrompt(null);
                             }}
                             onSuccess={() => {
                                 setIsReviewingMenu(false);
-                                onComplete();
-                                setFormData({ name: '', contactPhone: '', category: 'Restaurant', vision: '', location: '', operatingHours: '', paymentMethods: '', momoNumber: '', menuImageUrl: '', logoUrl: '', description: '', tier: 'BASIC', tierDurationMonths: 1 });
+                                setFormData({ name: '', contactPhone: '', category: 'Restaurant', vision: '', location: '', operatingHours: '', paymentMethods: '', momoNumber: '', menuImageUrl: '', logoUrl: '', description: '', latitude: '', longitude: '', tier: 'BASIC', tierDurationMonths: 1 });
                                 setExpandedPrompt(null);
                             }}
                         />
@@ -1324,6 +1420,58 @@ const MerchantCard = ({ merchant, index, onSelect, onRefresh }: any) => {
         }
     };
 
+    const [isEditingCoords, setIsEditingCoords] = useState(false);
+    const [coords, setCoords] = useState({
+        location: merchant.location || '',
+        latitude: merchant.latitude || '',
+        longitude: merchant.longitude || ''
+    });
+
+    const handleSearchLocation = async () => {
+        if (!coords.location) {
+            toast.error('Enter a location or address to search');
+            return;
+        }
+        toast.loading('Searching for coordinates...');
+        try {
+            const resp = await axios.get(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(coords.location)}`);
+            if (resp.data && resp.data.length > 0) {
+                const result = resp.data[0];
+                setCoords(prev => ({
+                    ...prev,
+                    latitude: result.lat.toString(),
+                    longitude: result.lon.toString()
+                }));
+                toast.dismiss();
+                toast.success('Location coordinates found!');
+            } else {
+                toast.dismiss();
+                toast.error('Could not find coordinates');
+            }
+        } catch (err) {
+            toast.dismiss();
+            toast.error('Geocoding service error');
+        }
+    };
+
+    const handleUpdateCoords = async () => {
+        setActionLoading(true);
+        try {
+            await axios.patch(`${API_BASE}/api/merchants/${merchant.id}`, {
+                location: coords.location,
+                latitude: coords.latitude ? parseFloat(coords.latitude.toString()) : null,
+                longitude: coords.longitude ? parseFloat(coords.longitude.toString()) : null
+            });
+            toast.success('Coordinates updated!');
+            setIsEditingCoords(false);
+            onRefresh();
+        } catch (err) {
+            toast.error('Failed to update coordinates');
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
     return (
         <motion.div
             layout
@@ -1370,6 +1518,87 @@ const MerchantCard = ({ merchant, index, onSelect, onRefresh }: any) => {
                 </div>
             </div>
 
+            {/* Coordinate Management Section */}
+            <div className="mt-6 p-4 bg-secondary/20 border border-border/50 rounded-2xl space-y-4">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-[10px] font-black uppercase text-secondary-foreground/40 tracking-widest">
+                        <MapPin className="w-3 h-3 text-primary" />
+                        Location & Coordinates
+                    </div>
+                    {!isEditingCoords ? (
+                        <button
+                            onClick={() => setIsEditingCoords(true)}
+                            className="p-1.5 hover:bg-primary/10 text-primary rounded-lg transition-all"
+                        >
+                            <Edit3 className="w-3 h-3" />
+                        </button>
+                    ) : (
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => setIsEditingCoords(false)}
+                                className="p-1.5 hover:bg-white/10 text-muted-foreground rounded-lg transition-all"
+                            >
+                                <X className="w-3 h-3" />
+                            </button>
+                            <button
+                                onClick={handleUpdateCoords}
+                                disabled={actionLoading}
+                                className="p-1.5 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 rounded-lg transition-all"
+                            >
+                                <Check className="w-3 h-3" />
+                            </button>
+                        </div>
+                    )}
+                </div>
+
+                {!isEditingCoords ? (
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-0.5">
+                            <span className="text-[10px] text-muted-foreground/50 font-bold uppercase">Lat</span>
+                            <p className="text-xs font-mono text-foreground/80 lowercase">{merchant.latitude || 'N/A'}</p>
+                        </div>
+                        <div className="space-y-0.5">
+                            <span className="text-[10px] text-muted-foreground/50 font-bold uppercase">Lng</span>
+                            <p className="text-xs font-mono text-foreground/80 lowercase">{merchant.longitude || 'N/A'}</p>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="space-y-3">
+                        <div className="relative">
+                            <input
+                                value={coords.location}
+                                onChange={e => setCoords({ ...coords, location: e.target.value })}
+                                placeholder="Business location..."
+                                className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs pr-10"
+                            />
+                            <button
+                                onClick={handleSearchLocation}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-primary hover:bg-primary/10 rounded-md"
+                                title="Search coordinates"
+                            >
+                                <Search className="w-3 h-3" />
+                            </button>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                            <input
+                                type="text"
+                                value={coords.latitude}
+                                onChange={e => setCoords({ ...coords, latitude: e.target.value })}
+                                placeholder="Lat"
+                                className="bg-background border border-border rounded-lg px-2 py-1.5 text-[10px] font-mono"
+                            />
+                            <input
+                                type="text"
+                                value={coords.longitude}
+                                onChange={e => setCoords({ ...coords, longitude: e.target.value })}
+                                placeholder="Lng"
+                                className="bg-background border border-border rounded-lg px-2 py-1.5 text-[10px] font-mono"
+                            />
+                        </div>
+                    </div>
+                )}
+            </div>
+
             <div className="mt-6 flex items-center gap-2 relative z-20">
                 <button
                     onClick={() => onSelect(merchant.id)}
@@ -1397,7 +1626,7 @@ const MerchantCard = ({ merchant, index, onSelect, onRefresh }: any) => {
                     {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                 </button>
             </div>
-        </motion.div>
+        </motion.div >
     );
 }
 
