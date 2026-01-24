@@ -10,6 +10,17 @@ const API_BASE = window.location.hostname === 'localhost' || window.location.hos
 
 
 export default function LandingPage() {
+    useEffect(() => {
+        // Handle scrolling to contact form if hash is present
+        if (window.location.hash === '#contact') {
+            setTimeout(() => {
+                const element = document.getElementById('contact');
+                if (element) {
+                    element.scrollIntoView({ behavior: 'smooth' });
+                }
+            }, 100);
+        }
+    }, []);
 
     return (
         <div className="min-h-screen bg-[#020202] text-white flex flex-col font-sans relative overflow-y-auto">

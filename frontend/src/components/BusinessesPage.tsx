@@ -83,16 +83,9 @@ export default function BusinessesPage() {
                         <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black mb-4 bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60 uppercase">
                             Browse Merchants
                         </h1>
-                        <p className="text-muted-foreground max-w-2xl mx-auto text-base sm:text-lg px-4 mb-8">
+                        <p className="text-muted-foreground max-w-2xl mx-auto text-base sm:text-lg px-4">
                             Discover local businesses powered by AI. Click "Chat Now" to start ordering instantly.
                         </p>
-                        <a
-                            href="/#contact"
-                            className="inline-flex items-center gap-2 px-8 py-4 bg-white text-black font-black rounded-2xl hover:scale-105 active:scale-95 transition-all shadow-xl shadow-white/10"
-                        >
-                            <Plus className="w-5 h-5" />
-                            Add Your Business
-                        </a>
                     </motion.div>
 
                     {merchants.length >= 20 && (
