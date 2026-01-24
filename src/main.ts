@@ -47,8 +47,12 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
   app.useGlobalFilters(new SpaFallbackFilter());
 
-  app.useStaticAssets(join(__dirname, '..', 'generatedImages'));
-  app.useStaticAssets(join(__dirname, '..', 'audioFile'));
+  app.useStaticAssets(join(process.cwd(), 'generatedImages'), {
+    prefix: '/generatedImages/',
+  });
+  app.useStaticAssets(join(process.cwd(), 'audioFiles'), {
+    prefix: '/audioFiles/',
+  });
   app.use(require('express').json({ limit: '50mb' }));
   app.use(require('express').urlencoded({ limit: '50mb', extended: true }));
 
