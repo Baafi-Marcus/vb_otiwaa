@@ -9,6 +9,14 @@ const API_BASE = window.location.hostname === 'localhost' || window.location.hos
 
 const PLATFORM_WHATSAPP = import.meta.env.VITE_PLATFORM_WHATSAPP || '+14155238886';
 
+const resolveImageUrl = (url: string | null | undefined) => {
+    if (!url || url === 'null' || url === 'undefined' || url === 'none') return null;
+    if (url.startsWith('http')) return url;
+    // Handle local uploads by ensuring proper pathing
+    const cleanPath = url.startsWith('/') ? url.slice(1) : url;
+    return `${API_BASE}/${cleanPath}`;
+};
+
 export default function BusinessesPage() {
     const [merchants, setMerchants] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -122,13 +130,13 @@ export default function BusinessesPage() {
                         onClick={() => setSelectedMerchant(merchant)}
                         className="bg-white/5 border border-white/10 rounded-xl sm:rounded-2xl p-3 sm:p-6 backdrop-blur-md hover:bg-white/10 transition-all cursor-pointer group"
                     >
-                        {merchant.logoUrl || merchant.menuImageUrl ? (
+                        {resolveImageUrl(merchant.logoUrl || merchant.menuImageUrl) ? (
                             <img
-                                src={merchant.logoUrl || merchant.menuImageUrl}
+                                src={resolveImageUrl(merchant.logoUrl || merchant.menuImageUrl) || ''}
                                 alt={merchant.name}
                                 className="w-full h-32 sm:h-48 object-cover rounded-lg sm:rounded-xl mb-2 sm:mb-4 group-hover:scale-105 transition-transform duration-500"
                                 onError={(e) => {
-                                    (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1557683316-973673baf926?q=80&w=800&auto=format&fit=crop'; // Sleek fallback gradient
+                                    (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1557683316-973673baf926?q=80&w=800&auto=format&fit=crop';
                                 }}
                             />
                         ) : (
@@ -328,10 +336,10 @@ export default function BusinessesPage() {
 
                             <div className="flex flex-col">
                                 {/* Hero Image */}
-                                {selectedMerchant.logoUrl || selectedMerchant.menuImageUrl ? (
+                                {resolveImageUrl(selectedMerchant.logoUrl || selectedMerchant.menuImageUrl) ? (
                                     <div className="w-full h-48 sm:h-64 relative overflow-hidden">
                                         <img
-                                            src={selectedMerchant.logoUrl || selectedMerchant.menuImageUrl}
+                                            src={resolveImageUrl(selectedMerchant.logoUrl || selectedMerchant.menuImageUrl) || ''}
                                             alt={selectedMerchant.name}
                                             className="w-full h-full object-cover"
                                             onError={(e) => {
