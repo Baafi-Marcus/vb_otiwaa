@@ -73,23 +73,30 @@ export class MerchantController {
     async getPublicMerchants() {
         const merchants = await this.merchantService.getAllMerchants();
         // Filter and return only public-safe data
-        return merchants.map(m => ({
-            id: m.id,
-            name: m.name,
-            category: m.category,
-            location: m.location,
-            tier: (m as any).tier,
-            isClosed: m.isClosed,
-            // Only expose contactPhone for LISTING tier
-            contactPhone: (m as any).tier === 'LISTING' ? (m as any).contactPhone : null,
-            logoUrl: (m as any).logoUrl,
-            momoNumber: (m as any).momoNumber,
-            menuImageUrl: m.menuImageUrl,
-            description: (m as any).description,
-            deliveryOptions: (m as any).deliveryOptions,
-            operatingHours: (m as any).operatingHours,
-            catalog: m.catalog // Expose products for pricing display
-        }));
+        return merchants.map(m => {
+            const logoUrl = (m as any).logoUrl === 'null' ? null : (m as any).logoUrl;
+            const menuImageUrl = m.menuImageUrl === 'null' ? null : m.menuImageUrl;
+
+            return {
+                id: m.id,
+                name: m.name,
+                category: m.category,
+                location: m.location,
+                latitude: (m as any).latitude,
+                longitude: (m as any).longitude,
+                tier: (m as any).tier,
+                isClosed: m.isClosed,
+                // Only expose contactPhone for LISTING tier
+                contactPhone: (m as any).tier === 'LISTING' ? (m as any).contactPhone : null,
+                logoUrl,
+                momoNumber: (m as any).momoNumber,
+                menuImageUrl,
+                description: (m as any).description,
+                deliveryOptions: (m as any).deliveryOptions,
+                operatingHours: (m as any).operatingHours,
+                catalog: m.catalog // Expose products for pricing display
+            };
+        });
     }
 
     @Get()

@@ -122,12 +122,19 @@ export default function BusinessesPage() {
                         onClick={() => setSelectedMerchant(merchant)}
                         className="bg-white/5 border border-white/10 rounded-xl sm:rounded-2xl p-3 sm:p-6 backdrop-blur-md hover:bg-white/10 transition-all cursor-pointer group"
                     >
-                        {(merchant.logoUrl || merchant.menuImageUrl) && (
+                        {merchant.logoUrl || merchant.menuImageUrl ? (
                             <img
                                 src={merchant.logoUrl || merchant.menuImageUrl}
                                 alt={merchant.name}
-                                className="w-full h-24 sm:h-48 object-cover rounded-lg sm:rounded-xl mb-2 sm:mb-4"
+                                className="w-full h-32 sm:h-48 object-cover rounded-lg sm:rounded-xl mb-2 sm:mb-4 group-hover:scale-105 transition-transform duration-500"
+                                onError={(e) => {
+                                    (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1557683316-973673baf926?q=80&w=800&auto=format&fit=crop'; // Sleek fallback gradient
+                                }}
                             />
+                        ) : (
+                            <div className="w-full h-32 sm:h-48 bg-gradient-to-br from-primary/20 to-purple-600/20 rounded-lg sm:rounded-xl mb-2 sm:mb-4 flex items-center justify-center border border-white/5">
+                                <Tag className="w-8 h-8 text-primary/40" />
+                            </div>
                         )}
                         <div className="flex items-start justify-between mb-1 sm:mb-3">
                             <h3 className="text-sm sm:text-xl font-bold text-white leading-tight line-clamp-1 sm:line-clamp-none">{merchant.name}</h3>
@@ -321,14 +328,21 @@ export default function BusinessesPage() {
 
                             <div className="flex flex-col">
                                 {/* Hero Image */}
-                                {(selectedMerchant.logoUrl || selectedMerchant.menuImageUrl) && (
+                                {selectedMerchant.logoUrl || selectedMerchant.menuImageUrl ? (
                                     <div className="w-full h-48 sm:h-64 relative overflow-hidden">
                                         <img
                                             src={selectedMerchant.logoUrl || selectedMerchant.menuImageUrl}
                                             alt={selectedMerchant.name}
                                             className="w-full h-full object-cover"
+                                            onError={(e) => {
+                                                (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1557683316-973673baf926?q=80&w=800&auto=format&fit=crop';
+                                            }}
                                         />
                                         <div className="absolute inset-0 bg-gradient-to-t from-card via-card/50 to-transparent" />
+                                    </div>
+                                ) : (
+                                    <div className="w-full h-32 bg-gradient-to-br from-primary/20 to-purple-600/20 flex items-center justify-center border-b border-white/5">
+                                        <Tag className="w-8 h-8 text-primary/40" />
                                     </div>
                                 )}
 
