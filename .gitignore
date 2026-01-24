@@ -56,8 +56,8 @@ pids
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 # text-to-image files
-generatedImages/
-audioFiles/
+# generatedImages/
+# audioFiles/
 
 # Temporary scripts and binaries
 scripts/setup_env.js
