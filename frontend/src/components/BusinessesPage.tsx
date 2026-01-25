@@ -163,20 +163,29 @@ export default function BusinessesPage() {
                                 <p className="text-[10px] sm:text-sm text-red-400 font-semibold">🔴 Closed</p>
                             )}
                         </div>
-                        <a
-                            href={
-                                merchant.tier === 'LISTING'
-                                    ? `https://wa.me/${merchant.contactPhone?.replace(/\+/g, '')}`
-                                    : `https://wa.me/${PLATFORM_WHATSAPP.replace(/\+/g, '').replace(' ', '')}?text=Start:${merchant.id}`
-                            }
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            className="w-full py-2 sm:py-3 px-3 sm:px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg sm:rounded-xl font-bold text-[10px] sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition-all shadow-lg shadow-emerald-500/20"
-                        >
-                            <MessageCircle className="w-3 h-3 sm:w-4 sm:h-4" />
-                            Chat Now
-                        </a>
+                        {!merchant.whatsappPhoneNumberId && !merchant.twilioPhoneNumber && merchant.tier !== 'LISTING' ? (
+                            <div className="space-y-2">
+                                <div className="w-full py-2 sm:py-3 px-3 sm:px-4 bg-secondary/50 border border-dashed border-border text-muted-foreground rounded-lg sm:rounded-xl font-bold text-[10px] sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 cursor-not-allowed">
+                                    <MessageCircle className="w-3 h-3 sm:w-4 sm:h-4 opacity-50" />
+                                    Demo Only
+                                </div>
+                            </div>
+                        ) : (
+                            <a
+                                href={
+                                    merchant.tier === 'LISTING'
+                                        ? `https://wa.me/${merchant.contactPhone?.replace(/\+/g, '')}`
+                                        : `https://wa.me/${PLATFORM_WHATSAPP.replace(/\+/g, '').replace(' ', '')}?text=Start:${merchant.id}`
+                                }
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="w-full py-2 sm:py-3 px-3 sm:px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg sm:rounded-xl font-bold text-[10px] sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition-all shadow-lg shadow-emerald-500/20"
+                            >
+                                <MessageCircle className="w-3 h-3 sm:w-4 sm:h-4" />
+                                Chat Now
+                            </a>
+                        )}
                     </motion.div>
                 ))}
             </div>
