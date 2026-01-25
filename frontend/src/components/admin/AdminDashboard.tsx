@@ -4,6 +4,7 @@ import axios from 'axios';
 import {
     LayoutDashboard,
     Plus,
+    ClipboardList,
     Users,
     Sparkles,
     Settings,
@@ -55,7 +56,7 @@ const API_BASE = window.location.hostname === 'localhost' || window.location.hos
     : '';
 
 export const AdminDashboard: React.FC<{ onMerchantSelect: (id: string) => void }> = ({ onMerchantSelect }) => {
-    const [activeView, setActiveView] = useState<'overview' | 'register' | 'directory' | 'settings' | 'upgrades' | 'alerts' | 'profile' | 'simulation' | 'leads'>('overview');
+    const [activeView, setActiveView] = useState<'overview' | 'register' | 'directory' | 'settings' | 'upgrades' | 'alerts' | 'profile' | 'simulation' | 'leads' | 'audit'>('overview');
     const [merchants, setMerchants] = useState<any[]>([]);
     const [registrationInitialData, setRegistrationInitialData] = useState<any>(null);
     const [loading, setLoading] = useState(false);
@@ -176,6 +177,12 @@ export const AdminDashboard: React.FC<{ onMerchantSelect: (id: string) => void }
                         icon={Inbox}
                         label="Leads Inbox"
                     />
+                    <SidebarLink
+                        active={activeView === 'audit'}
+                        onClick={() => setActiveView('audit')}
+                        icon={ClipboardList}
+                        label="Audit Logs"
+                    />
                 </nav>
             </aside>
 
@@ -190,6 +197,7 @@ export const AdminDashboard: React.FC<{ onMerchantSelect: (id: string) => void }
                 {activeView === 'profile' && <AdminProfile />}
                 {activeView === 'simulation' && <AdminSandbox merchants={merchants} />}
                 {activeView === 'leads' && <LeadsView onConvert={(lead: any) => { setRegistrationInitialData(lead); setActiveView('register'); }} />}
+                {activeView === 'audit' && <AuditLogsView />}
             </main>
         </div>
     );
@@ -2158,3 +2166,97 @@ function LeadsView({ onConvert }: { onConvert: (lead: any) => void }) {
         </div>
     );
 };
+
+function AuditLogsView() {
+    const [logs, setLogs] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    React.useEffect(() => {
+        fetchLogs();
+    }, []);
+
+    const fetchLogs = async () => {
+        setLoading(true);
+        try {
+            const token = localStorage.getItem('adminToken');
+            const response = await axios.get(`${API_BASE}/api/system/audit-logs`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setLogs(response.data);
+        } catch (error) {
+            console.error('Failed to fetch audit logs:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (loading) {
+        return <div className="text-center py-20 text-muted-foreground">Loading audit logs...</div>;
+    }
+
+    return (
+        <div className="space-y-6">
+            <div className="flex items-center justify-between">
+                <div>
+                    <h2 className="text-2xl font-bold text-foreground">System Audit Logs</h2>
+                    <p className="text-muted-foreground">Track all critical system events and security actions</p>
+                </div>
+                <button
+                    onClick={fetchLogs}
+                    className="p-2 bg-secondary/30 rounded-lg hover:bg-secondary/50 transition-colors"
+                >
+                    <Activity className="w-5 h-5 text-primary" />
+                </button>
+            </div>
+
+            <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
+                <table className="w-full text-left">
+                    <thead>
+                        <tr className="bg-secondary/20 border-b border-border">
+                            <th className="p-4 text-xs font-bold text-muted-foreground uppercase">Timestamp</th>
+                            <th className="p-4 text-xs font-bold text-muted-foreground uppercase">Action</th>
+                            <th className="p-4 text-xs font-bold text-muted-foreground uppercase">Actor</th>
+                            <th className="p-4 text-xs font-bold text-muted-foreground uppercase">Details</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                        {logs.map((log) => (
+                            <tr key={log.id} className="hover:bg-secondary/10 transition-colors">
+                                <td className="p-4 text-sm text-muted-foreground font-mono">
+                                    {new Date(log.createdAt).toLocaleString()}
+                                </td>
+                                <td className="p-4">
+                                    <span className={`
+                                        inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider
+                                        ${log.action === 'LOGIN' ? 'bg-green-500/10 text-green-500 border border-green-500/20' :
+                                            log.action.includes('FAIL') ? 'bg-red-500/10 text-red-500 border border-red-500/20' :
+                                                'bg-blue-500/10 text-blue-500 border border-blue-500/20'}
+                                    `}>
+                                        {log.action}
+                                    </span>
+                                </td>
+                                <td className="p-4 text-sm text-foreground">
+                                    <div className="flex flex-col">
+                                        <span className="font-bold">{log.actorType}</span>
+                                        <span className="text-xs text-muted-foreground font-mono">{log.actorId.slice(0, 8)}...</span>
+                                    </div>
+                                </td>
+                                <td className="p-4 text-sm text-muted-foreground max-w-md truncate" title={log.details}>
+                                    {log.details || '-'}
+                                </td>
+                            </tr>
+                        ))}
+                        {logs.length === 0 && (
+                            <tr>
+                                <td colSpan={4} className="p-12 text-center text-muted-foreground">
+                                    <span className="block mb-2 text-2xl">📋</span>
+                                    No audit logs found.
+                                </td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+}

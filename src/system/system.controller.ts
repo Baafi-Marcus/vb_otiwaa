@@ -59,4 +59,11 @@ export class SystemController {
     async updateLeadStatus(@Param('id') id: string, @Body() body: { status: string }) {
         return this.systemService.updateLeadStatus(id, body.status);
     }
+
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles('admin')
+    @Get('audit-logs')
+    async getAuditLogs() {
+        return this.systemService.getAuditLogs();
+    }
 }

@@ -47,6 +47,21 @@ model Merchant {
   messages              Message[]
 }
 
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  actorId   String   // User ID (Admin or Merchant)
+  actorType String   // 'ADMIN' or 'MERCHANT'
+  action    String   // e.g., 'LOGIN', 'UPDATE_PROFILE'
+  target    String?  // Target resource ID
+  details   String?  // JSON string for metadata or failure reason
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@index([actorId])
+  @@index([action])
+}
+
 model Campaign {
   id         String        @id @default(uuid())
   merchantId String

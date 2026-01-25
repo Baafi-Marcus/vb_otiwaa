@@ -2,9 +2,19 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { TwilioService } from '../twilio/twilio.service';
 
+import { AuditService } from './audit.service';
+
 @Injectable()
 export class SystemService {
-    constructor(private prisma: PrismaService, private twilioService: TwilioService) { }
+    constructor(
+        private prisma: PrismaService,
+        private twilioService: TwilioService,
+        private auditService: AuditService
+    ) { }
+
+    async getAuditLogs() {
+        return this.auditService.getLogs();
+    }
 
     async getApiKeys() {
         const keys = await (this.prisma as any).apiKey.findMany({

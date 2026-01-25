@@ -1,6 +1,7 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditService } from '../system/audit.service';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -8,6 +9,7 @@ export class AuthService {
     constructor(
         private prisma: PrismaService,
         private jwtService: JwtService,
+        private auditService: AuditService,
     ) { }
 
     async validateUser(username: string, pass: string, type: 'admin' | 'merchant'): Promise<any> {
@@ -46,6 +48,16 @@ export class AuthService {
             username: user.username || user.whatsappPhoneNumberId || user.id,
             type: user.type
         };
+
+        // Log the successful login
+        this.auditService.logAction({
+            actorId: user.id,
+            actorType: user.type === 'admin' ? 'ADMIN' : 'MERCHANT',
+            action: 'LOGIN',
+            details: 'Successful login',
+            ipAddress: 'N/A' // In a real app, retrieve from request context
+        });
+
         return {
             access_token: this.jwtService.sign(payload),
             user: {
