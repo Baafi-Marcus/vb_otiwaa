@@ -459,6 +459,11 @@ export default function BusinessesPage() {
                                                 <span className="w-2 h-2 rounded-full bg-red-500" />
                                                 Currently Closed
                                             </span>
+                                        ) : !selectedMerchant.whatsappPhoneNumberId && !selectedMerchant.twilioPhoneNumber && selectedMerchant.tier !== 'LISTING' ? (
+                                            <span className="flex items-center gap-2 text-amber-500 font-bold text-sm">
+                                                <span className="w-2 h-2 rounded-full bg-amber-500" />
+                                                Demo Listing
+                                            </span>
                                         ) : (
                                             <span className="flex items-center gap-2 text-emerald-500 font-bold text-sm">
                                                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -469,22 +474,41 @@ export default function BusinessesPage() {
 
                                     {/* CTA Button */}
                                     <div className="space-y-3 pt-2">
-                                        <a
-                                            href={
-                                                selectedMerchant.tier === 'LISTING'
-                                                    ? `https://wa.me/${selectedMerchant.contactPhone?.replace(/\+/g, '')}`
-                                                    : `https://wa.me/${PLATFORM_WHATSAPP.replace(/\+/g, '').replace(' ', '')}?text=Start:${selectedMerchant.id}`
-                                            }
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="w-full py-3 sm:py-4 px-6 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl sm:rounded-2xl font-black text-sm sm:text-base flex items-center justify-center gap-2 sm:gap-3 transition-all shadow-lg shadow-emerald-500/20 active:scale-95"
-                                        >
-                                            <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
-                                            Start Chatting on WhatsApp
-                                        </a>
-                                        <p className="text-center text-xs text-muted-foreground/60 uppercase tracking-wider">
-                                            🔒 Secure end-to-end encrypted
-                                        </p>
+                                        {!selectedMerchant.whatsappPhoneNumberId && !selectedMerchant.twilioPhoneNumber && selectedMerchant.tier !== 'LISTING' ? (
+                                            <div className="space-y-3">
+                                                <div className="w-full py-3 sm:py-4 px-6 bg-secondary/50 border-2 border-dashed border-border text-muted-foreground rounded-xl sm:rounded-2xl font-bold text-sm sm:text-base flex items-center justify-center gap-2 sm:gap-3 cursor-not-allowed">
+                                                    <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 opacity-50" />
+                                                    Chat Not Available (Demo)
+                                                </div>
+                                                <div className="p-4 bg-primary/10 border border-primary/20 rounded-xl">
+                                                    <p className="text-xs text-center text-primary font-bold leading-relaxed">
+                                                        This is a demo listing. Want to set up your own AI-powered business?
+                                                        <a href="/#contact" className="block mt-2 underline hover:text-primary/80 transition-colors">
+                                                            Contact us to get started →
+                                                        </a>
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <a
+                                                    href={
+                                                        selectedMerchant.tier === 'LISTING'
+                                                            ? `https://wa.me/${selectedMerchant.contactPhone?.replace(/\+/g, '')}`
+                                                            : `https://wa.me/${PLATFORM_WHATSAPP.replace(/\+/g, '').replace(' ', '')}?text=Start:${selectedMerchant.id}`
+                                                    }
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="w-full py-3 sm:py-4 px-6 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl sm:rounded-2xl font-black text-sm sm:text-base flex items-center justify-center gap-2 sm:gap-3 transition-all shadow-lg shadow-emerald-500/20 active:scale-95"
+                                                >
+                                                    <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
+                                                    Start Chatting on WhatsApp
+                                                </a>
+                                                <p className="text-center text-xs text-muted-foreground/60 uppercase tracking-wider">
+                                                    🔒 Secure end-to-end encrypted
+                                                </p>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
                             </div>
