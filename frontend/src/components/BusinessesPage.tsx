@@ -206,21 +206,22 @@ export default function BusinessesPage() {
             {/* Navigation Bar */}
             <nav className="w-full py-4 px-6 lg:px-20 relative z-20 bg-black/20 backdrop-blur-sm border-b border-white/5">
                 <div className="max-w-7xl mx-auto flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <img src="/logo-white.png" alt="FuseWeb Service Logo" className="w-8 h-8 sm:w-10 sm:h-10 object-contain" />
-                        <span className="text-xl font-black tracking-tight hidden sm:inline">FuseWeb Service</span>
-                    </div>
-                    <div className="flex items-center gap-6">
+                    <a href="/" className="flex items-center gap-3 group/logo">
+                        <img src="/logo-white.png" alt="FuseWeb Service Logo" className="w-8 h-8 sm:w-10 sm:h-10 object-contain group-hover/logo:scale-110 transition-transform" />
+                        <span className="text-xl font-black tracking-tight hidden sm:inline group-hover/logo:text-primary transition-colors">FuseWeb Service</span>
+                    </a>
+                    <div className="flex items-center gap-4 sm:gap-6">
                         <a href="/" className="text-xs sm:text-sm font-semibold text-white/80 hover:text-white transition-colors flex items-center gap-2">
                             <ArrowLeft className="w-4 h-4" />
                             <span className="hidden sm:inline">Back to Home</span>
                             <span className="sm:hidden">Home</span>
                         </a>
-                        <a href="/#contact" className="hidden sm:flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs sm:text-sm font-bold text-white transition-all">
+                        <a href="/#contact" className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-[10px] sm:text-sm font-bold text-white transition-all whitespace-nowrap">
                             <Plus className="w-4 h-4" />
-                            Add Your Business
+                            <span className="hidden sm:inline">Add Your Business</span>
+                            <span className="sm:hidden">Add Business</span>
                         </a>
-                        <a href="/admin" className="px-4 py-2 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 rounded-xl text-xs sm:text-sm font-bold text-white transition-all shadow-lg shadow-primary/20">
+                        <a href="/admin" className="px-3 py-1.5 sm:px-4 sm:py-2 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 rounded-xl text-[10px] sm:text-sm font-bold text-white transition-all shadow-lg shadow-primary/20 whitespace-nowrap">
                             Dashboard
                         </a>
                     </div>
